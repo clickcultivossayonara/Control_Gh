@@ -274,13 +274,12 @@
 
   <div class="filters">
     <div class="field">
-      <label for="f-periodo">Periodo</label>
-      <select id="f-periodo">
-        <option value="7">Últimos 7 días</option>
-        <option value="30" selected>Últimos 30 días</option>
-        <option value="90">Últimos 90 días</option>
-        <option value="9999">Todo el histórico</option>
-      </select>
+      <label for="f-desde">Desde</label>
+      <input type="date" id="f-desde">
+    </div>
+    <div class="field">
+      <label for="f-hasta">Hasta</label>
+      <input type="date" id="f-hasta">
     </div>
     <div class="field">
       <label>Sede</label>
@@ -394,7 +393,8 @@
   let peticionActual = 0;
 
   const elBuscar = document.getElementById('f-buscar');
-  const elPeriodo = document.getElementById('f-periodo');
+  const elDesde = document.getElementById('f-desde');
+  const elHasta = document.getElementById('f-hasta');
   const elBody = document.getElementById('tbody');
   const elCount = document.getElementById('result-count');
   const elDot = document.getElementById('live-dot');
@@ -405,11 +405,8 @@
   function aplicarFiltros(params) {
     params.set('select', 'cedula,nombre,area,sede,fecha,hora_entrada,hora_salida,horas_trabajadas,diferencia_tiempo,estado');
 
-    const dias = Number(elPeriodo.value);
-    if (dias < 9999) {
-      const desde = new Date(); desde.setDate(desde.getDate() - dias);
-      params.set('fecha', 'gte.' + desde.toISOString().slice(0, 10));
-    }
+    if (elDesde.value) params.append('fecha', 'gte.' + elDesde.value);
+    if (elHasta.value) params.append('fecha', 'lte.' + elHasta.value);
     if (msSede.seleccion.size) params.set('sede', 'in.(' + [...msSede.seleccion].join(',') + ')');
     if (msArea.seleccion.size) params.set('area', 'in.(' + [...msArea.seleccion].map(a => `"${a}"`).join(',') + ')');
     if (msEstado.seleccion.size) params.set('estado', 'in.(' + [...msEstado.seleccion].join(',') + ')');
@@ -537,11 +534,21 @@
     });
   });
 
-  elPeriodo.addEventListener('change', reset);
+  function fechaISO(d) { return d.toISOString().slice(0, 10); }
+
+  function fechasPorDefecto() {
+    const hoy = new Date();
+    const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+    elDesde.value = fechaISO(hace30);
+    elHasta.value = fechaISO(hoy);
+  }
+
+  elDesde.addEventListener('change', reset);
+  elHasta.addEventListener('change', reset);
   let buscarTimeout;
   elBuscar.addEventListener('input', () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
   document.getElementById('btn-limpiar').addEventListener('click', () => {
-    elPeriodo.value = '30';
+    fechasPorDefecto();
     msSede.limpiar(); msArea.limpiar(); msEstado.limpiar();
     elBuscar.value = '';
     reset();
@@ -611,6 +618,7 @@
 
   document.getElementById('btn-excel').addEventListener('click', exportarExcel);
 
+  fechasPorDefecto();
   reiniciarAutoRefresh();
   cargar();
 })();
