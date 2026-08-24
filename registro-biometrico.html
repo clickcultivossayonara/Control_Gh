@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Registro Biométrico — En vivo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --paper: #f6f5f0;
+    --surface: #ffffff;
+    --ink: #1d2420;
+    --ink-soft: #57625b;
+    --ink-faint: #8a9089;
+    --line: #dbdfd4;
+    --line-strong: #c4cabb;
+    --accent: #2e6b4e;
+    --accent-ink: #ffffff;
+    --accent-soft: #e3eee6;
+    --accent-soft-line: #c3ddca;
+    --warn: #b3742f;
+    --warn-soft: #f6e9d7;
+    --critical: #a23d3d;
+    --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100vh;
+  }
+
+  .wrap {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 22px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .masthead {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+    text-align: center;
+  }
+
+  .masthead h1 {
+    font-family: "Fraunces", Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(28px, 4vw, 40px);
+    margin: 0;
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    text-wrap: balance;
+  }
+
+  .masthead .sub { font-size: 13px; color: var(--ink-soft); text-align: center; line-height: 1.5; }
+  .masthead .sub strong { color: var(--ink); font-weight: 600; }
+
+  .live-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .live-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+  .live-dot.cargando { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); animation: parpadeo 1s ease-in-out infinite; }
+  .live-dot.error { background: var(--critical); box-shadow: 0 0 0 3px var(--critical-soft); }
+  @keyframes parpadeo { 50% { opacity: 0.3; } }
+
+  .live-label { font-size: 12.5px; color: var(--ink-soft); }
+
+  .refresh-btn {
+    font: inherit;
+    font-size: 12.5px;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 1px solid var(--line-strong);
+    background: var(--surface);
+    color: var(--ink);
+    cursor: pointer;
+  }
+  .refresh-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .auto-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12.5px;
+    color: var(--ink-soft);
+    cursor: pointer;
+    user-select: none;
+  }
+  .auto-toggle input { accent-color: var(--accent); }
+
+  .filters {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--paper);
+    padding: 8px 0 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 140px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
+
+  .field select, .field input {
+    font: inherit; font-size: 13.5px; padding: 8px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--surface); color: var(--ink); min-width: 140px;
+  }
+  .field select:focus, .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field.grow { flex: 1; min-width: 200px; }
+  #f-buscar { width: 100%; }
+
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 13.5px; padding: 8px 30px 8px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--surface); color: var(--ink); min-width: 140px;
+    text-align: left; cursor: pointer; position: relative;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-trigger::after { content: "▾"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 10px; }
+  .ms-trigger:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .multiselect.open .ms-trigger { border-color: var(--accent); }
+
+  .ms-panel {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+    min-width: 200px; max-height: 280px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); padding: 4px;
+  }
+  .multiselect.open .ms-panel { display: block; }
+
+  .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { margin: 0; accent-color: var(--accent); }
+
+  .clear-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .excel-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--accent-soft-line);
+    background: var(--accent-soft); color: var(--accent); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .excel-btn:hover { border-color: var(--accent); }
+  .excel-btn:disabled { opacity: 0.6; cursor: wait; }
+
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); position: relative; }
+
+  table { border-collapse: collapse; width: 100%; table-layout: fixed; font-size: 12.5px; }
+
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper);
+    text-align: left; padding: 9px 8px; font-weight: 600; font-size: 10.5px;
+    text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+    overflow: hidden; text-overflow: ellipsis; cursor: pointer; user-select: none;
+    border-bottom: 1px solid var(--ink);
+  }
+  thead th:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 10px; margin-left: 4px; }
+  thead th.sorted .arrow { opacity: 1; }
+
+  tbody td { padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
+
+  thead th:nth-child(1), tbody td:nth-child(1) { width: 7%; }
+  thead th:nth-child(2), tbody td:nth-child(2) { width: 8%; }
+  thead th:nth-child(3), tbody td:nth-child(3) { width: 19%; }
+  thead th:nth-child(4), tbody td:nth-child(4) { width: 12%; }
+  thead th:nth-child(5), tbody td:nth-child(5) { width: 6%; }
+  thead th:nth-child(6), tbody td:nth-child(6) { width: 9%; }
+  thead th:nth-child(7), tbody td:nth-child(7) { width: 9%; }
+  thead th:nth-child(8), tbody td:nth-child(8) { width: 15%; }
+  thead th:nth-child(9), tbody td:nth-child(9) { width: 15%; }
+
+  tbody tr:hover td { background: var(--accent-soft); }
+  tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
+  tbody tr:nth-child(even):hover td { background: var(--accent-soft); }
+
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .nombre { font-weight: 500; }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); font-size: 12.5px; }
+  .muted { color: var(--ink-faint); }
+  .diff-pos { color: var(--accent); font-weight: 500; }
+  .diff-neg { color: var(--critical); font-weight: 500; }
+
+  .empty-state, .error-state { padding: 48px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+  .error-state { color: var(--critical); }
+
+  .load-more-row td { text-align: center; padding: 14px; background: var(--paper) !important; }
+  .load-more-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 7px;
+    border: 1px solid var(--accent-soft-line); background: var(--accent-soft); color: var(--accent); cursor: pointer;
+  }
+  .load-more-btn:hover { border-color: var(--accent); }
+
+  footer { font-size: 12px; color: var(--ink-faint); text-align: center; padding-top: 8px; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    tbody tr td { transition: background 0.1s ease; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <h1>Registro Biométrico</h1>
+    <div class="sub">Cultivos Sayonara &middot; Registro Biometrico &middot; <a href="./" style="color:var(--accent);text-decoration:none">Empleados</a></div>
+    <div class="live-bar">
+      <span class="live-dot" id="live-dot"></span>
+      <span class="live-label" id="live-label">Conectando...</span>
+      <button class="refresh-btn" id="btn-actualizar">Actualizar ahora</button>
+      <label class="auto-toggle">
+        <input type="checkbox" id="chk-auto" checked>
+        Autoactualizar cada 60s
+      </label>
+    </div>
+  </div>
+
+  <div class="filters">
+    <div class="field">
+      <label for="f-desde">Desde</label>
+      <input type="date" id="f-desde">
+    </div>
+    <div class="field">
+      <label for="f-hasta">Hasta</label>
+      <input type="date" id="f-hasta">
+    </div>
+    <div class="field">
+      <label>Sede</label>
+      <div class="multiselect" id="ms-sede"></div>
+    </div>
+    <div class="field">
+      <label>Área</label>
+      <div class="multiselect" id="ms-area"></div>
+    </div>
+    <div class="field">
+      <label>Estado</label>
+      <div class="multiselect" id="ms-estado"></div>
+    </div>
+    <div class="field grow">
+      <label for="f-buscar">Cédula o nombre</label>
+      <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+    </div>
+    <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
+    <button class="excel-btn" id="btn-excel">Descargar Excel</button>
+    <span class="result-count" id="result-count"></span>
+  </div>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
+          <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
+          <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
+          <th data-key="area">Area <span class="arrow">↕</span></th>
+          <th data-key="sede">Sede <span class="arrow">↕</span></th>
+          <th data-key="hora_entrada">Entrada <span class="arrow">↕</span></th>
+          <th data-key="hora_salida">Salida <span class="arrow">↕</span></th>
+          <th data-key="horas_trabajadas">Horas Trabajadas <span class="arrow">↕</span></th>
+          <th data-key="diferencia_tiempo">Diferencia <span class="arrow">↕</span></th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Datos en vivo desde Supabase &middot; última actualización: <strong id="ultima-actualizacion">—</strong>
+  </footer>
+</div>
+
+<script>
+(function () {
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
+
+  const OPCIONES_SEDE = ["Ceja", "Union", "Desconocida"];
+  const OPCIONES_AREA = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","No Registrado","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+
+  const fmtDate = (iso) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return `${String(d).padStart(2,'0')}/${String(m).padStart(2,'0')}/${String(y).slice(-2)}`;
+  };
+  const fmtHora = (naiveIso) => {
+    if (!naiveIso) return null;
+    const d = new Date(naiveIso);
+    return d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true });
+  };
+
+  function crearMultiselect(containerId, opciones, etiquetaTodos, onChange) {
+    const el = document.getElementById(containerId);
+    const seleccion = new Set();
+    el.innerHTML = `<button type="button" class="ms-trigger">${etiquetaTodos}</button><div class="ms-panel"></div>`;
+    const trigger = el.querySelector('.ms-trigger');
+    const panel = el.querySelector('.ms-panel');
+
+    opciones.forEach((valor) => {
+      panel.insertAdjacentHTML('beforeend', `<label class="ms-option"><input type="checkbox" value="${valor}"><span>${valor}</span></label>`);
+    });
+
+    panel.querySelectorAll('input[type=checkbox]').forEach((chk, i) => {
+      chk.addEventListener('change', () => {
+        if (chk.checked) seleccion.add(opciones[i]); else seleccion.delete(opciones[i]);
+        actualizarEtiqueta();
+        onChange();
+      });
+    });
+
+    function actualizarEtiqueta() {
+      if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
+      else if (seleccion.size === 1) trigger.textContent = [...seleccion][0];
+      else trigger.textContent = `${seleccion.size} seleccionadas`;
+    }
+
+    trigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      document.querySelectorAll('.multiselect.open').forEach(m => { if (m !== el) m.classList.remove('open'); });
+      el.classList.toggle('open');
+    });
+
+    return { seleccion, limpiar: () => { seleccion.clear(); panel.querySelectorAll('input').forEach(c => c.checked = false); actualizarEtiqueta(); } };
+  }
+
+  document.addEventListener('click', () => {
+    document.querySelectorAll('.multiselect.open').forEach(m => m.classList.remove('open'));
+  });
+
+  const msSede = crearMultiselect('ms-sede', OPCIONES_SEDE, 'Todas', () => reset());
+  const msArea = crearMultiselect('ms-area', OPCIONES_AREA, 'Todas', () => reset());
+  const msEstado = crearMultiselect('ms-estado', ['completo', 'sin_salida', 'sin_entrada'], 'Todos', () => reset());
+
+  let sortKey = 'fecha', sortDir = -1;
+  let visibles = 300;
+  const PAGE = 300;
+  let autoTimer = null;
+  let peticionActual = 0;
+
+  const elBuscar = document.getElementById('f-buscar');
+  const elDesde = document.getElementById('f-desde');
+  const elHasta = document.getElementById('f-hasta');
+  const elBody = document.getElementById('tbody');
+  const elCount = document.getElementById('result-count');
+  const elDot = document.getElementById('live-dot');
+  const elLabel = document.getElementById('live-label');
+  const elUltima = document.getElementById('ultima-actualizacion');
+  const elChkAuto = document.getElementById('chk-auto');
+
+  function aplicarFiltros(params) {
+    params.set('select', 'cedula,nombre,area,sede,fecha,hora_entrada,hora_salida,horas_trabajadas,diferencia_tiempo,estado');
+
+    if (elDesde.value) params.append('fecha', 'gte.' + elDesde.value);
+    if (elHasta.value) params.append('fecha', 'lte.' + elHasta.value);
+    if (msSede.seleccion.size) params.set('sede', 'in.(' + [...msSede.seleccion].join(',') + ')');
+    if (msArea.seleccion.size) params.set('area', 'in.(' + [...msArea.seleccion].map(a => `"${a}"`).join(',') + ')');
+    if (msEstado.seleccion.size) params.set('estado', 'in.(' + [...msEstado.seleccion].join(',') + ')');
+
+    const buscar = elBuscar.value.trim();
+    if (buscar) {
+      if (/^\d+$/.test(buscar)) params.set('cedula', 'eq.' + buscar);
+      else params.set('nombre', 'ilike.*' + buscar.replace(/[,()]/g, '') + '*');
+    }
+
+    params.set('order', `${sortKey}.${sortDir === 1 ? 'asc' : 'desc'}.nullslast,hora_entrada.${sortDir === 1 ? 'asc' : 'desc'}.nullslast,hora_salida.${sortDir === 1 ? 'asc' : 'desc'}.nullslast`);
+  }
+
+  function construirQuery() {
+    const params = new URLSearchParams();
+    aplicarFiltros(params);
+    params.set('limit', String(visibles));
+    params.set('offset', '0');
+    return params.toString();
+  }
+
+  async function cargar() {
+    const miPeticion = ++peticionActual;
+    elDot.className = 'live-dot cargando';
+    elLabel.textContent = 'Actualizando...';
+
+    try {
+      const query = construirQuery();
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/registro_horas_detalle?${query}`, {
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+          'Prefer': 'count=exact',
+        },
+      });
+
+      if (miPeticion !== peticionActual) return; // respuesta obsoleta, hay una peticion mas nueva en curso
+
+      if (!resp.ok) {
+        const texto = await resp.text();
+        throw new Error(`HTTP ${resp.status}: ${texto}`);
+      }
+
+      const filas = await resp.json();
+      const rango = resp.headers.get('content-range'); // ej "0-299/1234"
+      const total = rango && rango.includes('/') ? Number(rango.split('/')[1]) : filas.length;
+
+      renderTabla(filas, total);
+
+      elDot.className = 'live-dot';
+      elLabel.textContent = 'En vivo';
+      elUltima.textContent = new Date().toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
+    } catch (err) {
+      if (miPeticion !== peticionActual) return;
+      elDot.className = 'live-dot error';
+      elLabel.textContent = 'Error de conexión';
+      elBody.innerHTML = `<tr><td colspan="9"><div class="error-state">No se pudo cargar: ${String(err.message || err)}</div></td></tr>`;
+      elCount.textContent = '';
+    }
+  }
+
+  function chipVacio() { return '—'; }
+
+  function fila(r) {
+    const he = fmtHora(r.hora_entrada), hs = fmtHora(r.hora_salida);
+    const ht = r.horas_trabajadas != null ? Number(r.horas_trabajadas).toFixed(2) : chipVacio();
+    let dt = chipVacio();
+    if (r.diferencia_tiempo != null) {
+      const v = Number(r.diferencia_tiempo);
+      const cls = v >= 0 ? 'diff-pos' : 'diff-neg';
+      const signo = v > 0 ? '+' : '';
+      dt = `<span class="${cls}">${signo}${v.toFixed(2)}</span>`;
+    }
+    return `<tr>
+      <td class="num">${fmtDate(r.fecha)}</td>
+      <td class="cedula">${r.cedula}</td>
+      <td class="nombre" title="${r.nombre}">${r.nombre}</td>
+      <td>${r.area}</td>
+      <td>${r.sede || '—'}</td>
+      <td class="num">${he || '—'}</td>
+      <td class="num">${hs || '—'}</td>
+      <td class="num">${ht}</td>
+      <td class="num">${dt}</td>
+    </tr>`;
+  }
+
+  function renderTabla(filas, total) {
+    if (filas.length === 0) {
+      elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
+    } else {
+      let html = filas.map(fila).join('');
+      if (total > filas.length) {
+        html += `<tr class="load-more-row"><td colspan="9">
+          <button class="load-more-btn" id="btn-cargar-mas">Cargar más (${(total - filas.length).toLocaleString('es-CO')} restantes)</button>
+        </td></tr>`;
+      }
+      elBody.innerHTML = html;
+      const btn = document.getElementById('btn-cargar-mas');
+      if (btn) btn.addEventListener('click', () => { visibles += PAGE; cargar(); });
+    }
+
+    elCount.textContent = total.toLocaleString('es-CO') + ' resultado' + (total === 1 ? '' : 's') +
+      (filas.length < total ? ` · mostrando ${filas.length.toLocaleString('es-CO')}` : '');
+
+    document.querySelectorAll('thead th').forEach(th => {
+      th.classList.toggle('sorted', th.dataset.key === sortKey);
+      const arrow = th.querySelector('.arrow');
+      arrow.textContent = th.dataset.key === sortKey ? (sortDir === 1 ? '↑' : '↓') : '↕';
+    });
+  }
+
+  function reset() { visibles = PAGE; cargar(); }
+
+  function reiniciarAutoRefresh() {
+    if (autoTimer) clearInterval(autoTimer);
+    if (elChkAuto.checked) autoTimer = setInterval(reset, 60000);
+  }
+
+  document.querySelectorAll('thead th').forEach(th => {
+    th.addEventListener('click', () => {
+      const key = th.dataset.key;
+      if (sortKey === key) sortDir *= -1;
+      else { sortKey = key; sortDir = key === 'fecha' ? -1 : 1; }
+      reset();
+    });
+  });
+
+  function fechaISO(d) { return d.toISOString().slice(0, 10); }
+
+  function fechasPorDefecto() {
+    const hoy = new Date();
+    const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+    elDesde.value = fechaISO(hace30);
+    elHasta.value = fechaISO(hoy);
+  }
+
+  elDesde.addEventListener('change', reset);
+  elHasta.addEventListener('change', reset);
+  let buscarTimeout;
+  elBuscar.addEventListener('input', () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
+  document.getElementById('btn-limpiar').addEventListener('click', () => {
+    fechasPorDefecto();
+    msSede.limpiar(); msArea.limpiar(); msEstado.limpiar();
+    elBuscar.value = '';
+    reset();
+  });
+  document.getElementById('btn-actualizar').addEventListener('click', reset);
+  elChkAuto.addEventListener('change', reiniciarAutoRefresh);
+
+  async function exportarExcel() {
+    const btn = document.getElementById('btn-excel');
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+
+    try {
+      const filas = [];
+      let offset = 0;
+      const tamanoPagina = 1000;
+
+      while (true) {
+        btn.textContent = `Generando... (${filas.length.toLocaleString('es-CO')})`;
+        const params = new URLSearchParams();
+        aplicarFiltros(params);
+        params.set('limit', String(tamanoPagina));
+        params.set('offset', String(offset));
+
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/registro_horas_detalle?${params.toString()}`, {
+          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+        });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const lote = await resp.json();
+        filas.push(...lote);
+        if (lote.length < tamanoPagina) break;
+        offset += tamanoPagina;
+      }
+
+      const fmtFechaExcel = (iso) => {
+        const [y, m, d] = iso.split('-');
+        return `${d}/${m}/${y}`;
+      };
+
+      const filasExcel = filas.map(r => ({
+        'Cédula': r.cedula,
+        'Fecha': fmtFechaExcel(r.fecha),
+        'Nombre': r.nombre,
+        'Area': r.area,
+        'Sede': r.sede || '',
+        'Hora Entrada': fmtHora(r.hora_entrada) || '',
+        'Hora Salida': fmtHora(r.hora_salida) || '',
+        'Horas Trabajadas': r.horas_trabajadas != null ? Number(r.horas_trabajadas) : '',
+        'Diferencia': r.diferencia_tiempo != null ? Number(r.diferencia_tiempo) : '',
+        'Estado': r.estado,
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(filasExcel);
+      ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 32 }, { wch: 20 }, { wch: 8 }, { wch: 11 }, { wch: 11 }, { wch: 12 }, { wch: 11 }, { wch: 12 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Registro Biometrico');
+
+      const hoy = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `registro_biometrico_${hoy}.xlsx`);
+    } catch (err) {
+      alert('No se pudo generar el Excel: ' + (err.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = textoOriginal;
+    }
+  }
+
+  document.getElementById('btn-excel').addEventListener('click', exportarExcel);
+
+  fechasPorDefecto();
+  reiniciarAutoRefresh();
+  cargar();
+})();
+</script>
+</body>
+</html>
