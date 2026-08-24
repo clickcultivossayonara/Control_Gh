@@ -109,44 +109,38 @@
       <div class="form-grid">
         <div class="field">
           <label for="f-cedula">Cédula <span class="req">*</span></label>
-          <input type="number" id="f-cedula" required inputmode="numeric">
+          <input type="text" id="f-cedula" required inputmode="numeric" pattern="[0-9]*" autocomplete="off">
         </div>
         <div class="field">
           <label for="f-nombre">Nombre <span class="req">*</span></label>
-          <input type="text" id="f-nombre" required>
+          <input type="text" id="f-nombre" required autocomplete="off" style="text-transform:uppercase">
         </div>
         <div class="field">
           <label for="f-area">Área</label>
-          <input type="text" id="f-area" list="lista-areas" autocomplete="off">
-          <datalist id="lista-areas"></datalist>
+          <select id="f-area">
+            <option value="">—</option>
+          </select>
         </div>
         <div class="field">
           <label for="f-sede">Sede</label>
           <select id="f-sede">
-            <option value="">—</option>
-            <option value="Union">Union</option>
+            <option value="Unión" selected>Unión</option>
             <option value="Ceja">Ceja</option>
           </select>
         </div>
         <div class="field">
           <label for="f-labor">Labor</label>
-          <input type="text" id="f-labor">
-        </div>
-        <div class="field">
-          <label for="f-usuario-control">Usuario Control</label>
-          <input type="text" id="f-usuario-control">
-        </div>
-        <div class="field">
-          <label for="f-nombre-jefe">Nombre Jefe</label>
-          <input type="text" id="f-nombre-jefe">
-        </div>
-        <div class="field">
-          <label for="f-email-jefe">Email Jefe</label>
-          <input type="email" id="f-email-jefe">
+          <select id="f-labor">
+            <option value="">—</option>
+          </select>
         </div>
         <div class="field">
           <label for="f-eficiencia">Eficiencia</label>
-          <input type="text" id="f-eficiencia">
+          <select id="f-eficiencia">
+            <option value="">—</option>
+            <option value="Cuenta">Cuenta</option>
+            <option value="No Cuenta">No Cuenta</option>
+          </select>
         </div>
         <div class="field">
           <label for="f-fecha-ingreso">Fecha Ingreso</label>
@@ -206,8 +200,29 @@
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
 
   const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
-  const dl = document.getElementById("lista-areas");
-  AREAS_CONOCIDAS.forEach(a => dl.insertAdjacentHTML("beforeend", `<option value="${a}">`));
+  const selArea = document.getElementById("f-area");
+  AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
+
+  const LABORES_CONOCIDAS = ["ARMADO BOUQUETS","ASEGURADOR DE FITOSANIDAD POSTCOSECHA.","ASEGURAMIENTO USA","ASPERJADOR.","ASPIRADO.","AUXILIAR","AYUDANTE DE TALLER,FONTANERIA, LABORES VARIAS.","CARGUE DE GARRUCHA ESQUEJES","CORTADOR","CORTE ALSTROEMERIAS","CORTE ESPECIALES","CORTE USA","COSECHADOR","COSECHADOR CEJA","CUARTO FRIO","DESBOTONE CREMON/SPIDER","DESBOTONE POMPON","DESBOTÓN SPIDER","DESCARGUE BANDEJAS CONFINAMIENTO","DESCARGUE DE GARRUCHA","DESMALECE","DESPACHOS","DESTRONCAR","DESTRONQUE Y ENTERRADA DE SOCA","DISTRIBUCION CUBETAS","DRENCH","ELECTRICO Y MANTENIMIENTOS PREVENTIVOS.","EMPAQUE","EMPAQUE BOUQUETS","ENMALLE","ESTERILIZACION","ESTERILIZACIÓN DE CAMAS","FOSFINA-TERMONEBULIZADORA","FUMIGACIÓN","INSTALACION DE LUCES Y CORTINAS NEGRAS EN SIEMBRA.","JEFE","LLENADO DE BANDEJAS MANUAL","LLENADOR DE BANDEJAS","MANTENIMIENTO EN ALTURAS.","MONITOREO","MONITOREO INTEGRAL","MONITOREO ROYA BLANCA","OF VARIOS","OFICIOS VARIOS","Orden y aseo","PATINADOR","PREPARACIÓN DE CAMAS","PUESTA DE MALLA.","REGISTRO DE GARRUCHA","REVISION DE LUCES EN LA NOCHE.","REVISIÓN FITOSANITARIO EN POSTCOSECHA","REVISIÓN RB","RIEGO","RIEGO CON CODO EN CORTE","RIEGO CON CODO UNIFICACION","RIEGO SIEMBRA","SIEMBRA","SIEMBRA CAMPO","SIEMBRA EN CAMPO","SIEMBRA ENRAIZAMIENTO","SUPERVISOR","Surtidor de cartón","TALLER.","TANQUISTA","TRACTORISTA"];
+  const selLabor = document.getElementById("f-labor");
+  LABORES_CONOCIDAS.forEach(l => selLabor.insertAdjacentHTML("beforeend", `<option value="${l}">${l}</option>`));
+
+  // Cedula: solo digitos
+  document.getElementById("f-cedula").addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/\D/g, "");
+  });
+
+  // Nombre: siempre en mayusculas
+  document.getElementById("f-nombre").addEventListener("input", (e) => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+  });
+
+  // Fecha de ingreso: hoy por defecto
+  const elFechaIngreso = document.getElementById("f-fecha-ingreso");
+  function fechaHoy() { return new Date().toISOString().slice(0, 10); }
+  elFechaIngreso.value = fechaHoy();
 
   const headers = {
     apikey: SUPABASE_ANON_KEY,
@@ -239,13 +254,10 @@
 
     const registro = {
       cedula: Number(cedula),
-      nombre: nombre,
+      nombre: nombre.toUpperCase(),
       area: val("f-area"),
       sede: val("f-sede"),
       labor: val("f-labor"),
-      usuario_control: val("f-usuario-control"),
-      nombre_jefe: val("f-nombre-jefe"),
-      email_jefe: val("f-email-jefe"),
       eficiencia: val("f-eficiencia"),
       fecha_ingreso: val("f-fecha-ingreso"),
       activo: document.getElementById("f-activo").checked,
@@ -275,6 +287,7 @@
       msg.className = "form-msg ok";
       form.reset();
       document.getElementById("f-activo").checked = true;
+      elFechaIngreso.value = fechaHoy();
       cargarEmpleados();
     } catch (err) {
       msg.textContent = "No se pudo guardar: " + (err.message || err);
