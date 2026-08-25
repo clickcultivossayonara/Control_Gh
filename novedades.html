@@ -35,7 +35,7 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
-  .wrap { max-width: 1000px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
 
   .masthead { display: flex; flex-direction: column; align-items: center; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; text-align: center; }
   .masthead h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
@@ -55,7 +55,7 @@
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 4px; }
   .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 18px; }
 
-  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field[hidden] { display: none; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
@@ -186,6 +186,22 @@
       <div class="field">
         <label for="ln-buscar">Cédula o nombre</label>
         <input type="text" id="ln-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="ln-area">Área</label>
+        <select id="ln-area"><option value="">Todas</option></select>
+      </div>
+      <div class="field">
+        <label for="ln-codigo">Código - Descripción</label>
+        <select id="ln-codigo"><option value="">Todos</option></select>
+      </div>
+      <div class="field">
+        <label for="ln-desde">Desde</label>
+        <input type="date" id="ln-desde">
+      </div>
+      <div class="field">
+        <label for="ln-hasta">Hasta</label>
+        <input type="date" id="ln-hasta">
       </div>
       <span class="result-count" id="ln-count"></span>
     </div>
@@ -377,6 +393,7 @@
     filas.forEach(f => {
       codigosPorValor[f.codigo] = f;
       selCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
+      lnCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo_descripcion}">${f.codigo_descripcion}</option>`);
     });
   }
   cargarCodigos();
@@ -531,8 +548,13 @@
 
   // ---------------- lista: novedades registradas ----------------
   const lnBuscar = document.getElementById("ln-buscar");
+  const lnArea = document.getElementById("ln-area");
+  const lnCodigo = document.getElementById("ln-codigo");
+  const lnDesde = document.getElementById("ln-desde");
+  const lnHasta = document.getElementById("ln-hasta");
   const lnTbody = document.getElementById("ln-tbody");
   const lnCount = document.getElementById("ln-count");
+  AREAS_CONOCIDAS.forEach(a => lnArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
 
   async function cargarListaNovedades() {
     const params = new URLSearchParams();
@@ -544,6 +566,10 @@
       if (/^\d+$/.test(buscar)) params.set("cedula", "eq." + buscar);
       else params.set("nombre_colaborador", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
     }
+    if (lnArea.value) params.set("area", "eq." + lnArea.value);
+    if (lnCodigo.value) params.set("codigo_descripcion", "eq." + lnCodigo.value);
+    if (lnDesde.value) params.append("fecha_novedad", "gte." + lnDesde.value + "T00:00:00");
+    if (lnHasta.value) params.append("fecha_novedad", "lte." + lnHasta.value + "T23:59:59");
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: { ...headers, Prefer: "count=exact" } });
     const filas = await resp.json();
     const rango = resp.headers.get("content-range");
@@ -566,6 +592,10 @@
   }
   let lnTimeout;
   lnBuscar.addEventListener("input", () => { clearTimeout(lnTimeout); lnTimeout = setTimeout(cargarListaNovedades, 300); });
+  lnArea.addEventListener("change", cargarListaNovedades);
+  lnCodigo.addEventListener("change", cargarListaNovedades);
+  lnDesde.addEventListener("change", cargarListaNovedades);
+  lnHasta.addEventListener("change", cargarListaNovedades);
   cargarListaNovedades();
 
   // ---------------- lista: extras registradas ----------------
