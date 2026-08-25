@@ -56,6 +56,9 @@
   .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 18px; }
 
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+  .form-grid.form-grid-novedad { grid-template-columns: repeat(3, 1fr); }
+  @media (max-width: 900px) { .form-grid.form-grid-novedad { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .form-grid.form-grid-novedad { grid-template-columns: 1fr; } }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field[hidden] { display: none; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
@@ -102,9 +105,17 @@
   .form-msg.error { color: var(--critical); }
 
   .lista-hint { font-size: 12.5px; color: var(--ink-faint); margin: 24px 0 10px; }
+  .filters-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
   .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .filters-stack .filters { margin-bottom: 0; }
   .filters .field { min-width: 160px; }
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+  .clear-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
@@ -141,7 +152,7 @@
     <h2>Ingreso de Novedades</h2>
     <p class="card-hint">La diligencia el jefe del área. Nómina/RRHH revisa después.</p>
     <form id="form-novedad">
-      <div class="form-grid">
+      <div class="form-grid form-grid-novedad">
         <div class="field">
           <label for="n-area">Área <span class="req">*</span></label>
           <select id="n-area" required>
@@ -158,11 +169,11 @@
             <option value="">Selecciona un código…</option>
           </select>
         </div>
-        <div class="field">
+        <div class="field" hidden>
           <label for="n-codigo-novedad">Código Novedad</label>
           <input type="text" id="n-codigo-novedad" readonly>
         </div>
-        <div class="field">
+        <div class="field" hidden>
           <label for="n-descripcion">Descripción novedad</label>
           <input type="text" id="n-descripcion" readonly>
         </div>
@@ -182,28 +193,33 @@
     </form>
 
     <p class="lista-hint">Novedades registradas</p>
-    <div class="filters">
-      <div class="field">
-        <label for="ln-buscar">Cédula o nombre</label>
-        <input type="text" id="ln-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+    <div class="filters-stack">
+      <div class="filters">
+        <div class="field">
+          <label for="ln-buscar">Cédula o nombre</label>
+          <input type="text" id="ln-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="ln-area">Área</label>
+          <select id="ln-area"><option value="">Todas</option></select>
+        </div>
+        <div class="field">
+          <label for="ln-codigo">Código - Descripción</label>
+          <select id="ln-codigo"><option value="">Todos</option></select>
+        </div>
       </div>
-      <div class="field">
-        <label for="ln-area">Área</label>
-        <select id="ln-area"><option value="">Todas</option></select>
+      <div class="filters">
+        <div class="field">
+          <label for="ln-desde">Desde</label>
+          <input type="date" id="ln-desde">
+        </div>
+        <div class="field">
+          <label for="ln-hasta">Hasta</label>
+          <input type="date" id="ln-hasta">
+        </div>
+        <button class="clear-btn" id="ln-limpiar">Limpiar filtros</button>
+        <span class="result-count" id="ln-count"></span>
       </div>
-      <div class="field">
-        <label for="ln-codigo">Código - Descripción</label>
-        <select id="ln-codigo"><option value="">Todos</option></select>
-      </div>
-      <div class="field">
-        <label for="ln-desde">Desde</label>
-        <input type="date" id="ln-desde">
-      </div>
-      <div class="field">
-        <label for="ln-hasta">Hasta</label>
-        <input type="date" id="ln-hasta">
-      </div>
-      <span class="result-count" id="ln-count"></span>
     </div>
     <div class="table-scroll">
       <table>
@@ -251,6 +267,7 @@
         <label for="le-buscar">Área</label>
         <input type="text" id="le-buscar" placeholder="Ej. RIEGO" autocomplete="off">
       </div>
+      <button class="clear-btn" id="le-limpiar">Limpiar filtros</button>
       <span class="result-count" id="le-count"></span>
     </div>
     <div class="table-scroll">
@@ -596,6 +613,10 @@
   lnCodigo.addEventListener("change", cargarListaNovedades);
   lnDesde.addEventListener("change", cargarListaNovedades);
   lnHasta.addEventListener("change", cargarListaNovedades);
+  document.getElementById("ln-limpiar").addEventListener("click", () => {
+    lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = "";
+    cargarListaNovedades();
+  });
   cargarListaNovedades();
 
   // ---------------- lista: extras registradas ----------------
@@ -630,6 +651,10 @@
   }
   let leTimeout;
   leBuscar.addEventListener("input", () => { clearTimeout(leTimeout); leTimeout = setTimeout(cargarListaExtras, 300); });
+  document.getElementById("le-limpiar").addEventListener("click", () => {
+    leBuscar.value = "";
+    cargarListaExtras();
+  });
   cargarListaExtras();
 })();
 </script>
