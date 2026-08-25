@@ -57,6 +57,7 @@
 
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
   .field { display: flex; flex-direction: column; gap: 5px; }
+  .field[hidden] { display: none; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
   .field label .req { color: var(--critical); }
   .field input[type=text], .field input[type=number], .field input[type=email], .field input[type=date], .field select {
@@ -100,6 +101,26 @@
   .form-msg.ok { color: var(--accent); }
   .form-msg.error { color: var(--critical); }
 
+  .lista-hint { font-size: 12.5px; color: var(--ink-faint); margin: 24px 0 10px; }
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .filters .field { min-width: 160px; }
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
+    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tbody tr:hover td { background: var(--accent-soft); }
+  tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
+  tbody tr:nth-child(even):hover td { background: var(--accent-soft); }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
+  .nombre { font-weight: 500; }
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
 </style>
 </head>
@@ -108,7 +129,7 @@
 <div class="wrap">
   <div class="masthead">
     <h1>Novedades de Nómina</h1>
-    <div class="sub">Cultivos Sayonara &middot; <a href="index.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a></div>
+    <div class="sub">Cultivos Sayonara &middot; <a href="index.html">Inicio</a> &middot; <a href="empleados.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a></div>
   </div>
 
   <div class="tabs">
@@ -159,6 +180,23 @@
         <span class="form-msg" id="msg-novedad"></span>
       </div>
     </form>
+
+    <p class="lista-hint">Novedades registradas</p>
+    <div class="filters">
+      <div class="field">
+        <label for="ln-buscar">Cédula o nombre</label>
+        <input type="text" id="ln-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+      </div>
+      <span class="result-count" id="ln-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Fecha</th><th>Colaborador</th><th>Área</th><th>Código - Descripción</th><th>Horas</th><th>Día</th></tr>
+        </thead>
+        <tbody id="ln-tbody"></tbody>
+      </table>
+    </div>
   </section>
 
   <section class="card" id="card-extra" hidden>
@@ -190,6 +228,23 @@
         <span class="form-msg" id="msg-extra"></span>
       </div>
     </form>
+
+    <p class="lista-hint">Asignaciones registradas</p>
+    <div class="filters">
+      <div class="field">
+        <label for="le-buscar">Área</label>
+        <input type="text" id="le-buscar" placeholder="Ej. RIEGO" autocomplete="off">
+      </div>
+      <span class="result-count" id="le-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Fecha</th><th>Área</th><th>Horas Asignadas</th><th>Semana</th></tr>
+        </thead>
+        <tbody id="le-tbody"></tbody>
+      </table>
+    </div>
   </section>
 
   <footer>Cultivos Sayonara &middot; datos guardados en vivo en Supabase</footer>
@@ -293,8 +348,8 @@
       },
     };
   }
-  document.addEventListener("click", () => {
-    document.querySelectorAll(".multiselect.open").forEach(m => m.classList.remove("open"));
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
   });
 
   // ---------------- formulario: novedad por colaborador ----------------
@@ -410,6 +465,7 @@
       inFecha.value = fechaHoy();
       msColaborador.seleccion.clear();
       selArea.dispatchEvent(new Event("change"));
+      cargarListaNovedades();
     } catch (err) {
       msgNovedad.textContent = "No se pudo guardar: " + (err.message || err);
       msgNovedad.className = "form-msg error";
@@ -464,6 +520,7 @@
       msgExtra.className = "form-msg ok";
       inHorasExtra.value = "";
       inFechaExtra.value = fechaHoy();
+      cargarListaExtras();
     } catch (err) {
       msgExtra.textContent = "No se pudo guardar: " + (err.message || err);
       msgExtra.className = "form-msg error";
@@ -471,6 +528,79 @@
       btnExtra.disabled = false;
     }
   });
+
+  // ---------------- lista: novedades registradas ----------------
+  const lnBuscar = document.getElementById("ln-buscar");
+  const lnTbody = document.getElementById("ln-tbody");
+  const lnCount = document.getElementById("ln-count");
+
+  async function cargarListaNovedades() {
+    const params = new URLSearchParams();
+    params.set("select", "fecha_novedad,nombre_colaborador,cedula,area,codigo_descripcion,hora,dia");
+    params.set("order", "fecha_creacion.desc");
+    params.set("limit", "300");
+    const buscar = lnBuscar.value.trim();
+    if (buscar) {
+      if (/^\d+$/.test(buscar)) params.set("cedula", "eq." + buscar);
+      else params.set("nombre_colaborador", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
+    }
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: { ...headers, Prefer: "count=exact" } });
+    const filas = await resp.json();
+    const rango = resp.headers.get("content-range");
+    const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+    if (filas.length === 0) {
+      lnTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
+    } else {
+      lnTbody.innerHTML = filas.map(f => `<tr>
+        <td class="num">${f.fecha_novedad ? f.fecha_novedad.slice(0, 10) : "—"}</td>
+        <td class="nombre">${f.nombre_colaborador || "—"}</td>
+        <td>${f.area || "—"}</td>
+        <td>${f.codigo_descripcion || "—"}</td>
+        <td class="num">${f.hora ?? "—"}</td>
+        <td>${f.dia || "—"}</td>
+      </tr>`).join("");
+    }
+    lnCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
+      (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
+  }
+  let lnTimeout;
+  lnBuscar.addEventListener("input", () => { clearTimeout(lnTimeout); lnTimeout = setTimeout(cargarListaNovedades, 300); });
+  cargarListaNovedades();
+
+  // ---------------- lista: extras registradas ----------------
+  const leBuscar = document.getElementById("le-buscar");
+  const leTbody = document.getElementById("le-tbody");
+  const leCount = document.getElementById("le-count");
+
+  async function cargarListaExtras() {
+    const params = new URLSearchParams();
+    params.set("select", "fecha,area,horas_asignadas,semana");
+    params.set("order", "fecha_registro.desc");
+    params.set("limit", "300");
+    const buscar = leBuscar.value.trim();
+    if (buscar) params.set("area", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/extras_nomina_detalle?${params.toString()}`, { headers: { ...headers, Prefer: "count=exact" } });
+    const filas = await resp.json();
+    const rango = resp.headers.get("content-range");
+    const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+    if (filas.length === 0) {
+      leTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Sin asignaciones para estos filtros.</div></td></tr>`;
+    } else {
+      leTbody.innerHTML = filas.map(f => `<tr>
+        <td class="num">${f.fecha || "—"}</td>
+        <td>${f.area || "—"}</td>
+        <td class="num">${f.horas_asignadas ?? "—"}</td>
+        <td class="num">${f.semana ?? "—"}</td>
+      </tr>`).join("");
+    }
+    leCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
+      (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
+  }
+  let leTimeout;
+  leBuscar.addEventListener("input", () => { clearTimeout(leTimeout); leTimeout = setTimeout(cargarListaExtras, 300); });
+  cargarListaExtras();
 })();
 </script>
 </body>
