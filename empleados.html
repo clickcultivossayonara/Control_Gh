@@ -77,6 +77,12 @@
   .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
   .filters .field { min-width: 160px; }
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+  .clear-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 12.5px; table-layout: fixed; }
@@ -198,6 +204,7 @@
         <label for="f-filtro-hasta">Ingreso hasta</label>
         <input type="date" id="f-filtro-hasta">
       </div>
+      <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
       <span class="result-count" id="result-count"></span>
     </div>
     <div class="table-scroll">
@@ -373,6 +380,13 @@
   elEstado.addEventListener("change", cargarEmpleados);
   elDesde.addEventListener("change", cargarEmpleados);
   elHasta.addEventListener("change", cargarEmpleados);
+  document.getElementById("btn-limpiar").addEventListener("click", () => {
+    elBuscar.value = "";
+    elEstado.value = "";
+    elDesde.value = "";
+    elHasta.value = "";
+    cargarEmpleados();
+  });
 
   cargarEmpleados();
 })();
