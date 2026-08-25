@@ -261,6 +261,7 @@
   <div class="masthead">
     <h1>Registro Biométrico</h1>
     <div class="sub">Cultivos Sayonara &middot; Registro Biometrico &middot; <a href="index.html" style="color:var(--accent);text-decoration:none">Inicio</a> &middot; <a href="empleados.html" style="color:var(--accent);text-decoration:none">Empleados</a> &middot; <a href="novedades.html" style="color:var(--accent);text-decoration:none">Novedades</a></div>
+    <div class="sesion-box" id="sesion-box" style="justify-content:center"></div>
     <div class="live-bar">
       <span class="live-dot" id="live-dot"></span>
       <span class="live-label" id="live-label">Conectando...</span>
@@ -326,13 +327,20 @@
   </footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 <script>
-(function () {
+AUTH_READY.then(function () {
+  if (!requireRole(["admin", "nomina", "jefe_area"])) return;
+  pintarSesion("sesion-box");
+
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
 
   const OPCIONES_SEDE = ["Ceja", "Union", "Desconocida"];
-  const OPCIONES_AREA = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","No Registrado","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+  const TODAS_LAS_AREAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","No Registrado","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+  const OPCIONES_AREA = window.SESION.rol === "jefe_area"
+    ? TODAS_LAS_AREAS.filter(a => window.SESION.areas.includes(a))
+    : TODAS_LAS_AREAS;
 
   const fmtDate = (iso) => {
     const [y, m, d] = iso.split('-').map(Number);
@@ -436,11 +444,7 @@
     try {
       const query = construirQuery();
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/registro_horas_detalle?${query}`, {
-        headers: {
-          'apikey': SUPABASE_ANON_KEY,
-          'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
-          'Prefer': 'count=exact',
-        },
+        headers: { ...authHeaders(), 'Prefer': 'count=exact' },
       });
 
       if (miPeticion !== peticionActual) return; // respuesta obsoleta, hay una peticion mas nueva en curso
@@ -574,7 +578,7 @@
         params.set('offset', String(offset));
 
         const resp = await fetch(`${SUPABASE_URL}/rest/v1/registro_horas_detalle?${params.toString()}`, {
-          headers: { 'apikey': SUPABASE_ANON_KEY, 'Authorization': `Bearer ${SUPABASE_ANON_KEY}` },
+          headers: authHeaders(),
         });
         if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
         const lote = await resp.json();
@@ -621,7 +625,7 @@
   fechasPorDefecto();
   reiniciarAutoRefresh();
   cargar();
-})();
+});
 </script>
 </body>
 </html>
