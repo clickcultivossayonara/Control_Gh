@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Usuarios — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+
+  .masthead { display: flex; flex-direction: column; align-items: center; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; text-align: center; }
+  .masthead h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
+  .masthead .sub { font-size: 13px; color: var(--ink-soft); }
+  .masthead a { color: var(--accent); text-decoration: none; }
+  .masthead a:hover { text-decoration: underline; }
+
+  section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
+  h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field label .req { color: var(--critical); }
+  .field input[type=text], .field input[type=email], .field input[type=password], .field select {
+    font: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field[hidden] { display: none; }
+  .field-hint { font-size: 11.5px; color: var(--ink-faint); }
+
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 14px; padding: 9px 30px 9px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); width: 100%; text-align: left; cursor: pointer; position: relative;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-trigger::after { content: "▾"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 10px; }
+  .ms-trigger:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .multiselect.open .ms-trigger { border-color: var(--accent); }
+  .ms-panel {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+    min-width: 220px; max-height: 260px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); padding: 4px;
+  }
+  .multiselect.open .ms-panel { display: block; }
+  .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { margin: 0; accent-color: var(--accent); }
+
+  .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+  .btn-primary {
+    font: inherit; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 7px; border: none;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+  .btn-small {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-small.critical:hover { border-color: var(--critical); color: var(--critical); }
+  .form-msg { font-size: 13.5px; font-weight: 500; }
+  .form-msg.ok { color: var(--accent); }
+  .form-msg.error { color: var(--critical); }
+
+  .clear-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .filters .field { min-width: 160px; }
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
+    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  tbody tr:hover td { background: var(--accent-soft); }
+  tbody select, tbody input[type=text] { font: inherit; font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); width: 100%; }
+  .nombre { font-weight: 500; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.ok { background: var(--accent-soft); color: var(--accent); }
+  .chip.off { background: var(--critical-soft); color: var(--critical); }
+  .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+  .fila-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <h1>Usuarios</h1>
+    <div class="sub">Cultivos Sayonara &middot; <a href="index.html">Inicio</a> &middot; <a href="empleados.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a> &middot; <a href="novedades.html">Novedades</a></div>
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+
+  <section class="card">
+    <h2>Crear usuario</h2>
+    <form id="form-usuario">
+      <div class="form-grid">
+        <div class="field">
+          <label for="u-nombre">Nombre <span class="req">*</span></label>
+          <input type="text" id="u-nombre" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="u-email">Correo <span class="req">*</span></label>
+          <input type="email" id="u-email" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="u-password">Contraseña temporal <span class="req">*</span></label>
+          <input type="text" id="u-password" required minlength="8" autocomplete="off" placeholder="Mínimo 8 caracteres">
+        </div>
+        <div class="field">
+          <label for="u-rol">Rol <span class="req">*</span></label>
+          <select id="u-rol" required>
+            <option value="">Selecciona un rol…</option>
+            <option value="admin">Administrador</option>
+            <option value="nomina">Nómina / RRHH</option>
+            <option value="jefe_area">Jefe de área</option>
+          </select>
+        </div>
+        <div class="field" id="u-areas-field" hidden>
+          <label>Área(s) <span class="req">*</span></label>
+          <div class="multiselect" id="u-areas"></div>
+          <span class="field-hint">Solo verá/gestionará información de estas áreas.</span>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-usuario">Crear usuario</button>
+        <span class="form-msg" id="msg-usuario"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Usuarios registrados</h2>
+    <div class="filters">
+      <div class="field">
+        <label for="lu-buscar">Nombre o correo</label>
+        <input type="text" id="lu-buscar" placeholder="Ej. Roqueme o correo…" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="lu-rol">Rol</label>
+        <select id="lu-rol">
+          <option value="">Todos</option>
+          <option value="admin">Administrador</option>
+          <option value="nomina">Nómina / RRHH</option>
+          <option value="jefe_area">Jefe de área</option>
+        </select>
+      </div>
+      <button class="clear-btn" id="lu-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="lu-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Nombre</th><th>Correo</th><th>Rol</th><th>Áreas</th><th>Estado</th><th>Acciones</th></tr>
+        </thead>
+        <tbody id="lu-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+AUTH_READY.then(function () {
+  if (!requireRole(["admin"])) return;
+  pintarSesion("sesion-box");
+
+  const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const ROL_ETIQUETA = { admin: "Administrador", nomina: "Nómina / RRHH", jefe_area: "Jefe de área" };
+
+  // ---------------- multiselect generico (igual patron que novedades.html) ----------------
+  function crearMultiselect(containerId, etiquetaTodos) {
+    const el = document.getElementById(containerId);
+    const seleccion = new Set();
+    el.innerHTML = `<button type="button" class="ms-trigger">${etiquetaTodos}</button><div class="ms-panel"></div>`;
+    const trigger = el.querySelector(".ms-trigger");
+    const panel = el.querySelector(".ms-panel");
+
+    function actualizarEtiqueta() {
+      if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
+      else trigger.textContent = `${seleccion.size} seleccionada${seleccion.size === 1 ? "" : "s"}`;
+    }
+
+    panel.innerHTML = AREAS_CONOCIDAS.map(a => `<label class="ms-option"><input type="checkbox" value="${a}"><span>${a}</span></label>`).join("");
+    panel.querySelectorAll("input[type=checkbox]").forEach((chk) => {
+      chk.addEventListener("change", () => {
+        if (chk.checked) seleccion.add(chk.value);
+        else seleccion.delete(chk.value);
+        actualizarEtiqueta();
+      });
+    });
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
+      el.classList.toggle("open");
+    });
+
+    return {
+      seleccion,
+      limpiar() { seleccion.clear(); panel.querySelectorAll("input").forEach(c => c.checked = false); actualizarEtiqueta(); },
+    };
+  }
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
+  });
+
+  const msAreas = crearMultiselect("u-areas", "Selecciona área(s)…");
+
+  // ---------------- formulario: crear usuario ----------------
+  const inNombre = document.getElementById("u-nombre");
+  const inEmail = document.getElementById("u-email");
+  const inPassword = document.getElementById("u-password");
+  const selRol = document.getElementById("u-rol");
+  const campoAreas = document.getElementById("u-areas-field");
+  const form = document.getElementById("form-usuario");
+  const btn = document.getElementById("btn-usuario");
+  const msg = document.getElementById("msg-usuario");
+
+  selRol.addEventListener("change", () => {
+    campoAreas.hidden = selRol.value !== "jefe_area";
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const areas = [...msAreas.seleccion];
+    if (selRol.value === "jefe_area" && areas.length === 0) {
+      msg.textContent = "Selecciona al menos un área para el jefe de área.";
+      msg.className = "form-msg error";
+      return;
+    }
+
+    btn.disabled = true;
+    msg.textContent = "Creando...";
+    msg.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/functions/v1/admin-crear-usuario`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nombre: inNombre.value.trim(),
+          email: inEmail.value.trim(),
+          password: inPassword.value,
+          rol: selRol.value,
+          areas,
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "No se pudo crear el usuario.");
+
+      msg.textContent = `Usuario "${data.nombre}" creado correctamente.`;
+      msg.className = "form-msg ok";
+      form.reset();
+      msAreas.limpiar();
+      campoAreas.hidden = true;
+      cargarUsuarios();
+    } catch (err) {
+      msg.textContent = "No se pudo crear: " + (err.message || err);
+      msg.className = "form-msg error";
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ---------------- tabla: usuarios registrados ----------------
+  const luBuscar = document.getElementById("lu-buscar");
+  const luRol = document.getElementById("lu-rol");
+  const luBody = document.getElementById("lu-tbody");
+  const luCount = document.getElementById("lu-count");
+
+  async function cargarUsuarios() {
+    const params = new URLSearchParams();
+    params.set("select", "id,nombre,email,rol,areas,activo");
+    params.set("order", "nombre.asc");
+
+    const buscar = luBuscar.value.trim();
+    if (buscar) params.set("or", `(nombre.ilike.*${buscar.replace(/[,()]/g, "")}*,email.ilike.*${buscar.replace(/[,()]/g, "")}*)`);
+    if (luRol.value) params.set("rol", "eq." + luRol.value);
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios_perfil?${params.toString()}`, {
+        headers: { ...authHeaders(), Prefer: "count=exact" },
+      });
+      const filas = await resp.json();
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+      if (!Array.isArray(filas) || filas.length === 0) {
+        luBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin usuarios para estos filtros.</div></td></tr>`;
+      } else {
+        luBody.innerHTML = filas.map(f => `<tr data-id="${f.id}">
+          <td class="nombre">${f.nombre}</td>
+          <td>${f.email}</td>
+          <td>
+            <select class="fila-rol">
+              <option value="admin" ${f.rol === "admin" ? "selected" : ""}>Administrador</option>
+              <option value="nomina" ${f.rol === "nomina" ? "selected" : ""}>Nómina / RRHH</option>
+              <option value="jefe_area" ${f.rol === "jefe_area" ? "selected" : ""}>Jefe de área</option>
+            </select>
+          </td>
+          <td><input type="text" class="fila-areas" value="${(f.areas || []).join(", ")}" placeholder="Ej. RIEGO, ASPERSIÓN" ${f.rol === "jefe_area" ? "" : "disabled"}></td>
+          <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+          <td class="fila-acciones">
+            <button type="button" class="btn-small fila-guardar">Guardar</button>
+            <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
+          </td>
+        </tr>`).join("");
+      }
+      luCount.textContent = total.toLocaleString("es-CO") + " usuario" + (total === 1 ? "" : "s");
+    } catch (err) {
+      luBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+    }
+  }
+
+  luBody.addEventListener("change", (e) => {
+    const fila = e.target.closest("tr");
+    if (!fila) return;
+    if (e.target.classList.contains("fila-rol")) {
+      const esJefe = e.target.value === "jefe_area";
+      fila.querySelector(".fila-areas").disabled = !esJefe;
+    }
+  });
+
+  luBody.addEventListener("click", async (e) => {
+    const fila = e.target.closest("tr");
+    if (!fila) return;
+    const id = fila.dataset.id;
+
+    if (e.target.classList.contains("fila-guardar")) {
+      const rol = fila.querySelector(".fila-rol").value;
+      const areasTexto = fila.querySelector(".fila-areas").value.trim();
+      const areas = rol === "jefe_area"
+        ? areasTexto.split(",").map(a => a.trim().toUpperCase()).filter(Boolean)
+        : [];
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios_perfil?id=eq.${id}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ rol, areas }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarUsuarios();
+      } catch (err) {
+        alert("No se pudo guardar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+
+    if (e.target.classList.contains("fila-toggle")) {
+      const activarA = e.target.textContent.trim() === "Activar";
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios_perfil?id=eq.${id}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ activo: activarA }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarUsuarios();
+      } catch (err) {
+        alert("No se pudo actualizar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+  });
+
+  let luTimeout;
+  luBuscar.addEventListener("input", () => { clearTimeout(luTimeout); luTimeout = setTimeout(cargarUsuarios, 300); });
+  luRol.addEventListener("change", cargarUsuarios);
+  document.getElementById("lu-limpiar").addEventListener("click", () => {
+    luBuscar.value = ""; luRol.value = "";
+    cargarUsuarios();
+  });
+
+  cargarUsuarios();
+});
+</script>
+</body>
+</html>
