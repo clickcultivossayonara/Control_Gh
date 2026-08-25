@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Iniciar sesión — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--paper); color: var(--ink);
+    font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased;
+    min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 40px 24px;
+  }
+  .card {
+    width: 100%; max-width: 380px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: var(--radius); box-shadow: var(--shadow); padding: 34px 30px; display: flex;
+    flex-direction: column; gap: 20px;
+  }
+  .marca { font-size: 12px; text-transform: uppercase; letter-spacing: 0.14em; color: var(--accent); font-weight: 700; text-align: center; }
+  h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: 24px; margin: 0; text-align: center; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field input {
+    font: inherit; font-size: 14px; padding: 10px 11px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .btn-primary {
+    font: inherit; font-size: 14px; font-weight: 600; padding: 11px 22px; border-radius: 7px; border: none;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+  .form-msg { font-size: 13px; font-weight: 500; text-align: center; min-height: 18px; }
+  .form-msg.error { color: var(--critical); }
+</style>
+</head>
+<body>
+
+<form class="card" id="form-login">
+  <div>
+    <div class="marca">Cultivos Sayonara</div>
+    <h1>Iniciar sesión</h1>
+  </div>
+  <div class="field">
+    <label for="li-email">Correo</label>
+    <input type="email" id="li-email" required autocomplete="username">
+  </div>
+  <div class="field">
+    <label for="li-password">Contraseña</label>
+    <input type="password" id="li-password" required autocomplete="current-password">
+  </div>
+  <button type="submit" class="btn-primary" id="btn-login">Entrar</button>
+  <div class="form-msg" id="login-msg"></div>
+</form>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(function () {
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  function paginaSiguiente() {
+    const params = new URLSearchParams(location.search);
+    return params.get("next") || "inicio.html";
+  }
+
+  // Si ya hay sesion activa, no mostrar el login de nuevo.
+  sb.auth.getSession().then(({ data }) => {
+    if (data.session) location.href = paginaSiguiente();
+  });
+
+  const form = document.getElementById("form-login");
+  const btn = document.getElementById("btn-login");
+  const msg = document.getElementById("login-msg");
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("li-email").value.trim();
+    const password = document.getElementById("li-password").value;
+
+    btn.disabled = true;
+    msg.textContent = "Ingresando...";
+    msg.className = "form-msg";
+
+    const { error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      msg.textContent = "Correo o contraseña incorrectos.";
+      msg.className = "form-msg error";
+      btn.disabled = false;
+      return;
+    }
+    location.href = paginaSiguiente();
+  });
+})();
+</script>
+</body>
+</html>
