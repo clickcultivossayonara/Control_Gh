@@ -118,6 +118,7 @@
   <div class="masthead">
     <h1>Empleados</h1>
     <div class="sub">Cultivos Sayonara &middot; <a href="index.html">Inicio</a> &middot; <a href="registro-biometrico.html">Ver registro de asistencia</a> &middot; <a href="novedades.html">Novedades de nómina</a></div>
+    <div class="sesion-box" id="sesion-box" style="justify-content:center"></div>
   </div>
 
   <section class="card">
@@ -222,10 +223,14 @@
   <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 <script>
-(function () {
+AUTH_READY.then(function () {
+  if (!requireRole(["admin", "nomina"])) return;
+  pintarSesion("sesion-box");
+
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
 
   const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
   const selArea = document.getElementById("f-area");
@@ -252,10 +257,7 @@
   function fechaHoy() { return new Date().toISOString().slice(0, 10); }
   elFechaIngreso.value = fechaHoy();
 
-  const headers = {
-    apikey: SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-  };
+  const headers = authHeaders();
 
   // ---------- formulario ----------
   const form = document.getElementById("form-empleado");
@@ -389,7 +391,7 @@
   });
 
   cargarEmpleados();
-})();
+});
 </script>
 </body>
 </html>
