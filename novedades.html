@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Novedades de Nómina — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  .wrap { max-width: 1000px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+
+  .masthead { display: flex; flex-direction: column; align-items: center; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; text-align: center; }
+  .masthead h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
+  .masthead .sub { font-size: 13px; color: var(--ink-soft); }
+  .masthead a { color: var(--accent); text-decoration: none; }
+  .masthead a:hover { text-decoration: underline; }
+
+  .tabs { display: flex; gap: 8px; justify-content: center; }
+  .tab-btn {
+    font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .tab-btn.activo { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px; }
+  section.card[hidden] { display: none; }
+  h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 4px; }
+  .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 18px; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field label .req { color: var(--critical); }
+  .field input[type=text], .field input[type=number], .field input[type=email], .field input[type=date], .field select {
+    font: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field input:disabled, .field select:disabled { opacity: 0.55; cursor: not-allowed; }
+  .field input[readonly] { background: var(--accent-soft); color: var(--ink-soft); border-color: var(--accent-soft-line); }
+
+  .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+  .btn-primary {
+    font: inherit; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 7px; border: none;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+  .form-msg { font-size: 13.5px; font-weight: 500; }
+  .form-msg.ok { color: var(--accent); }
+  .form-msg.error { color: var(--critical); }
+
+  footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <h1>Novedades de Nómina</h1>
+    <div class="sub">Cultivos Sayonara &middot; <a href="index.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn activo" id="tab-novedad" type="button">Novedad por colaborador</button>
+    <button class="tab-btn" id="tab-extra" type="button">Horas extra por área</button>
+  </div>
+
+  <section class="card" id="card-novedad">
+    <h2>Novedad por colaborador</h2>
+    <p class="card-hint">La diligencia el jefe del área. Nómina/RRHH revisa después.</p>
+    <form id="form-novedad">
+      <div class="form-grid">
+        <div class="field">
+          <label for="n-area">Área <span class="req">*</span></label>
+          <select id="n-area" required>
+            <option value="">Selecciona un área…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="n-colaborador">Colaborador <span class="req">*</span></label>
+          <select id="n-colaborador" required disabled>
+            <option value="">Primero selecciona el área…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="n-codigo">Código - Descripción <span class="req">*</span></label>
+          <select id="n-codigo" required>
+            <option value="">Selecciona un código…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="n-codigo-novedad">Código Novedad</label>
+          <input type="text" id="n-codigo-novedad" readonly>
+        </div>
+        <div class="field">
+          <label for="n-descripcion">Descripción novedad</label>
+          <input type="text" id="n-descripcion" readonly>
+        </div>
+        <div class="field">
+          <label for="n-fecha">Fecha <span class="req">*</span></label>
+          <input type="date" id="n-fecha" required>
+        </div>
+        <div class="field">
+          <label for="n-hora">Hora (cantidad) <span class="req">*</span></label>
+          <input type="number" id="n-hora" step="0.01" min="0" required>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-novedad">Guardar novedad</button>
+        <span class="form-msg" id="msg-novedad"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" id="card-extra" hidden>
+    <h2>Horas extra por área</h2>
+    <p class="card-hint">Asignación de horas extra por área y día (no por persona individual).</p>
+    <form id="form-extra">
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-fecha">Fecha <span class="req">*</span></label>
+          <input type="date" id="e-fecha" required>
+        </div>
+        <div class="field">
+          <label for="e-area">Área <span class="req">*</span></label>
+          <select id="e-area" required>
+            <option value="">Selecciona un área…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-horas">Horas asignadas <span class="req">*</span></label>
+          <input type="number" id="e-horas" step="0.01" min="0" required>
+        </div>
+        <div class="field">
+          <label for="e-email">Tu correo <span class="req">*</span></label>
+          <input type="email" id="e-email" required placeholder="tucorreo@cultivossayonara.com.co">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-extra">Guardar asignación</button>
+        <span class="form-msg" id="msg-extra"></span>
+      </div>
+    </form>
+  </section>
+
+  <footer>Cultivos Sayonara &middot; datos guardados en vivo en Supabase</footer>
+</div>
+
+<script>
+(function () {
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
+
+  const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+
+  const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
+
+  const DIAS_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  function diaSemana(fechaStr) {
+    const [y, m, d] = fechaStr.split("-").map(Number);
+    return DIAS_ES[new Date(y, m - 1, d).getDay()];
+  }
+  function isoWeekNum(fechaStr) {
+    const [y, m, d] = fechaStr.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    const dayNum = (dt.getUTCDay() + 6) % 7;
+    dt.setUTCDate(dt.getUTCDate() - dayNum + 3);
+    const primerJueves = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+    const diff = dt - primerJueves;
+    return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
+  }
+  function fechaHoy() { return new Date().toISOString().slice(0, 10); }
+  function ahoraNaive() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  function idUnico() {
+    return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
+  }
+
+  // ---------------- tabs ----------------
+  const tabNovedad = document.getElementById("tab-novedad");
+  const tabExtra = document.getElementById("tab-extra");
+  const cardNovedad = document.getElementById("card-novedad");
+  const cardExtra = document.getElementById("card-extra");
+  tabNovedad.addEventListener("click", () => {
+    tabNovedad.classList.add("activo"); tabExtra.classList.remove("activo");
+    cardNovedad.hidden = false; cardExtra.hidden = true;
+  });
+  tabExtra.addEventListener("click", () => {
+    tabExtra.classList.add("activo"); tabNovedad.classList.remove("activo");
+    cardExtra.hidden = false; cardNovedad.hidden = true;
+  });
+
+  // ---------------- formulario: novedad por colaborador ----------------
+  const selArea = document.getElementById("n-area");
+  const selColaborador = document.getElementById("n-colaborador");
+  const selCodigo = document.getElementById("n-codigo");
+  const inCodigoNovedad = document.getElementById("n-codigo-novedad");
+  const inDescripcion = document.getElementById("n-descripcion");
+  const inFecha = document.getElementById("n-fecha");
+  const inHora = document.getElementById("n-hora");
+  const formNovedad = document.getElementById("form-novedad");
+  const btnNovedad = document.getElementById("btn-novedad");
+  const msgNovedad = document.getElementById("msg-novedad");
+
+  inFecha.value = fechaHoy();
+  AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
+  document.getElementById("e-area").innerHTML = selArea.innerHTML;
+
+  let codigosPorValor = {};
+  let empleadosPorCedula = {};
+
+  async function cargarCodigos() {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=*&habilitado=eq.true&order=codigo_descripcion.asc`, { headers });
+    const filas = await resp.json();
+    filas.forEach(f => {
+      codigosPorValor[f.codigo] = f;
+      selCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
+    });
+  }
+  cargarCodigos();
+
+  selCodigo.addEventListener("change", () => {
+    const c = codigosPorValor[selCodigo.value];
+    inCodigoNovedad.value = c ? c.codigo : "";
+    inDescripcion.value = c ? c.descripcion : "";
+  });
+
+  selArea.addEventListener("change", async () => {
+    selColaborador.innerHTML = `<option value="">Cargando…</option>`;
+    selColaborador.disabled = true;
+    empleadosPorCedula = {};
+    if (!selArea.value) {
+      selColaborador.innerHTML = `<option value="">Primero selecciona el área…</option>`;
+      return;
+    }
+    const params = new URLSearchParams();
+    params.set("select", "cedula,nombre,area,sede,nombre_jefe,email_jefe,administrativo,activo");
+    params.set("area", "eq." + selArea.value);
+    params.set("activo", "eq.true");
+    params.set("order", "nombre.asc");
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers });
+    const filas = await resp.json();
+    if (filas.length === 0) {
+      selColaborador.innerHTML = `<option value="">Sin colaboradores activos en esta área</option>`;
+      return;
+    }
+    selColaborador.innerHTML = `<option value="">Selecciona un colaborador…</option>`;
+    filas.forEach(f => {
+      empleadosPorCedula[f.cedula] = f;
+      selColaborador.insertAdjacentHTML("beforeend", `<option value="${f.cedula}">${f.nombre}</option>`);
+    });
+    selColaborador.disabled = false;
+  });
+
+  formNovedad.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const emp = empleadosPorCedula[selColaborador.value];
+    const cod = codigosPorValor[selCodigo.value];
+    if (!emp) { msgNovedad.textContent = "Selecciona un colaborador."; msgNovedad.className = "form-msg error"; return; }
+    if (!cod) { msgNovedad.textContent = "Selecciona un código."; msgNovedad.className = "form-msg error"; return; }
+    if (!inFecha.value) { msgNovedad.textContent = "La fecha es obligatoria."; msgNovedad.className = "form-msg error"; return; }
+    if (!inHora.value) { msgNovedad.textContent = "Las horas son obligatorias."; msgNovedad.className = "form-msg error"; return; }
+
+    const registro = {
+      id_nomina: idUnico(),
+      cedula: emp.cedula,
+      nombre_colaborador: emp.nombre,
+      area: emp.area,
+      nombre_jefe: emp.nombre_jefe,
+      email_jefe: emp.email_jefe,
+      finca: emp.sede,
+      administrativo: emp.administrativo,
+      codigo_descripcion: cod.codigo_descripcion,
+      codigo_novedad: cod.codigo,
+      descripcion_novedad: cod.descripcion,
+      tipo_novedad: cod.tipo,
+      codigo: cod.codigo_nomina,
+      fecha_novedad: inFecha.value + "T00:00:00",
+      dia: diaSemana(inFecha.value),
+      semana: isoWeekNum(inFecha.value),
+      hora: Number(inHora.value),
+      fecha_creacion: ahoraNaive(),
+    };
+
+    btnNovedad.disabled = true;
+    msgNovedad.textContent = "Guardando...";
+    msgNovedad.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify([registro]),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+
+      msgNovedad.textContent = `Novedad guardada para ${emp.nombre}.`;
+      msgNovedad.className = "form-msg ok";
+      inHora.value = "";
+      selCodigo.value = "";
+      inCodigoNovedad.value = "";
+      inDescripcion.value = "";
+      inFecha.value = fechaHoy();
+    } catch (err) {
+      msgNovedad.textContent = "No se pudo guardar: " + (err.message || err);
+      msgNovedad.className = "form-msg error";
+    } finally {
+      btnNovedad.disabled = false;
+    }
+  });
+
+  // ---------------- formulario: horas extra por area ----------------
+  const inFechaExtra = document.getElementById("e-fecha");
+  const selAreaExtra = document.getElementById("e-area");
+  const inHorasExtra = document.getElementById("e-horas");
+  const inEmailExtra = document.getElementById("e-email");
+  const formExtra = document.getElementById("form-extra");
+  const btnExtra = document.getElementById("btn-extra");
+  const msgExtra = document.getElementById("msg-extra");
+
+  inFechaExtra.value = fechaHoy();
+
+  formExtra.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    if (!selAreaExtra.value || !inHorasExtra.value || !inEmailExtra.value) {
+      msgExtra.textContent = "Completa todos los campos.";
+      msgExtra.className = "form-msg error";
+      return;
+    }
+
+    const registro = {
+      id: idUnico(),
+      fecha_registro: ahoraNaive(),
+      fecha: inFechaExtra.value,
+      semana: isoWeekNum(inFechaExtra.value),
+      area: selAreaExtra.value,
+      horas_asignadas: Number(inHorasExtra.value),
+      email: inEmailExtra.value.trim(),
+    };
+
+    btnExtra.disabled = true;
+    msgExtra.textContent = "Guardando...";
+    msgExtra.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/extras_nomina`, {
+        method: "POST",
+        headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify([registro]),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+
+      msgExtra.textContent = `Asignación guardada para ${selAreaExtra.value}.`;
+      msgExtra.className = "form-msg ok";
+      inHorasExtra.value = "";
+      inFechaExtra.value = fechaHoy();
+    } catch (err) {
+      msgExtra.textContent = "No se pudo guardar: " + (err.message || err);
+      msgExtra.className = "form-msg error";
+    } finally {
+      btnExtra.disabled = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>
