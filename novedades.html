@@ -67,6 +67,28 @@
   .field input:disabled, .field select:disabled { opacity: 0.55; cursor: not-allowed; }
   .field input[readonly] { background: var(--accent-soft); color: var(--ink-soft); border-color: var(--accent-soft-line); }
 
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 14px; padding: 9px 30px 9px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); width: 100%; text-align: left; cursor: pointer; position: relative;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-trigger:disabled { opacity: 0.55; cursor: not-allowed; }
+  .ms-trigger::after { content: "▾"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 10px; }
+  .ms-trigger:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .multiselect.open .ms-trigger { border-color: var(--accent); }
+  .ms-panel {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+    min-width: 220px; max-height: 260px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); padding: 4px;
+  }
+  .multiselect.open .ms-panel { display: block; }
+  .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { margin: 0; accent-color: var(--accent); }
+
   .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
   .btn-primary {
     font: inherit; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 7px; border: none;
@@ -90,12 +112,12 @@
   </div>
 
   <div class="tabs">
-    <button class="tab-btn activo" id="tab-novedad" type="button">Novedad por colaborador</button>
-    <button class="tab-btn" id="tab-extra" type="button">Horas extra por área</button>
+    <button class="tab-btn activo" id="tab-novedad" type="button">Ingreso de Novedades</button>
+    <button class="tab-btn" id="tab-extra" type="button">Presupuesto Horas extra</button>
   </div>
 
   <section class="card" id="card-novedad">
-    <h2>Novedad por colaborador</h2>
+    <h2>Ingreso de Novedades</h2>
     <p class="card-hint">La diligencia el jefe del área. Nómina/RRHH revisa después.</p>
     <form id="form-novedad">
       <div class="form-grid">
@@ -106,10 +128,8 @@
           </select>
         </div>
         <div class="field">
-          <label for="n-colaborador">Colaborador <span class="req">*</span></label>
-          <select id="n-colaborador" required disabled>
-            <option value="">Primero selecciona el área…</option>
-          </select>
+          <label>Colaborador(es) <span class="req">*</span></label>
+          <div class="multiselect" id="n-colaborador"></div>
         </div>
         <div class="field">
           <label for="n-codigo">Código - Descripción <span class="req">*</span></label>
@@ -142,7 +162,7 @@
   </section>
 
   <section class="card" id="card-extra" hidden>
-    <h2>Horas extra por área</h2>
+    <h2>Presupuesto Horas extra</h2>
     <p class="card-hint">Asignación de horas extra por área y día (no por persona individual).</p>
     <form id="form-extra">
       <div class="form-grid">
@@ -160,9 +180,9 @@
           <label for="e-horas">Horas asignadas <span class="req">*</span></label>
           <input type="number" id="e-horas" step="0.01" min="0" required>
         </div>
-        <div class="field">
-          <label for="e-email">Tu correo <span class="req">*</span></label>
-          <input type="email" id="e-email" required placeholder="tucorreo@cultivossayonara.com.co">
+        <div class="field" hidden>
+          <label for="e-email">Tu correo</label>
+          <input type="email" id="e-email" placeholder="tucorreo@cultivossayonara.com.co">
         </div>
       </div>
       <div class="form-actions">
@@ -222,9 +242,64 @@
     cardExtra.hidden = false; cardNovedad.hidden = true;
   });
 
+  // ---------------- multiselect generico ----------------
+  function crearMultiselect(containerId, etiquetaTodos) {
+    const el = document.getElementById(containerId);
+    const seleccion = new Set();
+    el.innerHTML = `<button type="button" class="ms-trigger" disabled>${etiquetaTodos}</button><div class="ms-panel"></div>`;
+    const trigger = el.querySelector(".ms-trigger");
+    const panel = el.querySelector(".ms-panel");
+
+    function actualizarEtiqueta() {
+      if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
+      else trigger.textContent = `${seleccion.size} seleccionado${seleccion.size === 1 ? "" : "s"}`;
+    }
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (trigger.disabled) return;
+      document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
+      el.classList.toggle("open");
+    });
+
+    return {
+      seleccion,
+      establecerOpciones(opciones, etiquetaVacio) {
+        seleccion.clear();
+        panel.innerHTML = "";
+        if (opciones.length === 0) {
+          trigger.disabled = true;
+          trigger.textContent = etiquetaVacio || "Sin opciones";
+          return;
+        }
+        trigger.disabled = false;
+        opciones.forEach(([valor, texto]) => {
+          panel.insertAdjacentHTML("beforeend", `<label class="ms-option"><input type="checkbox" value="${valor}"><span>${texto}</span></label>`);
+        });
+        panel.querySelectorAll("input[type=checkbox]").forEach((chk, i) => {
+          chk.addEventListener("change", () => {
+            if (chk.checked) seleccion.add(opciones[i][0]);
+            else seleccion.delete(opciones[i][0]);
+            actualizarEtiqueta();
+          });
+        });
+        actualizarEtiqueta();
+      },
+      deshabilitar(etiqueta) {
+        seleccion.clear();
+        panel.innerHTML = "";
+        trigger.disabled = true;
+        trigger.textContent = etiqueta;
+      },
+    };
+  }
+  document.addEventListener("click", () => {
+    document.querySelectorAll(".multiselect.open").forEach(m => m.classList.remove("open"));
+  });
+
   // ---------------- formulario: novedad por colaborador ----------------
   const selArea = document.getElementById("n-area");
-  const selColaborador = document.getElementById("n-colaborador");
+  const msColaborador = crearMultiselect("n-colaborador", "Primero selecciona el área…");
   const selCodigo = document.getElementById("n-codigo");
   const inCodigoNovedad = document.getElementById("n-codigo-novedad");
   const inDescripcion = document.getElementById("n-descripcion");
@@ -258,13 +333,12 @@
   });
 
   selArea.addEventListener("change", async () => {
-    selColaborador.innerHTML = `<option value="">Cargando…</option>`;
-    selColaborador.disabled = true;
     empleadosPorCedula = {};
     if (!selArea.value) {
-      selColaborador.innerHTML = `<option value="">Primero selecciona el área…</option>`;
+      msColaborador.deshabilitar("Primero selecciona el área…");
       return;
     }
+    msColaborador.deshabilitar("Cargando…");
     const params = new URLSearchParams();
     params.set("select", "cedula,nombre,area,sede,nombre_jefe,email_jefe,administrativo,activo");
     params.set("area", "eq." + selArea.value);
@@ -272,48 +346,46 @@
     params.set("order", "nombre.asc");
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers });
     const filas = await resp.json();
-    if (filas.length === 0) {
-      selColaborador.innerHTML = `<option value="">Sin colaboradores activos en esta área</option>`;
-      return;
-    }
-    selColaborador.innerHTML = `<option value="">Selecciona un colaborador…</option>`;
-    filas.forEach(f => {
-      empleadosPorCedula[f.cedula] = f;
-      selColaborador.insertAdjacentHTML("beforeend", `<option value="${f.cedula}">${f.nombre}</option>`);
-    });
-    selColaborador.disabled = false;
+    filas.forEach(f => { empleadosPorCedula[f.cedula] = f; });
+    msColaborador.establecerOpciones(
+      filas.map(f => [f.cedula, f.nombre]),
+      "Sin colaboradores activos en esta área"
+    );
   });
 
   formNovedad.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    const emp = empleadosPorCedula[selColaborador.value];
+    const cedulasSeleccionadas = [...msColaborador.seleccion];
     const cod = codigosPorValor[selCodigo.value];
-    if (!emp) { msgNovedad.textContent = "Selecciona un colaborador."; msgNovedad.className = "form-msg error"; return; }
+    if (cedulasSeleccionadas.length === 0) { msgNovedad.textContent = "Selecciona al menos un colaborador."; msgNovedad.className = "form-msg error"; return; }
     if (!cod) { msgNovedad.textContent = "Selecciona un código."; msgNovedad.className = "form-msg error"; return; }
     if (!inFecha.value) { msgNovedad.textContent = "La fecha es obligatoria."; msgNovedad.className = "form-msg error"; return; }
     if (!inHora.value) { msgNovedad.textContent = "Las horas son obligatorias."; msgNovedad.className = "form-msg error"; return; }
 
-    const registro = {
-      id_nomina: idUnico(),
-      cedula: emp.cedula,
-      nombre_colaborador: emp.nombre,
-      area: emp.area,
-      nombre_jefe: emp.nombre_jefe,
-      email_jefe: emp.email_jefe,
-      finca: emp.sede,
-      administrativo: emp.administrativo,
-      codigo_descripcion: cod.codigo_descripcion,
-      codigo_novedad: cod.codigo,
-      descripcion_novedad: cod.descripcion,
-      tipo_novedad: cod.tipo,
-      codigo: cod.codigo_nomina,
-      fecha_novedad: inFecha.value + "T00:00:00",
-      dia: diaSemana(inFecha.value),
-      semana: isoWeekNum(inFecha.value),
-      hora: Number(inHora.value),
-      fecha_creacion: ahoraNaive(),
-    };
+    const registros = cedulasSeleccionadas.map((cedula) => {
+      const emp = empleadosPorCedula[cedula];
+      return {
+        id_nomina: idUnico(),
+        cedula: emp.cedula,
+        nombre_colaborador: emp.nombre,
+        area: emp.area,
+        nombre_jefe: emp.nombre_jefe,
+        email_jefe: emp.email_jefe,
+        finca: emp.sede,
+        administrativo: emp.administrativo,
+        codigo_descripcion: cod.codigo_descripcion,
+        codigo_novedad: cod.codigo,
+        descripcion_novedad: cod.descripcion,
+        tipo_novedad: cod.tipo,
+        codigo: cod.codigo_nomina,
+        fecha_novedad: inFecha.value + "T00:00:00",
+        dia: diaSemana(inFecha.value),
+        semana: isoWeekNum(inFecha.value),
+        hora: Number(inHora.value),
+        fecha_creacion: ahoraNaive(),
+      };
+    });
 
     btnNovedad.disabled = true;
     msgNovedad.textContent = "Guardando...";
@@ -323,17 +395,21 @@
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina`, {
         method: "POST",
         headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
-        body: JSON.stringify([registro]),
+        body: JSON.stringify(registros),
       });
       if (!resp.ok) throw new Error(await resp.text());
 
-      msgNovedad.textContent = `Novedad guardada para ${emp.nombre}.`;
+      msgNovedad.textContent = registros.length === 1
+        ? `Novedad guardada para ${registros[0].nombre_colaborador}.`
+        : `Novedad guardada para ${registros.length} colaboradores.`;
       msgNovedad.className = "form-msg ok";
       inHora.value = "";
       selCodigo.value = "";
       inCodigoNovedad.value = "";
       inDescripcion.value = "";
       inFecha.value = fechaHoy();
+      msColaborador.seleccion.clear();
+      selArea.dispatchEvent(new Event("change"));
     } catch (err) {
       msgNovedad.textContent = "No se pudo guardar: " + (err.message || err);
       msgNovedad.className = "form-msg error";
@@ -356,7 +432,7 @@
   formExtra.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    if (!selAreaExtra.value || !inHorasExtra.value || !inEmailExtra.value) {
+    if (!selAreaExtra.value || !inHorasExtra.value) {
       msgExtra.textContent = "Completa todos los campos.";
       msgExtra.className = "form-msg error";
       return;
@@ -369,7 +445,7 @@
       semana: isoWeekNum(inFechaExtra.value),
       area: selAreaExtra.value,
       horas_asignadas: Number(inHorasExtra.value),
-      email: inEmailExtra.value.trim(),
+      email: inEmailExtra.value.trim() || null,
     };
 
     btnExtra.disabled = true;
