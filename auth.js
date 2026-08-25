@@ -7,7 +7,7 @@
 // Expone:
 //   AUTH_READY        Promise que resuelve con window.SESION (o navega a login.html)
 //   authHeaders()      headers para fetch directo a Supabase REST con la sesion actual
-//   requireRole([...]) redirige a inicio.html si el rol de la sesion no esta permitido
+//   requireRole([...]) redirige a index.html si el rol de la sesion no esta permitido
 //   cerrarSesion()     logout + redirect a login.html
 //   pintarSesion(id)    inserta nombre/rol + boton "Cerrar sesion" en el elemento #id
 
@@ -17,7 +17,7 @@ const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const _sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 function _paginaActual() {
-  return location.pathname.split("/").pop() || "inicio.html";
+  return location.pathname.split("/").pop() || "index.html";
 }
 
 const AUTH_READY = (async () => {
@@ -64,7 +64,7 @@ function authHeaders() {
 
 function requireRole(rolesPermitidos) {
   if (!window.SESION || !rolesPermitidos.includes(window.SESION.rol)) {
-    location.href = "inicio.html";
+    location.href = "index.html";
     return false;
   }
   return true;
