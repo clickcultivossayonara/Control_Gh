@@ -140,7 +140,8 @@
 <div class="wrap">
   <div class="masthead">
     <h1>Novedades de Nómina</h1>
-    <div class="sub">Cultivos Sayonara &middot; <a href="index.html">Inicio</a> &middot; <a href="empleados.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a></div>
+    <div class="sub" id="nav-sub">Cultivos Sayonara &middot; <a href="index.html">Inicio</a> &middot; <a href="empleados.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a></div>
+    <div class="sesion-box" id="sesion-box"></div>
   </div>
 
   <div class="tabs">
@@ -283,14 +284,24 @@
   <footer>Cultivos Sayonara &middot; datos guardados en vivo en Supabase</footer>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
 <script>
-(function () {
+AUTH_READY.then(function () {
+  if (!requireRole(["admin", "nomina", "jefe_area"])) return;
+  pintarSesion("sesion-box");
+  if (window.SESION.rol === "admin") {
+    document.getElementById("nav-sub").insertAdjacentHTML("beforeend", ' &middot; <a href="usuarios.html">Usuarios</a>');
+  }
+
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
-  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
 
-  const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+  const TODAS_LAS_AREAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+  const AREAS_CONOCIDAS = window.SESION.rol === "jefe_area"
+    ? TODAS_LAS_AREAS.filter(a => window.SESION.areas.includes(a))
+    : TODAS_LAS_AREAS;
 
-  const headers = { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` };
+  const headers = authHeaders();
 
   const DIAS_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   function diaSemana(fechaStr) {
@@ -656,7 +667,7 @@
     cargarListaExtras();
   });
   cargarListaExtras();
-})();
+});
 </script>
 </body>
 </html>
