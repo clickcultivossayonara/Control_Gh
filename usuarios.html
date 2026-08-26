@@ -116,6 +116,7 @@
     font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
   }
   tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  tbody input[type=text], tbody input[type=email] { font: inherit; font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); width: 100%; }
   tbody tr:hover td { background: var(--accent-soft); }
   .nombre { font-weight: 500; }
   .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; }
@@ -327,6 +328,36 @@ AUTH_READY.then(async function () {
   const luRol = document.getElementById("lu-rol");
   const luBody = document.getElementById("lu-tbody");
   const luCount = document.getElementById("lu-count");
+  let usuariosCache = [];
+
+  function filaVista(f) {
+    return `<tr data-id="${f.id}">
+      <td class="nombre">${f.nombre}</td>
+      <td>${f.email}</td>
+      <td>${ROL_ETIQUETA[f.rol] || f.rol}</td>
+      <td>${(f.areas && f.areas.length) ? f.areas.join(", ") : "—"}</td>
+      <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+      <td class="fila-acciones">
+        <button type="button" class="btn-small fila-editar">Editar</button>
+        <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
+      </td>
+    </tr>`;
+  }
+
+  function filaEdicion(f) {
+    const conArea = ROLES_CON_AREA.includes(f.rol);
+    return `<tr data-id="${f.id}">
+      <td><input type="text" class="fila-nombre" value="${f.nombre}"></td>
+      <td><input type="email" class="fila-email" value="${f.email}"></td>
+      <td>${ROL_ETIQUETA[f.rol] || f.rol}</td>
+      <td>${conArea ? `<input type="text" class="fila-areas" value="${(f.areas || []).join(", ")}" placeholder="Ej. RIEGO, ASPERSIÓN">` : "—"}</td>
+      <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+      <td class="fila-acciones">
+        <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
+        <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
+      </td>
+    </tr>`;
+  }
 
   async function cargarUsuarios() {
     const params = new URLSearchParams();
@@ -345,19 +376,11 @@ AUTH_READY.then(async function () {
       const rango = resp.headers.get("content-range");
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
-      if (!Array.isArray(filas) || filas.length === 0) {
+      usuariosCache = Array.isArray(filas) ? filas : [];
+      if (usuariosCache.length === 0) {
         luBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin usuarios para estos filtros.</div></td></tr>`;
       } else {
-        luBody.innerHTML = filas.map(f => `<tr data-id="${f.id}">
-          <td class="nombre">${f.nombre}</td>
-          <td>${f.email}</td>
-          <td>${ROL_ETIQUETA[f.rol] || f.rol}</td>
-          <td>${(f.areas && f.areas.length) ? f.areas.join(", ") : "—"}</td>
-          <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
-          <td class="fila-acciones">
-            <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
-          </td>
-        </tr>`).join("");
+        luBody.innerHTML = usuariosCache.map(filaVista).join("");
       }
       luCount.textContent = total.toLocaleString("es-CO") + " usuario" + (total === 1 ? "" : "s");
     } catch (err) {
@@ -369,6 +392,47 @@ AUTH_READY.then(async function () {
     const fila = e.target.closest("tr");
     if (!fila) return;
     const id = fila.dataset.id;
+    const datos = usuariosCache.find(u => u.id === id);
+
+    if (e.target.classList.contains("fila-editar") && datos) {
+      fila.outerHTML = filaEdicion(datos);
+      return;
+    }
+
+    if (e.target.classList.contains("fila-cancelar-edicion") && datos) {
+      fila.outerHTML = filaVista(datos);
+      return;
+    }
+
+    if (e.target.classList.contains("fila-guardar-edicion") && datos) {
+      const nombre = fila.querySelector(".fila-nombre").value.trim();
+      const email = fila.querySelector(".fila-email").value.trim();
+      const areasInput = fila.querySelector(".fila-areas");
+      const areas = areasInput
+        ? areasInput.value.split(",").map(a => a.trim().toUpperCase()).filter(Boolean)
+        : (datos.areas || []);
+
+      if (!nombre || !email) {
+        alert("Nombre y correo son obligatorios.");
+        return;
+      }
+
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/admin-editar-usuario`, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ id, nombre, email, areas }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || "No se pudo guardar.");
+        cargarUsuarios();
+      } catch (err) {
+        alert("No se pudo guardar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+      return;
+    }
 
     if (e.target.classList.contains("fila-toggle")) {
       const activarA = e.target.textContent.trim() === "Activar";
