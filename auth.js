@@ -33,9 +33,14 @@ const AUTH_READY = (async () => {
     .eq("id", session.user.id)
     .single();
 
-  if (error || !perfil || !perfil.activo) {
+  if (error || !perfil) {
     await _sb.auth.signOut();
-    location.href = "login.html";
+    location.href = "login.html?motivo=sin_perfil";
+    return new Promise(() => {});
+  }
+  if (!perfil.activo) {
+    await _sb.auth.signOut();
+    location.href = "login.html?motivo=desactivada";
     return new Promise(() => {});
   }
 
@@ -75,7 +80,7 @@ async function cerrarSesion() {
   location.href = "login.html";
 }
 
-const ROL_ETIQUETA = { admin: "Administrador", nomina: "Nómina / RRHH", jefe_area: "Jefe de área" };
+const ROL_ETIQUETA = { admin: "Administrador", nomina: "Nómina / RRHH", jefe_area: "Jefe de área", supervisor: "Supervisor" };
 
 function pintarSesion(elId) {
   const el = document.getElementById(elId);
