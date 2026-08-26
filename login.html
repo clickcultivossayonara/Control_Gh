@@ -100,6 +100,16 @@
   const btn = document.getElementById("btn-login");
   const msg = document.getElementById("login-msg");
 
+  const MOTIVOS = {
+    desactivada: "Tu cuenta ha sido desactivada. Por favor ponte en contacto con el administrador.",
+    sin_perfil: "El acceso a este sistema es controlado y esta cuenta no existe. Por favor ponte en contacto con el administrador del sistema.",
+  };
+  const motivo = new URLSearchParams(location.search).get("motivo");
+  if (motivo && MOTIVOS[motivo]) {
+    msg.textContent = MOTIVOS[motivo];
+    msg.className = "form-msg error";
+  }
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const email = document.getElementById("li-email").value.trim();
