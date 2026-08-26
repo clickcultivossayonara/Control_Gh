@@ -58,6 +58,13 @@
   .btn-primary:disabled { opacity: 0.5; cursor: wait; }
   .form-msg { font-size: 13px; font-weight: 500; text-align: center; min-height: 18px; }
   .form-msg.error { color: var(--critical); }
+  .form-msg.ok { color: var(--accent); }
+  .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: -8px 0 0; text-align: center; }
+  .link-btn {
+    background: none; border: none; padding: 0; font: inherit; font-size: 12.5px; color: var(--accent);
+    text-decoration: underline; cursor: pointer; text-align: center;
+  }
+  .card[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -76,7 +83,23 @@
     <input type="password" id="li-password" required autocomplete="current-password">
   </div>
   <button type="submit" class="btn-primary" id="btn-login">Entrar</button>
+  <button type="button" class="link-btn" id="btn-olvide">¿Olvidaste tu contraseña?</button>
   <div class="form-msg" id="login-msg"></div>
+</form>
+
+<form class="card" id="form-reset" hidden>
+  <div>
+    <div class="marca">Cultivos Sayonara</div>
+    <h1>Restablecer contraseña</h1>
+  </div>
+  <p class="card-hint">Escribe tu correo y te enviaremos un enlace para crear una nueva contraseña.</p>
+  <div class="field">
+    <label for="rp-email">Correo</label>
+    <input type="email" id="rp-email" required autocomplete="username">
+  </div>
+  <button type="submit" class="btn-primary" id="btn-reset">Enviar enlace</button>
+  <button type="button" class="link-btn" id="btn-volver-login">Volver a iniciar sesión</button>
+  <div class="form-msg" id="reset-msg"></div>
 </form>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -127,6 +150,40 @@
       return;
     }
     location.href = paginaSiguiente();
+  });
+
+  // ---------------- restablecer contraseña ----------------
+  const formReset = document.getElementById("form-reset");
+  const btnOlvide = document.getElementById("btn-olvide");
+  const btnVolverLogin = document.getElementById("btn-volver-login");
+  const btnReset = document.getElementById("btn-reset");
+  const resetMsg = document.getElementById("reset-msg");
+
+  btnOlvide.addEventListener("click", () => {
+    form.hidden = true;
+    formReset.hidden = false;
+    resetMsg.textContent = "";
+    resetMsg.className = "form-msg";
+  });
+  btnVolverLogin.addEventListener("click", () => {
+    formReset.hidden = true;
+    form.hidden = false;
+  });
+
+  formReset.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const email = document.getElementById("rp-email").value.trim();
+    const urlBase = location.href.slice(0, location.href.lastIndexOf("/") + 1);
+
+    btnReset.disabled = true;
+    resetMsg.textContent = "Enviando...";
+    resetMsg.className = "form-msg";
+
+    await sb.auth.resetPasswordForEmail(email, { redirectTo: urlBase + "restablecer.html" });
+
+    resetMsg.textContent = "Si el correo está registrado, te enviamos un enlace para restablecer tu contraseña.";
+    resetMsg.className = "form-msg ok";
+    btnReset.disabled = false;
   });
 })();
 </script>
