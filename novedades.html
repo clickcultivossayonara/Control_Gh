@@ -599,7 +599,7 @@ AUTH_READY.then(function () {
     params.set("limit", "300");
     const buscar = lnBuscar.value.trim();
     if (buscar) {
-      if (/^\d+$/.test(buscar)) params.set("cedula", "eq." + buscar);
+      if (/^\d+$/.test(buscar)) params.set("cedula_texto", "ilike.*" + buscar + "*");
       else params.set("nombre_colaborador", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
     }
     if (lnArea.value) params.set("area", "eq." + lnArea.value);
@@ -641,7 +641,7 @@ AUTH_READY.then(function () {
     params.set("select", "cedula,nombre_colaborador");
     params.set("order", "fecha_creacion.desc");
     params.set("limit", "50");
-    if (/^\d+$/.test(texto)) params.set("cedula", "eq." + texto);
+    if (/^\d+$/.test(texto)) params.set("cedula_texto", "ilike.*" + texto + "*");
     else params.set("nombre_colaborador", "ilike.*" + texto.replace(/[,()]/g, "") + "*");
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: authHeaders() });
