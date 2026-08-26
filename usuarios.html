@@ -117,7 +117,6 @@
   }
   tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); }
   tbody tr:hover td { background: var(--accent-soft); }
-  tbody select, tbody input[type=text] { font: inherit; font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); width: 100%; }
   .nombre { font-weight: 500; }
   .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; }
   .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
@@ -161,6 +160,7 @@
             <option value="admin">Administrador</option>
             <option value="nomina">Nómina / RRHH</option>
             <option value="jefe_area">Jefe de área</option>
+            <option value="supervisor">Supervisor</option>
           </select>
         </div>
         <div class="field" id="u-areas-field" hidden>
@@ -190,6 +190,7 @@
           <option value="admin">Administrador</option>
           <option value="nomina">Nómina / RRHH</option>
           <option value="jefe_area">Jefe de área</option>
+          <option value="supervisor">Supervisor</option>
         </select>
       </div>
       <button class="clear-btn" id="lu-limpiar">Limpiar filtros</button>
@@ -211,17 +212,23 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script>
-AUTH_READY.then(function () {
+AUTH_READY.then(async function () {
   if (!requireRole(["admin"])) return;
   pintarSesion("sesion-box");
 
-  const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
-
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
-  const ROL_ETIQUETA = { admin: "Administrador", nomina: "Nómina / RRHH", jefe_area: "Jefe de área" };
+  const ROL_ETIQUETA = { admin: "Administrador", nomina: "Nómina / RRHH", jefe_area: "Jefe de área", supervisor: "Supervisor" };
+  const ROLES_CON_AREA = ["jefe_area", "supervisor"];
 
-  // ---------------- multiselect generico (igual patron que novedades.html) ----------------
-  function crearMultiselect(containerId, etiquetaTodos) {
+  async function cargarAreasDisponibles() {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/areas_disponibles?select=area`, { headers: authHeaders() });
+    const filas = await resp.json();
+    return Array.isArray(filas) ? filas.map(f => f.area).filter(Boolean) : [];
+  }
+  const AREAS_DISPONIBLES = await cargarAreasDisponibles();
+
+  // ---------------- multiselect generico (igual patron que reporte_biometrico.html) ----------------
+  function crearMultiselect(containerId, opciones, etiquetaTodos) {
     const el = document.getElementById(containerId);
     const seleccion = new Set();
     el.innerHTML = `<button type="button" class="ms-trigger">${etiquetaTodos}</button><div class="ms-panel"></div>`;
@@ -233,7 +240,7 @@ AUTH_READY.then(function () {
       else trigger.textContent = `${seleccion.size} seleccionada${seleccion.size === 1 ? "" : "s"}`;
     }
 
-    panel.innerHTML = AREAS_CONOCIDAS.map(a => `<label class="ms-option"><input type="checkbox" value="${a}"><span>${a}</span></label>`).join("");
+    panel.innerHTML = opciones.map(a => `<label class="ms-option"><input type="checkbox" value="${a}"><span>${a}</span></label>`).join("");
     panel.querySelectorAll("input[type=checkbox]").forEach((chk) => {
       chk.addEventListener("change", () => {
         if (chk.checked) seleccion.add(chk.value);
@@ -257,7 +264,7 @@ AUTH_READY.then(function () {
     document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
   });
 
-  const msAreas = crearMultiselect("u-areas", "Selecciona área(s)…");
+  const msAreas = crearMultiselect("u-areas", AREAS_DISPONIBLES, "Selecciona área(s)…");
 
   // ---------------- formulario: crear usuario ----------------
   const inNombre = document.getElementById("u-nombre");
@@ -270,14 +277,14 @@ AUTH_READY.then(function () {
   const msg = document.getElementById("msg-usuario");
 
   selRol.addEventListener("change", () => {
-    campoAreas.hidden = selRol.value !== "jefe_area";
+    campoAreas.hidden = !ROLES_CON_AREA.includes(selRol.value);
   });
 
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const areas = [...msAreas.seleccion];
-    if (selRol.value === "jefe_area" && areas.length === 0) {
-      msg.textContent = "Selecciona al menos un área para el jefe de área.";
+    if (ROLES_CON_AREA.includes(selRol.value) && areas.length === 0) {
+      msg.textContent = "Selecciona al menos un área para este rol.";
       msg.className = "form-msg error";
       return;
     }
@@ -344,17 +351,10 @@ AUTH_READY.then(function () {
         luBody.innerHTML = filas.map(f => `<tr data-id="${f.id}">
           <td class="nombre">${f.nombre}</td>
           <td>${f.email}</td>
-          <td>
-            <select class="fila-rol">
-              <option value="admin" ${f.rol === "admin" ? "selected" : ""}>Administrador</option>
-              <option value="nomina" ${f.rol === "nomina" ? "selected" : ""}>Nómina / RRHH</option>
-              <option value="jefe_area" ${f.rol === "jefe_area" ? "selected" : ""}>Jefe de área</option>
-            </select>
-          </td>
-          <td><input type="text" class="fila-areas" value="${(f.areas || []).join(", ")}" placeholder="Ej. RIEGO, ASPERSIÓN" ${f.rol === "jefe_area" ? "" : "disabled"}></td>
+          <td>${ROL_ETIQUETA[f.rol] || f.rol}</td>
+          <td>${(f.areas && f.areas.length) ? f.areas.join(", ") : "—"}</td>
           <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
           <td class="fila-acciones">
-            <button type="button" class="btn-small fila-guardar">Guardar</button>
             <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
           </td>
         </tr>`).join("");
@@ -365,40 +365,10 @@ AUTH_READY.then(function () {
     }
   }
 
-  luBody.addEventListener("change", (e) => {
-    const fila = e.target.closest("tr");
-    if (!fila) return;
-    if (e.target.classList.contains("fila-rol")) {
-      const esJefe = e.target.value === "jefe_area";
-      fila.querySelector(".fila-areas").disabled = !esJefe;
-    }
-  });
-
   luBody.addEventListener("click", async (e) => {
     const fila = e.target.closest("tr");
     if (!fila) return;
     const id = fila.dataset.id;
-
-    if (e.target.classList.contains("fila-guardar")) {
-      const rol = fila.querySelector(".fila-rol").value;
-      const areasTexto = fila.querySelector(".fila-areas").value.trim();
-      const areas = rol === "jefe_area"
-        ? areasTexto.split(",").map(a => a.trim().toUpperCase()).filter(Boolean)
-        : [];
-      e.target.disabled = true;
-      try {
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios_perfil?id=eq.${id}`, {
-          method: "PATCH",
-          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
-          body: JSON.stringify({ rol, areas }),
-        });
-        if (!resp.ok) throw new Error(await resp.text());
-        cargarUsuarios();
-      } catch (err) {
-        alert("No se pudo guardar: " + (err.message || err));
-        e.target.disabled = false;
-      }
-    }
 
     if (e.target.classList.contains("fila-toggle")) {
       const activarA = e.target.textContent.trim() === "Activar";
