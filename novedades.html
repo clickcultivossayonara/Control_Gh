@@ -108,7 +108,15 @@
   .filters-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
   .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
   .filters-stack .filters { margin-bottom: 0; }
-  .filters .field { min-width: 160px; }
+  .filters .field { min-width: 160px; position: relative; }
+  .ac-panel {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 100%;
+    max-height: 220px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: 8px; box-shadow: var(--shadow); padding: 4px;
+  }
+  .ac-option { padding: 7px 9px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ac-option:hover { background: var(--accent-soft); }
+  .ac-option .cedula { margin-left: 6px; color: var(--ink-faint); }
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
   .clear-btn {
     font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
@@ -199,6 +207,7 @@
         <div class="field">
           <label for="ln-buscar">Cédula o nombre</label>
           <input type="text" id="ln-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+          <div class="ac-panel" id="ln-buscar-panel" hidden></div>
         </div>
         <div class="field">
           <label for="ln-area">Área</label>
@@ -301,8 +310,6 @@ AUTH_READY.then(function () {
   const AREAS_CONOCIDAS = ROL_AREA_LIMITADA.includes(window.SESION.rol)
     ? TODAS_LAS_AREAS.filter(a => window.SESION.areas.includes(a))
     : TODAS_LAS_AREAS;
-
-  const headers = authHeaders();
 
   const DIAS_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
   function diaSemana(fechaStr) {
@@ -417,7 +424,7 @@ AUTH_READY.then(function () {
   let empleadosPorCedula = {};
 
   async function cargarCodigos() {
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=*&habilitado=eq.true&order=codigo_descripcion.asc`, { headers });
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=*&habilitado=eq.true&order=codigo_descripcion.asc`, { headers: authHeaders() });
     const filas = await resp.json();
     filas.forEach(f => {
       codigosPorValor[f.codigo] = f;
@@ -445,7 +452,7 @@ AUTH_READY.then(function () {
     params.set("area", "eq." + selArea.value);
     params.set("activo", "eq.true");
     params.set("order", "nombre.asc");
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers });
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers: authHeaders() });
     const filas = await resp.json();
     filas.forEach(f => { empleadosPorCedula[f.cedula] = f; });
     msColaborador.establecerOpciones(
@@ -495,7 +502,7 @@ AUTH_READY.then(function () {
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina`, {
         method: "POST",
-        headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify(registros),
       });
       if (!resp.ok) throw new Error(await resp.text());
@@ -557,7 +564,7 @@ AUTH_READY.then(function () {
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/extras_nomina`, {
         method: "POST",
-        headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify([registro]),
       });
       if (!resp.ok) throw new Error(await resp.text());
@@ -599,34 +606,96 @@ AUTH_READY.then(function () {
     if (lnCodigo.value) params.set("codigo_descripcion", "eq." + lnCodigo.value);
     if (lnDesde.value) params.append("fecha_novedad", "gte." + lnDesde.value + "T00:00:00");
     if (lnHasta.value) params.append("fecha_novedad", "lte." + lnHasta.value + "T23:59:59");
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: { ...headers, Prefer: "count=exact" } });
-    const filas = await resp.json();
-    const rango = resp.headers.get("content-range");
-    const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: { ...authHeaders(), Prefer: "count=exact" } });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
-    if (filas.length === 0) {
-      lnTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
-    } else {
-      lnTbody.innerHTML = filas.map(f => `<tr>
-        <td class="num">${f.fecha_novedad ? f.fecha_novedad.slice(0, 10) : "—"}</td>
-        <td class="nombre">${f.nombre_colaborador || "—"}</td>
-        <td>${f.area || "—"}</td>
-        <td>${f.codigo_descripcion || "—"}</td>
-        <td class="num">${f.hora ?? "—"}</td>
-        <td>${f.dia || "—"}</td>
-      </tr>`).join("");
+      if (filas.length === 0) {
+        lnTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
+      } else {
+        lnTbody.innerHTML = filas.map(f => `<tr>
+          <td class="num">${f.fecha_novedad ? f.fecha_novedad.slice(0, 10) : "—"}</td>
+          <td class="nombre">${f.nombre_colaborador || "—"}</td>
+          <td>${f.area || "—"}</td>
+          <td>${f.codigo_descripcion || "—"}</td>
+          <td class="num">${f.hora ?? "—"}</td>
+          <td>${f.dia || "—"}</td>
+        </tr>`).join("");
+      }
+      lnCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
+        (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
+    } catch (err) {
+      lnTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      lnCount.textContent = "";
     }
-    lnCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
-      (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
   }
+
+  // ---------------- autocompletado cedula/nombre ----------------
+  const lnBuscarPanel = document.getElementById("ln-buscar-panel");
+
+  async function buscarSugerenciasNovedad(texto) {
+    const params = new URLSearchParams();
+    params.set("select", "cedula,nombre_colaborador");
+    params.set("order", "fecha_creacion.desc");
+    params.set("limit", "50");
+    if (/^\d+$/.test(texto)) params.set("cedula", "eq." + texto);
+    else params.set("nombre_colaborador", "ilike.*" + texto.replace(/[,()]/g, "") + "*");
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: authHeaders() });
+      const filas = await resp.json();
+      if (!resp.ok || !Array.isArray(filas)) return [];
+      const vistos = new Set();
+      const unicas = [];
+      for (const f of filas) {
+        if (vistos.has(f.cedula)) continue;
+        vistos.add(f.cedula);
+        unicas.push(f);
+        if (unicas.length === 8) break;
+      }
+      return unicas;
+    } catch {
+      return [];
+    }
+  }
+
+  async function actualizarSugerenciasNovedad() {
+    const texto = lnBuscar.value.trim();
+    if (!texto) { lnBuscarPanel.hidden = true; return; }
+    const opciones = await buscarSugerenciasNovedad(texto);
+    if (lnBuscar.value.trim() !== texto || opciones.length === 0) { lnBuscarPanel.hidden = true; return; }
+    lnBuscarPanel.innerHTML = opciones.map(o =>
+      `<div class="ac-option" data-nombre="${o.nombre_colaborador}"><span class="nombre">${o.nombre_colaborador}</span><span class="cedula">(${o.cedula})</span></div>`
+    ).join("");
+    lnBuscarPanel.hidden = false;
+  }
+
+  lnBuscarPanel.addEventListener("click", (e) => {
+    const opt = e.target.closest(".ac-option");
+    if (!opt) return;
+    lnBuscar.value = opt.dataset.nombre;
+    lnBuscarPanel.hidden = true;
+    cargarListaNovedades();
+  });
+  document.addEventListener("click", (e) => {
+    if (!lnBuscar.contains(e.target) && !lnBuscarPanel.contains(e.target)) lnBuscarPanel.hidden = true;
+  });
+
   let lnTimeout;
-  lnBuscar.addEventListener("input", () => { clearTimeout(lnTimeout); lnTimeout = setTimeout(cargarListaNovedades, 300); });
+  lnBuscar.addEventListener("input", () => {
+    clearTimeout(lnTimeout);
+    lnTimeout = setTimeout(() => { cargarListaNovedades(); actualizarSugerenciasNovedad(); }, 300);
+  });
+  lnBuscar.addEventListener("focus", actualizarSugerenciasNovedad);
   lnArea.addEventListener("change", cargarListaNovedades);
   lnCodigo.addEventListener("change", cargarListaNovedades);
   lnDesde.addEventListener("change", cargarListaNovedades);
   lnHasta.addEventListener("change", cargarListaNovedades);
   document.getElementById("ln-limpiar").addEventListener("click", () => {
     lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = "";
+    lnBuscarPanel.hidden = true;
     cargarListaNovedades();
   });
   cargarListaNovedades();
@@ -643,23 +712,29 @@ AUTH_READY.then(function () {
     params.set("limit", "300");
     const buscar = leBuscar.value.trim();
     if (buscar) params.set("area", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/extras_nomina_detalle?${params.toString()}`, { headers: { ...headers, Prefer: "count=exact" } });
-    const filas = await resp.json();
-    const rango = resp.headers.get("content-range");
-    const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/extras_nomina_detalle?${params.toString()}`, { headers: { ...authHeaders(), Prefer: "count=exact" } });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
-    if (filas.length === 0) {
-      leTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Sin asignaciones para estos filtros.</div></td></tr>`;
-    } else {
-      leTbody.innerHTML = filas.map(f => `<tr>
-        <td class="num">${f.fecha || "—"}</td>
-        <td>${f.area || "—"}</td>
-        <td class="num">${f.horas_asignadas ?? "—"}</td>
-        <td class="num">${f.semana ?? "—"}</td>
-      </tr>`).join("");
+      if (filas.length === 0) {
+        leTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Sin asignaciones para estos filtros.</div></td></tr>`;
+      } else {
+        leTbody.innerHTML = filas.map(f => `<tr>
+          <td class="num">${f.fecha || "—"}</td>
+          <td>${f.area || "—"}</td>
+          <td class="num">${f.horas_asignadas ?? "—"}</td>
+          <td class="num">${f.semana ?? "—"}</td>
+        </tr>`).join("");
+      }
+      leCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
+        (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
+    } catch (err) {
+      leTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      leCount.textContent = "";
     }
-    leCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
-      (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
   }
   let leTimeout;
   leBuscar.addEventListener("input", () => { clearTimeout(leTimeout); leTimeout = setTimeout(cargarListaExtras, 300); });
