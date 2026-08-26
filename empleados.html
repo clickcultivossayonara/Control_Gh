@@ -75,7 +75,15 @@
   .form-msg.error { color: var(--critical); }
 
   .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
-  .filters .field { min-width: 160px; }
+  .filters .field { min-width: 160px; position: relative; }
+  .ac-panel {
+    position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 100%;
+    max-height: 220px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: 8px; box-shadow: var(--shadow); padding: 4px;
+  }
+  .ac-option { padding: 7px 9px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ac-option:hover, .ac-option.activa { background: var(--accent-soft); }
+  .ac-option .cedula { margin-left: 6px; }
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
   .clear-btn {
     font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
@@ -188,6 +196,7 @@
       <div class="field">
         <label for="f-buscar">Cédula o nombre</label>
         <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+        <div class="ac-panel" id="f-buscar-panel" hidden></div>
       </div>
       <div class="field">
         <label for="f-filtro-estado">Estado</label>
@@ -260,8 +269,6 @@ AUTH_READY.then(function () {
   function fechaHoy() { return new Date().toISOString().slice(0, 10); }
   elFechaIngreso.value = fechaHoy();
 
-  const headers = authHeaders();
-
   // ---------- formulario ----------
   const form = document.getElementById("form-empleado");
   const btnGuardar = document.getElementById("btn-guardar");
@@ -304,7 +311,7 @@ AUTH_READY.then(function () {
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees`, {
         method: "POST",
-        headers: { ...headers, "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify([registro]),
       });
 
@@ -355,9 +362,10 @@ AUTH_READY.then(function () {
 
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, {
-        headers: { ...headers, Prefer: "count=exact" },
+        headers: { ...authHeaders(), Prefer: "count=exact" },
       });
       const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
       const rango = resp.headers.get("content-range");
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
@@ -377,16 +385,63 @@ AUTH_READY.then(function () {
       elCount.textContent = total.toLocaleString("es-CO") + " empleado" + (total === 1 ? "" : "s");
     } catch (err) {
       elBody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      elCount.textContent = "";
     }
   }
 
+  // ---------- autocompletado cedula/nombre ----------
+  const elBuscarPanel = document.getElementById("f-buscar-panel");
+
+  async function buscarSugerencias(texto) {
+    const params = new URLSearchParams();
+    params.set("select", "cedula,nombre");
+    params.set("order", "nombre.asc");
+    params.set("limit", "8");
+    if (/^\d+$/.test(texto)) params.set("cedula", "eq." + texto);
+    else params.set("nombre", "ilike.*" + texto.replace(/[,()]/g, "") + "*");
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers: authHeaders() });
+      const filas = await resp.json();
+      return resp.ok && Array.isArray(filas) ? filas : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async function actualizarSugerencias() {
+    const texto = elBuscar.value.trim();
+    if (!texto) { elBuscarPanel.hidden = true; return; }
+    const opciones = await buscarSugerencias(texto);
+    if (elBuscar.value.trim() !== texto || opciones.length === 0) { elBuscarPanel.hidden = true; return; }
+    elBuscarPanel.innerHTML = opciones.map(o =>
+      `<div class="ac-option" data-nombre="${o.nombre}"><span class="nombre">${o.nombre}</span><span class="cedula">(${o.cedula})</span></div>`
+    ).join("");
+    elBuscarPanel.hidden = false;
+  }
+
+  elBuscarPanel.addEventListener("click", (e) => {
+    const opt = e.target.closest(".ac-option");
+    if (!opt) return;
+    elBuscar.value = opt.dataset.nombre;
+    elBuscarPanel.hidden = true;
+    cargarEmpleados();
+  });
+  document.addEventListener("click", (e) => {
+    if (!elBuscar.contains(e.target) && !elBuscarPanel.contains(e.target)) elBuscarPanel.hidden = true;
+  });
+
   let buscarTimeout;
-  elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargarEmpleados, 300); });
+  elBuscar.addEventListener("input", () => {
+    clearTimeout(buscarTimeout);
+    buscarTimeout = setTimeout(() => { cargarEmpleados(); actualizarSugerencias(); }, 300);
+  });
+  elBuscar.addEventListener("focus", actualizarSugerencias);
   elEstado.addEventListener("change", cargarEmpleados);
   elDesde.addEventListener("change", cargarEmpleados);
   elHasta.addEventListener("change", cargarEmpleados);
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     elBuscar.value = "";
+    elBuscarPanel.hidden = true;
     elEstado.value = "";
     elDesde.value = "";
     elHasta.value = "";
