@@ -121,7 +121,7 @@
     <div class="sesion-box" id="sesion-box" style="justify-content:center"></div>
   </div>
 
-  <section class="card">
+  <section class="card" id="card-agregar-empleado">
     <h2>Agregar empleado</h2>
     <form id="form-empleado">
       <div class="form-grid">
@@ -227,8 +227,11 @@
 <script src="auth.js"></script>
 <script>
 AUTH_READY.then(function () {
-  if (!requireRole(["admin", "nomina"])) return;
+  if (!requireRole(["admin", "nomina", "jefe_area", "supervisor"])) return;
   pintarSesion("sesion-box");
+  if (["jefe_area", "supervisor"].includes(window.SESION.rol)) {
+    document.getElementById("card-agregar-empleado").hidden = true;
+  }
 
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
 
