@@ -108,15 +108,7 @@
   .filters-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
   .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
   .filters-stack .filters { margin-bottom: 0; }
-  .filters .field { min-width: 160px; position: relative; }
-  .ac-panel {
-    position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 100%;
-    max-height: 220px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line-strong);
-    border-radius: 8px; box-shadow: var(--shadow); padding: 4px;
-  }
-  .ac-option { padding: 7px 9px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
-  .ac-option:hover { background: var(--accent-soft); }
-  .ac-option .cedula { margin-left: 6px; color: var(--ink-faint); }
+  .filters .field { min-width: 160px; }
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
   .clear-btn {
     font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
@@ -207,7 +199,6 @@
         <div class="field">
           <label for="ln-buscar">Cédula o nombre</label>
           <input type="text" id="ln-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
-          <div class="ac-panel" id="ln-buscar-panel" hidden></div>
         </div>
         <div class="field">
           <label for="ln-area">Área</label>
@@ -633,69 +624,14 @@ AUTH_READY.then(function () {
     }
   }
 
-  // ---------------- autocompletado cedula/nombre ----------------
-  const lnBuscarPanel = document.getElementById("ln-buscar-panel");
-
-  async function buscarSugerenciasNovedad(texto) {
-    const params = new URLSearchParams();
-    params.set("select", "cedula,nombre_colaborador");
-    params.set("order", "fecha_creacion.desc");
-    params.set("limit", "50");
-    if (/^\d+$/.test(texto)) params.set("cedula_texto", "ilike.*" + texto + "*");
-    else params.set("nombre_colaborador", "ilike.*" + texto.replace(/[,()]/g, "") + "*");
-    try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: authHeaders() });
-      const filas = await resp.json();
-      if (!resp.ok || !Array.isArray(filas)) return [];
-      const vistos = new Set();
-      const unicas = [];
-      for (const f of filas) {
-        if (vistos.has(f.cedula)) continue;
-        vistos.add(f.cedula);
-        unicas.push(f);
-        if (unicas.length === 8) break;
-      }
-      return unicas;
-    } catch {
-      return [];
-    }
-  }
-
-  async function actualizarSugerenciasNovedad() {
-    const texto = lnBuscar.value.trim();
-    if (!texto) { lnBuscarPanel.hidden = true; return; }
-    const opciones = await buscarSugerenciasNovedad(texto);
-    if (lnBuscar.value.trim() !== texto || opciones.length === 0) { lnBuscarPanel.hidden = true; return; }
-    lnBuscarPanel.innerHTML = opciones.map(o =>
-      `<div class="ac-option" data-nombre="${o.nombre_colaborador}"><span class="nombre">${o.nombre_colaborador}</span><span class="cedula">(${o.cedula})</span></div>`
-    ).join("");
-    lnBuscarPanel.hidden = false;
-  }
-
-  lnBuscarPanel.addEventListener("click", (e) => {
-    const opt = e.target.closest(".ac-option");
-    if (!opt) return;
-    lnBuscar.value = opt.dataset.nombre;
-    lnBuscarPanel.hidden = true;
-    cargarListaNovedades();
-  });
-  document.addEventListener("click", (e) => {
-    if (!lnBuscar.contains(e.target) && !lnBuscarPanel.contains(e.target)) lnBuscarPanel.hidden = true;
-  });
-
   let lnTimeout;
-  lnBuscar.addEventListener("input", () => {
-    clearTimeout(lnTimeout);
-    lnTimeout = setTimeout(() => { cargarListaNovedades(); actualizarSugerenciasNovedad(); }, 300);
-  });
-  lnBuscar.addEventListener("focus", actualizarSugerenciasNovedad);
+  lnBuscar.addEventListener("input", () => { clearTimeout(lnTimeout); lnTimeout = setTimeout(cargarListaNovedades, 300); });
   lnArea.addEventListener("change", cargarListaNovedades);
   lnCodigo.addEventListener("change", cargarListaNovedades);
   lnDesde.addEventListener("change", cargarListaNovedades);
   lnHasta.addEventListener("change", cargarListaNovedades);
   document.getElementById("ln-limpiar").addEventListener("click", () => {
     lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = "";
-    lnBuscarPanel.hidden = true;
     cargarListaNovedades();
   });
   cargarListaNovedades();
