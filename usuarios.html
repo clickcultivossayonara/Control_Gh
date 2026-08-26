@@ -340,6 +340,7 @@ AUTH_READY.then(async function () {
       <td class="fila-acciones">
         <button type="button" class="btn-small fila-editar">Editar</button>
         <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
+        ${f.id !== window.SESION.id ? '<button type="button" class="btn-small critical fila-eliminar">Eliminar</button>' : ""}
       </td>
     </tr>`;
   }
@@ -447,6 +448,24 @@ AUTH_READY.then(async function () {
         cargarUsuarios();
       } catch (err) {
         alert("No se pudo actualizar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+
+    if (e.target.classList.contains("fila-eliminar") && datos) {
+      if (!confirm(`¿Eliminar definitivamente la cuenta de "${datos.nombre}" (${datos.email})? Esta acción no se puede deshacer.`)) return;
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/functions/v1/admin-eliminar-usuario`, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ id }),
+        });
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data.error || "No se pudo eliminar.");
+        cargarUsuarios();
+      } catch (err) {
+        alert("No se pudo eliminar: " + (err.message || err));
         e.target.disabled = false;
       }
     }
