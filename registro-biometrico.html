@@ -146,15 +146,7 @@
     border-bottom: 1px solid var(--line);
   }
 
-  .field { display: flex; flex-direction: column; gap: 5px; min-width: 140px; position: relative; }
-  .ac-panel {
-    position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; min-width: 100%;
-    max-height: 220px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line-strong);
-    border-radius: 8px; box-shadow: var(--shadow); padding: 4px;
-  }
-  .ac-option { padding: 7px 9px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
-  .ac-option:hover { background: var(--accent-soft); }
-  .ac-option .cedula { margin-left: 6px; color: var(--ink-faint); }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 140px; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
 
   .field select, .field input {
@@ -305,7 +297,6 @@
     <div class="field grow">
       <label for="f-buscar">Cédula o nombre</label>
       <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
-      <div class="ac-panel" id="f-buscar-panel" hidden></div>
     </div>
     <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
     <button class="excel-btn" id="btn-excel">Descargar Excel</button>
@@ -560,67 +551,12 @@ AUTH_READY.then(function () {
   elDesde.addEventListener('change', reset);
   elHasta.addEventListener('change', reset);
 
-  // ---------- autocompletado cedula/nombre ----------
-  const elBuscarPanel = document.getElementById('f-buscar-panel');
-
-  async function buscarSugerencias(texto) {
-    const params = new URLSearchParams();
-    params.set('select', 'cedula,nombre');
-    params.set('order', 'nombre.asc');
-    params.set('limit', '50');
-    if (/^\d+$/.test(texto)) params.set('cedula_texto', 'ilike.*' + texto + '*');
-    else params.set('nombre', 'ilike.*' + texto.replace(/[,()]/g, '') + '*');
-    try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/registro_horas_detalle?${params.toString()}`, { headers: authHeaders() });
-      const filas = await resp.json();
-      if (!resp.ok || !Array.isArray(filas)) return [];
-      const vistos = new Set();
-      const unicas = [];
-      for (const f of filas) {
-        if (vistos.has(f.cedula)) continue;
-        vistos.add(f.cedula);
-        unicas.push(f);
-        if (unicas.length === 8) break;
-      }
-      return unicas;
-    } catch {
-      return [];
-    }
-  }
-
-  async function actualizarSugerencias() {
-    const texto = elBuscar.value.trim();
-    if (!texto) { elBuscarPanel.hidden = true; return; }
-    const opciones = await buscarSugerencias(texto);
-    if (elBuscar.value.trim() !== texto || opciones.length === 0) { elBuscarPanel.hidden = true; return; }
-    elBuscarPanel.innerHTML = opciones.map(o =>
-      `<div class="ac-option" data-nombre="${o.nombre}"><span class="nombre">${o.nombre}</span><span class="cedula">(${o.cedula})</span></div>`
-    ).join('');
-    elBuscarPanel.hidden = false;
-  }
-
-  elBuscarPanel.addEventListener('click', (e) => {
-    const opt = e.target.closest('.ac-option');
-    if (!opt) return;
-    elBuscar.value = opt.dataset.nombre;
-    elBuscarPanel.hidden = true;
-    reset();
-  });
-  document.addEventListener('click', (e) => {
-    if (!elBuscar.contains(e.target) && !elBuscarPanel.contains(e.target)) elBuscarPanel.hidden = true;
-  });
-
   let buscarTimeout;
-  elBuscar.addEventListener('input', () => {
-    clearTimeout(buscarTimeout);
-    buscarTimeout = setTimeout(() => { reset(); actualizarSugerencias(); }, 300);
-  });
-  elBuscar.addEventListener('focus', actualizarSugerencias);
+  elBuscar.addEventListener('input', () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
   document.getElementById('btn-limpiar').addEventListener('click', () => {
     fechasPorDefecto();
     msSede.limpiar(); msArea.limpiar(); msEstado.limpiar();
     elBuscar.value = '';
-    elBuscarPanel.hidden = true;
     reset();
   });
   document.getElementById('btn-actualizar').addEventListener('click', reset);
