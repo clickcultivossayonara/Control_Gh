@@ -331,14 +331,15 @@
 <script src="auth.js"></script>
 <script>
 AUTH_READY.then(function () {
-  if (!requireRole(["admin", "nomina", "jefe_area"])) return;
+  if (!requireRole(["admin", "nomina", "jefe_area", "supervisor"])) return;
   pintarSesion("sesion-box");
 
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const ROL_AREA_LIMITADA = ["jefe_area", "supervisor"];
 
   const OPCIONES_SEDE = ["Ceja", "Union", "Desconocida"];
   const TODAS_LAS_AREAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","No Registrado","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
-  const OPCIONES_AREA = window.SESION.rol === "jefe_area"
+  const OPCIONES_AREA = ROL_AREA_LIMITADA.includes(window.SESION.rol)
     ? TODAS_LAS_AREAS.filter(a => window.SESION.areas.includes(a))
     : TODAS_LAS_AREAS;
 
