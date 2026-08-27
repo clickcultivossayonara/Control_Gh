@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nómina — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+
+  .masthead { display: flex; flex-direction: column; align-items: center; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; text-align: center; }
+  .masthead h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
+  .masthead .sub { font-size: 13px; color: var(--ink-soft); }
+  .masthead a { color: var(--accent); text-decoration: none; }
+  .masthead a:hover { text-decoration: underline; }
+
+  section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
+  h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 160px; }
+  .field.grow { flex: 1; min-width: 200px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field input, .field select {
+    font: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 14px; padding: 9px 30px 9px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); width: 100%; text-align: left; cursor: pointer; position: relative;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-trigger::after { content: "▾"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 10px; }
+  .ms-trigger:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .multiselect.open .ms-trigger { border-color: var(--accent); }
+  .ms-panel {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+    min-width: 220px; max-height: 260px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); padding: 4px;
+  }
+  .multiselect.open .ms-panel { display: block; }
+  .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { margin: 0; accent-color: var(--accent); }
+
+  .clear-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; min-width: 820px; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
+    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tbody tr:hover td { background: var(--accent-soft); }
+  tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
+  tbody tr:nth-child(even):hover td { background: var(--accent-soft); }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
+  .nombre { font-weight: 500; }
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .diff-pos { color: var(--accent); font-weight: 500; }
+  .diff-neg { color: var(--critical); font-weight: 500; }
+  .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+
+  footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <h1>Nómina</h1>
+    <div class="sub">Cultivos Sayonara &middot; <a href="index.html">Inicio</a> &middot; <a href="empleados.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a> &middot; <a href="novedades.html">Novedades</a></div>
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+
+  <section class="card">
+    <h2>Consulta de nómina</h2>
+    <div class="filters">
+      <div class="field">
+        <label for="f-desde">Desde</label>
+        <input type="date" id="f-desde">
+      </div>
+      <div class="field">
+        <label for="f-hasta">Hasta</label>
+        <input type="date" id="f-hasta">
+      </div>
+      <div class="field">
+        <label>Área</label>
+        <div class="multiselect" id="ms-area"></div>
+      </div>
+      <div class="field grow">
+        <label for="f-buscar">Cédula o nombre</label>
+        <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+      </div>
+      <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="result-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Fecha</th><th>Cédula</th><th>Nombre</th><th>Área</th>
+            <th>Horas Trabajadas</th><th>Diferencia</th><th>Código - Descripción</th><th>Horas Novedad</th>
+          </tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+AUTH_READY.then(function () {
+  if (!requireRole(["admin", "nomina"])) return;
+  pintarSesion("sesion-box");
+
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const TODAS_LAS_AREAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","No Registrado","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+
+  // ---------------- multiselect generico ----------------
+  function crearMultiselect(containerId, opciones, etiquetaTodos, onChange) {
+    const el = document.getElementById(containerId);
+    const seleccion = new Set();
+    el.innerHTML = `<button type="button" class="ms-trigger">${etiquetaTodos}</button><div class="ms-panel"></div>`;
+    const trigger = el.querySelector(".ms-trigger");
+    const panel = el.querySelector(".ms-panel");
+
+    function actualizarEtiqueta() {
+      if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
+      else if (seleccion.size === 1) trigger.textContent = [...seleccion][0];
+      else trigger.textContent = `${seleccion.size} seleccionadas`;
+    }
+
+    panel.innerHTML = opciones.map(a => `<label class="ms-option"><input type="checkbox" value="${a}"><span>${a}</span></label>`).join("");
+    panel.querySelectorAll("input[type=checkbox]").forEach((chk) => {
+      chk.addEventListener("change", () => {
+        if (chk.checked) seleccion.add(chk.value);
+        else seleccion.delete(chk.value);
+        actualizarEtiqueta();
+        if (onChange) onChange();
+      });
+    });
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
+      el.classList.toggle("open");
+    });
+
+    return {
+      seleccion,
+      limpiar() { seleccion.clear(); panel.querySelectorAll("input").forEach(c => c.checked = false); actualizarEtiqueta(); },
+    };
+  }
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
+  });
+
+  const msArea = crearMultiselect("ms-area", TODAS_LAS_AREAS, "Todas", () => cargar());
+
+  const elDesde = document.getElementById("f-desde");
+  const elHasta = document.getElementById("f-hasta");
+  const elBuscar = document.getElementById("f-buscar");
+  const elBody = document.getElementById("tbody");
+  const elCount = document.getElementById("result-count");
+
+  function fechaISO(d) { return d.toISOString().slice(0, 10); }
+  function fechasPorDefecto() {
+    const hoy = new Date();
+    const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
+    elDesde.value = fechaISO(hace30);
+    elHasta.value = fechaISO(hoy);
+  }
+
+  function fila(r) {
+    const ht = r.horas_trabajadas != null ? Number(r.horas_trabajadas).toFixed(2) : "—";
+    let dt = "—";
+    if (r.diferencia_tiempo != null) {
+      const v = Number(r.diferencia_tiempo);
+      const cls = v >= 0 ? "diff-pos" : "diff-neg";
+      const signo = v > 0 ? "+" : "";
+      dt = `<span class="${cls}">${signo}${v.toFixed(2)}</span>`;
+    }
+    return `<tr>
+      <td class="num">${r.fecha}</td>
+      <td class="cedula">${r.cedula}</td>
+      <td class="nombre" title="${r.nombre}">${r.nombre}</td>
+      <td>${r.area || "—"}</td>
+      <td class="num">${ht}</td>
+      <td class="num">${dt}</td>
+      <td>${r.codigo_descripcion || "—"}</td>
+      <td class="num">${r.horas_novedad ?? "—"}</td>
+    </tr>`;
+  }
+
+  async function cargar() {
+    const params = new URLSearchParams();
+    params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad");
+    params.set("limit", "300");
+
+    if (elDesde.value) params.append("fecha", "gte." + elDesde.value);
+    if (elHasta.value) params.append("fecha", "lte." + elHasta.value);
+    if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
+
+    const buscar = elBuscar.value.trim();
+    if (buscar) {
+      if (/^\d+$/.test(buscar)) params.set("cedula_texto", "ilike.*" + buscar + "*");
+      else params.set("nombre", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
+    }
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/nomina_consulta_detalle?${params.toString()}`, {
+        headers: { ...authHeaders(), Prefer: "count=exact" },
+      });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+      if (filas.length === 0) {
+        elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
+      } else {
+        elBody.innerHTML = filas.map(fila).join("");
+      }
+      elCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
+        (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
+    } catch (err) {
+      elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      elCount.textContent = "";
+    }
+  }
+
+  let buscarTimeout;
+  elDesde.addEventListener("change", cargar);
+  elHasta.addEventListener("change", cargar);
+  elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargar, 300); });
+  document.getElementById("btn-limpiar").addEventListener("click", () => {
+    fechasPorDefecto();
+    msArea.limpiar();
+    elBuscar.value = "";
+    cargar();
+  });
+
+  fechasPorDefecto();
+  cargar();
+});
+</script>
+</body>
+</html>
