@@ -263,12 +263,20 @@
           <input type="text" id="ln-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
         </div>
         <div class="field">
-          <label for="ln-area">Área</label>
-          <select id="ln-area"><option value="">Todas</option></select>
+          <label for="ln-area-buscar">Área</label>
+          <div class="combo" id="ln-area-combo">
+            <input type="text" id="ln-area-buscar" placeholder="Buscar…" autocomplete="off">
+            <div class="combo-panel" id="ln-area-panel"></div>
+          </div>
+          <select id="ln-area" style="display:none"><option value="">Todas</option></select>
         </div>
         <div class="field">
-          <label for="ln-codigo">Código - Descripción</label>
-          <select id="ln-codigo"><option value="">Todos</option></select>
+          <label for="ln-codigo-buscar">Código - Descripción</label>
+          <div class="combo" id="ln-codigo-combo">
+            <input type="text" id="ln-codigo-buscar" placeholder="Buscar…" autocomplete="off">
+            <div class="combo-panel" id="ln-codigo-panel"></div>
+          </div>
+          <select id="ln-codigo" style="display:none"><option value="">Todos</option></select>
         </div>
       </div>
       <div class="filters">
@@ -784,6 +792,13 @@ AUTH_READY.then(function () {
   const lnCount = document.getElementById("ln-count");
   AREAS_CONOCIDAS.forEach(a => lnArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
 
+  const comboLnArea = crearCombobox("ln-area-combo", "ln-area-buscar", "ln-area-panel", lnArea,
+    () => [["", "Todas"], ...AREAS_CONOCIDAS.map(a => [a, a])]);
+  comboLnArea.sincronizar();
+  const comboLnCodigo = crearCombobox("ln-codigo-combo", "ln-codigo-buscar", "ln-codigo-panel", lnCodigo,
+    () => [["", "Todos"], ...Object.values(codigosPorValor).map(c => [c.codigo_descripcion, c.codigo_descripcion])]);
+  comboLnCodigo.sincronizar();
+
   const msSemanaNovedad = crearMultiselect("ln-semana", "Todas", () => cargarListaNovedades());
   msSemanaNovedad.establecerOpciones(Array.from({ length: 53 }, (_, i) => [String(i + 1), String(i + 1)]));
 
@@ -845,6 +860,8 @@ AUTH_READY.then(function () {
   lnHasta.addEventListener("change", cargarListaNovedades);
   document.getElementById("ln-limpiar").addEventListener("click", () => {
     lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = "";
+    comboLnArea.sincronizar();
+    comboLnCodigo.sincronizar();
     msSemanaNovedad.limpiar();
     cargarListaNovedades();
   });
