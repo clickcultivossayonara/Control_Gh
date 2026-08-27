@@ -55,6 +55,23 @@
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 4px; }
   .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 18px; }
 
+  .alerta-banner {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 10px;
+    background: var(--critical-soft); border: 1px solid var(--critical); color: var(--critical);
+    margin-bottom: 18px;
+  }
+  .alerta-banner[hidden] { display: none; }
+  .alerta-icono { flex-shrink: 0; margin-top: 1px; }
+  .alerta-icono svg { width: 22px; height: 22px; display: block; }
+  .alerta-texto { flex: 1; display: flex; flex-direction: column; gap: 3px; }
+  .alerta-texto strong { font-size: 14px; font-weight: 700; }
+  .alerta-texto p { margin: 0; font-size: 13.5px; line-height: 1.4; }
+  .alerta-cerrar {
+    background: none; border: none; color: var(--critical); font-size: 20px; line-height: 1; cursor: pointer;
+    padding: 0; flex-shrink: 0;
+  }
+  .alerta-cerrar:hover { opacity: 0.7; }
+
   .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
   .form-grid.form-grid-novedad { grid-template-columns: repeat(3, 1fr); }
   @media (max-width: 900px) { .form-grid.form-grid-novedad { grid-template-columns: repeat(2, 1fr); } }
@@ -152,6 +169,22 @@
   <section class="card" id="card-novedad">
     <h2>Ingreso de Novedades</h2>
     <p class="card-hint">La diligencia el jefe del área. Nómina/RRHH revisa después.</p>
+
+    <div class="alerta-banner" id="alerta-presupuesto" hidden>
+      <span class="alerta-icono">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+        </svg>
+      </span>
+      <div class="alerta-texto">
+        <strong id="alerta-titulo"></strong>
+        <p id="alerta-mensaje"></p>
+      </div>
+      <button type="button" class="alerta-cerrar" id="alerta-cerrar" aria-label="Cerrar aviso">&times;</button>
+    </div>
+
     <form id="form-novedad">
       <div class="form-grid form-grid-novedad">
         <div class="field">
@@ -425,6 +458,17 @@ AUTH_READY.then(function () {
   const btnNovedad = document.getElementById("btn-novedad");
   const msgNovedad = document.getElementById("msg-novedad");
 
+  const alertaPresupuesto = document.getElementById("alerta-presupuesto");
+  const alertaTitulo = document.getElementById("alerta-titulo");
+  const alertaMensaje = document.getElementById("alerta-mensaje");
+  document.getElementById("alerta-cerrar").addEventListener("click", () => { alertaPresupuesto.hidden = true; });
+  function mostrarAlertaPresupuesto(titulo, mensaje) {
+    alertaTitulo.textContent = titulo;
+    alertaMensaje.textContent = mensaje;
+    alertaPresupuesto.hidden = false;
+    alertaPresupuesto.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
+
   inFecha.value = fechaHoy();
   AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
   document.getElementById("e-area").innerHTML = selArea.innerHTML;
@@ -472,6 +516,7 @@ AUTH_READY.then(function () {
 
   formNovedad.addEventListener("submit", async (e) => {
     e.preventDefault();
+    alertaPresupuesto.hidden = true;
 
     const cedulasSeleccionadas = [...msColaborador.seleccion];
     const cod = codigosPorValor[selCodigo.value];
@@ -486,16 +531,21 @@ AUTH_READY.then(function () {
       msgNovedad.className = "form-msg";
       const horasSolicitadas = Number(inHora.value) * cedulasSeleccionadas.length;
       const disponibles = await consultarHorasExtraDisponibles(inFecha.value, selArea.value);
+      msgNovedad.textContent = "";
+      btnNovedad.disabled = false;
+
       if (disponibles === null) {
-        msgNovedad.textContent = "No tiene horas asignadas para esta fecha y área.";
-        msgNovedad.className = "form-msg error";
-        btnNovedad.disabled = false;
+        mostrarAlertaPresupuesto(
+          "Sin presupuesto de horas extra",
+          `No tiene horas asignadas para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
+        );
         return;
       }
       if (horasSolicitadas > disponibles) {
-        msgNovedad.textContent = `No es posible cargarlas: excede las horas asignadas para esta fecha y área (disponibles: ${disponibles}).`;
-        msgNovedad.className = "form-msg error";
-        btnNovedad.disabled = false;
+        mostrarAlertaPresupuesto(
+          "Presupuesto de horas extra excedido",
+          `No es posible cargar esta novedad: solicitas ${horasSolicitadas} hora(s) pero solo quedan ${disponibles} disponible(s) para "${selArea.value}" el ${inFecha.value}.`
+        );
         return;
       }
     }
