@@ -190,6 +190,10 @@
         <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
       </div>
       <div class="field">
+        <label for="f-filtro-area">Área</label>
+        <select id="f-filtro-area"><option value="">Todas</option></select>
+      </div>
+      <div class="field">
         <label for="f-filtro-estado">Estado</label>
         <select id="f-filtro-estado">
           <option value="">Todos</option>
@@ -238,6 +242,13 @@ AUTH_READY.then(function () {
   const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
   const selArea = document.getElementById("f-area");
   AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
+
+  const ROL_AREA_LIMITADA = ["jefe_area", "supervisor"];
+  const AREAS_FILTRO = ROL_AREA_LIMITADA.includes(window.SESION.rol)
+    ? AREAS_CONOCIDAS.filter(a => window.SESION.areas.includes(a))
+    : AREAS_CONOCIDAS;
+  const selFiltroArea = document.getElementById("f-filtro-area");
+  AREAS_FILTRO.forEach(a => selFiltroArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
 
   const LABORES_CONOCIDAS = ["ARMADO BOUQUETS","ASEGURADOR DE FITOSANIDAD POSTCOSECHA.","ASEGURAMIENTO USA","ASPERJADOR.","ASPIRADO.","AUXILIAR","AYUDANTE DE TALLER,FONTANERIA, LABORES VARIAS.","CARGUE DE GARRUCHA ESQUEJES","CORTADOR","CORTE ALSTROEMERIAS","CORTE ESPECIALES","CORTE USA","COSECHADOR","COSECHADOR CEJA","CUARTO FRIO","DESBOTONE CREMON/SPIDER","DESBOTONE POMPON","DESBOTÓN SPIDER","DESCARGUE BANDEJAS CONFINAMIENTO","DESCARGUE DE GARRUCHA","DESMALECE","DESPACHOS","DESTRONCAR","DESTRONQUE Y ENTERRADA DE SOCA","DISTRIBUCION CUBETAS","DRENCH","ELECTRICO Y MANTENIMIENTOS PREVENTIVOS.","EMPAQUE","EMPAQUE BOUQUETS","ENMALLE","ESTERILIZACION","ESTERILIZACIÓN DE CAMAS","FOSFINA-TERMONEBULIZADORA","FUMIGACIÓN","INSTALACION DE LUCES Y CORTINAS NEGRAS EN SIEMBRA.","JEFE","LLENADO DE BANDEJAS MANUAL","LLENADOR DE BANDEJAS","MANTENIMIENTO EN ALTURAS.","MONITOREO","MONITOREO INTEGRAL","MONITOREO ROYA BLANCA","OF VARIOS","OFICIOS VARIOS","Orden y aseo","PATINADOR","PREPARACIÓN DE CAMAS","PUESTA DE MALLA.","REGISTRO DE GARRUCHA","REVISION DE LUCES EN LA NOCHE.","REVISIÓN FITOSANITARIO EN POSTCOSECHA","REVISIÓN RB","RIEGO","RIEGO CON CODO EN CORTE","RIEGO CON CODO UNIFICACION","RIEGO SIEMBRA","SIEMBRA","SIEMBRA CAMPO","SIEMBRA EN CAMPO","SIEMBRA ENRAIZAMIENTO","SUPERVISOR","Surtidor de cartón","TALLER.","TANQUISTA","TRACTORISTA"];
   const selLabor = document.getElementById("f-labor");
@@ -330,6 +341,7 @@ AUTH_READY.then(function () {
 
   // ---------- tabla ----------
   const elBuscar = document.getElementById("f-buscar");
+  const elArea = document.getElementById("f-filtro-area");
   const elEstado = document.getElementById("f-filtro-estado");
   const elDesde = document.getElementById("f-filtro-desde");
   const elHasta = document.getElementById("f-filtro-hasta");
@@ -347,6 +359,7 @@ AUTH_READY.then(function () {
       if (/^\d+$/.test(buscar)) params.set("cedula_texto", "ilike.*" + buscar + "*");
       else params.set("nombre", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
     }
+    if (elArea.value) params.set("area", "eq." + elArea.value);
     if (elEstado.value) params.set("activo", "eq." + elEstado.value);
     if (elDesde.value) params.append("fecha_ingreso", "gte." + elDesde.value);
     if (elHasta.value) params.append("fecha_ingreso", "lte." + elHasta.value);
@@ -382,11 +395,13 @@ AUTH_READY.then(function () {
 
   let buscarTimeout;
   elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargarEmpleados, 300); });
+  elArea.addEventListener("change", cargarEmpleados);
   elEstado.addEventListener("change", cargarEmpleados);
   elDesde.addEventListener("change", cargarEmpleados);
   elHasta.addEventListener("change", cargarEmpleados);
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     elBuscar.value = "";
+    elArea.value = "";
     elEstado.value = "";
     elDesde.value = "";
     elHasta.value = "";
