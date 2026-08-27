@@ -284,8 +284,8 @@
       <input type="date" id="f-hasta">
     </div>
     <div class="field">
-      <label for="f-semana">Semana</label>
-      <input type="number" id="f-semana" min="1" max="53" placeholder="Ej. 34" style="width:80px">
+      <label>Semana</label>
+      <div class="multiselect" id="ms-semana"></div>
     </div>
     <div class="field">
       <label>Sede</label>
@@ -348,6 +348,17 @@ AUTH_READY.then(function () {
   const OPCIONES_AREA = ROL_AREA_LIMITADA.includes(window.SESION.rol)
     ? TODAS_LAS_AREAS.filter(a => window.SESION.areas.includes(a))
     : TODAS_LAS_AREAS;
+  const OPCIONES_SEMANA = Array.from({ length: 53 }, (_, i) => String(i + 1));
+
+  function isoWeekNum(fechaStr) {
+    const [y, m, d] = fechaStr.split('-').map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    const dayNum = (dt.getUTCDay() + 6) % 7;
+    dt.setUTCDate(dt.getUTCDate() - dayNum + 3);
+    const primerJueves = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+    const diff = dt - primerJueves;
+    return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
+  }
 
   const fmtDate = (iso) => {
     const [y, m, d] = iso.split('-').map(Number);
@@ -400,6 +411,14 @@ AUTH_READY.then(function () {
   const msSede = crearMultiselect('ms-sede', OPCIONES_SEDE, 'Todas', () => reset());
   const msArea = crearMultiselect('ms-area', OPCIONES_AREA, 'Todas', () => reset());
   const msEstado = crearMultiselect('ms-estado', ['completo', 'sin_salida', 'sin_entrada'], 'Todos', () => reset());
+  const msSemana = crearMultiselect('ms-semana', OPCIONES_SEMANA, 'Todas', () => reset());
+
+  // Predeterminado: semana actual seleccionada.
+  const semanaActualChk = document.querySelector(`#ms-semana input[value="${isoWeekNum(new Date().toISOString().slice(0, 10))}"]`);
+  if (semanaActualChk) {
+    semanaActualChk.checked = true;
+    semanaActualChk.dispatchEvent(new Event('change'));
+  }
 
   let sortKey = 'fecha', sortDir = -1;
   let visibles = 300;
@@ -410,7 +429,6 @@ AUTH_READY.then(function () {
   const elBuscar = document.getElementById('f-buscar');
   const elDesde = document.getElementById('f-desde');
   const elHasta = document.getElementById('f-hasta');
-  const elSemana = document.getElementById('f-semana');
   const elBody = document.getElementById('tbody');
   const elCount = document.getElementById('result-count');
   const elDot = document.getElementById('live-dot');
@@ -423,7 +441,7 @@ AUTH_READY.then(function () {
 
     if (elDesde.value) params.append('fecha', 'gte.' + elDesde.value);
     if (elHasta.value) params.append('fecha', 'lte.' + elHasta.value);
-    if (elSemana.value) params.set('semana', 'eq.' + elSemana.value);
+    if (msSemana.seleccion.size) params.set('semana', 'in.(' + [...msSemana.seleccion].join(',') + ')');
     if (msSede.seleccion.size) params.set('sede', 'in.(' + [...msSede.seleccion].join(',') + ')');
     if (msArea.seleccion.size) params.set('area', 'in.(' + [...msArea.seleccion].map(a => `"${a}"`).join(',') + ')');
     if (msEstado.seleccion.size) params.set('estado', 'in.(' + [...msEstado.seleccion].join(',') + ')');
@@ -559,15 +577,13 @@ AUTH_READY.then(function () {
 
   elDesde.addEventListener('change', reset);
   elHasta.addEventListener('change', reset);
-  elSemana.addEventListener('input', () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
 
   let buscarTimeout;
   elBuscar.addEventListener('input', () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
   document.getElementById('btn-limpiar').addEventListener('click', () => {
     fechasPorDefecto();
-    msSede.limpiar(); msArea.limpiar(); msEstado.limpiar();
+    msSede.limpiar(); msArea.limpiar(); msEstado.limpiar(); msSemana.limpiar();
     elBuscar.value = '';
-    elSemana.value = '';
     reset();
   });
   document.getElementById('btn-actualizar').addEventListener('click', reset);
