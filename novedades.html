@@ -252,8 +252,8 @@
           <input type="date" id="ln-hasta">
         </div>
         <div class="field">
-          <label for="ln-semana">Semana</label>
-          <input type="number" id="ln-semana" min="1" max="53" placeholder="Ej. 34" style="width:80px">
+          <label>Semana</label>
+          <div class="multiselect" id="ln-semana"></div>
         </div>
         <button class="clear-btn" id="ln-limpiar">Limpiar filtros</button>
         <span class="result-count" id="ln-count"></span>
@@ -396,7 +396,7 @@ AUTH_READY.then(function () {
   });
 
   // ---------------- multiselect generico ----------------
-  function crearMultiselect(containerId, etiquetaTodos) {
+  function crearMultiselect(containerId, etiquetaTodos, onChange) {
     const el = document.getElementById(containerId);
     const seleccion = new Set();
     el.innerHTML = `<button type="button" class="ms-trigger" disabled>${etiquetaTodos}</button><div class="ms-panel"></div>`;
@@ -434,6 +434,7 @@ AUTH_READY.then(function () {
             if (chk.checked) seleccion.add(opciones[i][0]);
             else seleccion.delete(opciones[i][0]);
             actualizarEtiqueta();
+            if (onChange) onChange();
           });
         });
         actualizarEtiqueta();
@@ -443,6 +444,11 @@ AUTH_READY.then(function () {
         panel.innerHTML = "";
         trigger.disabled = true;
         trigger.textContent = etiqueta;
+      },
+      limpiar() {
+        seleccion.clear();
+        panel.querySelectorAll("input").forEach((c) => { c.checked = false; });
+        actualizarEtiqueta();
       },
     };
   }
@@ -671,10 +677,19 @@ AUTH_READY.then(function () {
   const lnCodigo = document.getElementById("ln-codigo");
   const lnDesde = document.getElementById("ln-desde");
   const lnHasta = document.getElementById("ln-hasta");
-  const lnSemana = document.getElementById("ln-semana");
   const lnTbody = document.getElementById("ln-tbody");
   const lnCount = document.getElementById("ln-count");
   AREAS_CONOCIDAS.forEach(a => lnArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
+
+  const msSemanaNovedad = crearMultiselect("ln-semana", "Todas", () => cargarListaNovedades());
+  msSemanaNovedad.establecerOpciones(Array.from({ length: 53 }, (_, i) => [String(i + 1), String(i + 1)]));
+
+  // Predeterminado: semana actual seleccionada.
+  const lnSemanaActualChk = document.querySelector(`#ln-semana input[value="${isoWeekNum(fechaHoy())}"]`);
+  if (lnSemanaActualChk) {
+    lnSemanaActualChk.checked = true;
+    lnSemanaActualChk.dispatchEvent(new Event("change"));
+  }
 
   async function cargarListaNovedades() {
     const params = new URLSearchParams();
@@ -690,7 +705,7 @@ AUTH_READY.then(function () {
     if (lnCodigo.value) params.set("codigo_descripcion", "eq." + lnCodigo.value);
     if (lnDesde.value) params.append("fecha_novedad", "gte." + lnDesde.value + "T00:00:00");
     if (lnHasta.value) params.append("fecha_novedad", "lte." + lnHasta.value + "T23:59:59");
-    if (lnSemana.value) params.set("semana", "eq." + lnSemana.value);
+    if (msSemanaNovedad.seleccion.size) params.set("semana", "in.(" + [...msSemanaNovedad.seleccion].join(",") + ")");
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: { ...authHeaders(), Prefer: "count=exact" } });
       const filas = await resp.json();
@@ -725,9 +740,9 @@ AUTH_READY.then(function () {
   lnCodigo.addEventListener("change", cargarListaNovedades);
   lnDesde.addEventListener("change", cargarListaNovedades);
   lnHasta.addEventListener("change", cargarListaNovedades);
-  lnSemana.addEventListener("input", () => { clearTimeout(lnTimeout); lnTimeout = setTimeout(cargarListaNovedades, 300); });
   document.getElementById("ln-limpiar").addEventListener("click", () => {
-    lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = ""; lnSemana.value = "";
+    lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = "";
+    msSemanaNovedad.limpiar();
     cargarListaNovedades();
   });
   cargarListaNovedades();
