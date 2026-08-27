@@ -224,8 +224,9 @@
   thead th:nth-child(5), tbody td:nth-child(5) { width: 6%; }
   thead th:nth-child(6), tbody td:nth-child(6) { width: 9%; }
   thead th:nth-child(7), tbody td:nth-child(7) { width: 9%; }
-  thead th:nth-child(8), tbody td:nth-child(8) { width: 15%; }
-  thead th:nth-child(9), tbody td:nth-child(9) { width: 15%; }
+  thead th:nth-child(8), tbody td:nth-child(8) { width: 13%; }
+  thead th:nth-child(9), tbody td:nth-child(9) { width: 13%; }
+  thead th:nth-child(10), tbody td:nth-child(10) { width: 6%; }
 
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
@@ -283,6 +284,10 @@
       <input type="date" id="f-hasta">
     </div>
     <div class="field">
+      <label for="f-semana">Semana</label>
+      <input type="number" id="f-semana" min="1" max="53" placeholder="Ej. 34" style="width:80px">
+    </div>
+    <div class="field">
       <label>Sede</label>
       <div class="multiselect" id="ms-sede"></div>
     </div>
@@ -316,6 +321,7 @@
           <th data-key="hora_salida">Salida <span class="arrow">↕</span></th>
           <th data-key="horas_trabajadas">Horas Trabajadas <span class="arrow">↕</span></th>
           <th data-key="diferencia_tiempo">Diferencia <span class="arrow">↕</span></th>
+          <th data-key="semana">Semana <span class="arrow">↕</span></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
@@ -404,6 +410,7 @@ AUTH_READY.then(function () {
   const elBuscar = document.getElementById('f-buscar');
   const elDesde = document.getElementById('f-desde');
   const elHasta = document.getElementById('f-hasta');
+  const elSemana = document.getElementById('f-semana');
   const elBody = document.getElementById('tbody');
   const elCount = document.getElementById('result-count');
   const elDot = document.getElementById('live-dot');
@@ -412,10 +419,11 @@ AUTH_READY.then(function () {
   const elChkAuto = document.getElementById('chk-auto');
 
   function aplicarFiltros(params) {
-    params.set('select', 'cedula,nombre,area,sede,fecha,hora_entrada,hora_salida,horas_trabajadas,diferencia_tiempo,estado');
+    params.set('select', 'cedula,nombre,area,sede,fecha,hora_entrada,hora_salida,horas_trabajadas,diferencia_tiempo,estado,semana');
 
     if (elDesde.value) params.append('fecha', 'gte.' + elDesde.value);
     if (elHasta.value) params.append('fecha', 'lte.' + elHasta.value);
+    if (elSemana.value) params.set('semana', 'eq.' + elSemana.value);
     if (msSede.seleccion.size) params.set('sede', 'in.(' + [...msSede.seleccion].join(',') + ')');
     if (msArea.seleccion.size) params.set('area', 'in.(' + [...msArea.seleccion].map(a => `"${a}"`).join(',') + ')');
     if (msEstado.seleccion.size) params.set('estado', 'in.(' + [...msEstado.seleccion].join(',') + ')');
@@ -468,7 +476,7 @@ AUTH_READY.then(function () {
       if (miPeticion !== peticionActual) return;
       elDot.className = 'live-dot error';
       elLabel.textContent = 'Error de conexión';
-      elBody.innerHTML = `<tr><td colspan="9"><div class="error-state">No se pudo cargar: ${String(err.message || err)}</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="10"><div class="error-state">No se pudo cargar: ${String(err.message || err)}</div></td></tr>`;
       elCount.textContent = '';
     }
   }
@@ -495,16 +503,17 @@ AUTH_READY.then(function () {
       <td class="num">${hs || '—'}</td>
       <td class="num">${ht}</td>
       <td class="num">${dt}</td>
+      <td class="num">${r.semana ?? '—'}</td>
     </tr>`;
   }
 
   function renderTabla(filas, total) {
     if (filas.length === 0) {
-      elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="10"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
     } else {
       let html = filas.map(fila).join('');
       if (total > filas.length) {
-        html += `<tr class="load-more-row"><td colspan="9">
+        html += `<tr class="load-more-row"><td colspan="10">
           <button class="load-more-btn" id="btn-cargar-mas">Cargar más (${(total - filas.length).toLocaleString('es-CO')} restantes)</button>
         </td></tr>`;
       }
@@ -550,6 +559,7 @@ AUTH_READY.then(function () {
 
   elDesde.addEventListener('change', reset);
   elHasta.addEventListener('change', reset);
+  elSemana.addEventListener('input', () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
 
   let buscarTimeout;
   elBuscar.addEventListener('input', () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
@@ -557,6 +567,7 @@ AUTH_READY.then(function () {
     fechasPorDefecto();
     msSede.limpiar(); msArea.limpiar(); msEstado.limpiar();
     elBuscar.value = '';
+    elSemana.value = '';
     reset();
   });
   document.getElementById('btn-actualizar').addEventListener('click', reset);
@@ -605,10 +616,11 @@ AUTH_READY.then(function () {
         'Horas Trabajadas': r.horas_trabajadas != null ? Number(r.horas_trabajadas) : '',
         'Diferencia': r.diferencia_tiempo != null ? Number(r.diferencia_tiempo) : '',
         'Estado': r.estado,
+        'Semana': r.semana ?? '',
       }));
 
       const ws = XLSX.utils.json_to_sheet(filasExcel);
-      ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 32 }, { wch: 20 }, { wch: 8 }, { wch: 11 }, { wch: 11 }, { wch: 12 }, { wch: 11 }, { wch: 12 }];
+      ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 32 }, { wch: 20 }, { wch: 8 }, { wch: 11 }, { wch: 11 }, { wch: 12 }, { wch: 11 }, { wch: 12 }, { wch: 8 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Registro Biometrico');
 
