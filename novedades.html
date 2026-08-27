@@ -194,10 +194,6 @@
           </select>
         </div>
         <div class="field">
-          <label>Colaborador(es) <span class="req">*</span></label>
-          <div class="multiselect" id="n-colaborador"></div>
-        </div>
-        <div class="field">
           <label for="n-codigo">Código - Descripción <span class="req">*</span></label>
           <select id="n-codigo" required>
             <option value="">Selecciona un código…</option>
@@ -214,6 +210,10 @@
         <div class="field">
           <label for="n-fecha">Fecha <span class="req">*</span></label>
           <input type="date" id="n-fecha" required>
+        </div>
+        <div class="field">
+          <label>Colaborador(es) <span class="req">*</span></label>
+          <div class="multiselect" id="n-colaborador"></div>
         </div>
         <div class="field">
           <label for="n-hora">Hora (cantidad) <span class="req">*</span></label>
@@ -251,6 +251,10 @@
           <label for="ln-hasta">Hasta</label>
           <input type="date" id="ln-hasta">
         </div>
+        <div class="field">
+          <label for="ln-semana">Semana</label>
+          <input type="number" id="ln-semana" min="1" max="53" placeholder="Ej. 34" style="width:80px">
+        </div>
         <button class="clear-btn" id="ln-limpiar">Limpiar filtros</button>
         <span class="result-count" id="ln-count"></span>
       </div>
@@ -258,7 +262,7 @@
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th>Fecha</th><th>Colaborador</th><th>Área</th><th>Código - Descripción</th><th>Horas</th><th>Día</th></tr>
+          <tr><th>Fecha</th><th>Colaborador</th><th>Área</th><th>Código - Descripción</th><th>Horas</th><th>Día</th><th>Semana</th></tr>
         </thead>
         <tbody id="ln-tbody"></tbody>
       </table>
@@ -667,13 +671,14 @@ AUTH_READY.then(function () {
   const lnCodigo = document.getElementById("ln-codigo");
   const lnDesde = document.getElementById("ln-desde");
   const lnHasta = document.getElementById("ln-hasta");
+  const lnSemana = document.getElementById("ln-semana");
   const lnTbody = document.getElementById("ln-tbody");
   const lnCount = document.getElementById("ln-count");
   AREAS_CONOCIDAS.forEach(a => lnArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
 
   async function cargarListaNovedades() {
     const params = new URLSearchParams();
-    params.set("select", "fecha_novedad,nombre_colaborador,cedula,area,codigo_descripcion,hora,dia");
+    params.set("select", "fecha_novedad,nombre_colaborador,cedula,area,codigo_descripcion,hora,dia,semana");
     params.set("order", "fecha_creacion.desc");
     params.set("limit", "300");
     const buscar = lnBuscar.value.trim();
@@ -685,6 +690,7 @@ AUTH_READY.then(function () {
     if (lnCodigo.value) params.set("codigo_descripcion", "eq." + lnCodigo.value);
     if (lnDesde.value) params.append("fecha_novedad", "gte." + lnDesde.value + "T00:00:00");
     if (lnHasta.value) params.append("fecha_novedad", "lte." + lnHasta.value + "T23:59:59");
+    if (lnSemana.value) params.set("semana", "eq." + lnSemana.value);
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${params.toString()}`, { headers: { ...authHeaders(), Prefer: "count=exact" } });
       const filas = await resp.json();
@@ -693,7 +699,7 @@ AUTH_READY.then(function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       if (filas.length === 0) {
-        lnTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
+        lnTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
       } else {
         lnTbody.innerHTML = filas.map(f => `<tr>
           <td class="num">${f.fecha_novedad ? f.fecha_novedad.slice(0, 10) : "—"}</td>
@@ -702,12 +708,13 @@ AUTH_READY.then(function () {
           <td>${f.codigo_descripcion || "—"}</td>
           <td class="num">${f.hora ?? "—"}</td>
           <td>${f.dia || "—"}</td>
+          <td class="num">${f.semana ?? "—"}</td>
         </tr>`).join("");
       }
       lnCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      lnTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      lnTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       lnCount.textContent = "";
     }
   }
@@ -718,8 +725,9 @@ AUTH_READY.then(function () {
   lnCodigo.addEventListener("change", cargarListaNovedades);
   lnDesde.addEventListener("change", cargarListaNovedades);
   lnHasta.addEventListener("change", cargarListaNovedades);
+  lnSemana.addEventListener("input", () => { clearTimeout(lnTimeout); lnTimeout = setTimeout(cargarListaNovedades, 300); });
   document.getElementById("ln-limpiar").addEventListener("click", () => {
-    lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = "";
+    lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = ""; lnSemana.value = "";
     cargarListaNovedades();
   });
   cargarListaNovedades();
