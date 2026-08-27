@@ -88,6 +88,22 @@
   .field input:disabled, .field select:disabled { opacity: 0.55; cursor: not-allowed; }
   .field input[readonly] { background: var(--accent-soft); color: var(--ink-soft); border-color: var(--accent-soft-line); }
 
+  .combo { position: relative; }
+  .combo input {
+    font: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); width: 100%;
+  }
+  .combo input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .combo-panel {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20;
+    max-height: 260px; overflow-y: auto; background: var(--surface); border: 1px solid var(--line-strong);
+    border-radius: 8px; box-shadow: var(--shadow); padding: 4px;
+  }
+  .combo.open .combo-panel { display: block; }
+  .combo-option { padding: 7px 9px; border-radius: 5px; cursor: pointer; font-size: 13.5px; }
+  .combo-option:hover { background: var(--accent-soft); }
+  .combo-empty { padding: 10px 9px; font-size: 13px; color: var(--ink-faint); }
+
   .multiselect { position: relative; }
   .ms-trigger {
     font: inherit; font-size: 14px; padding: 9px 30px 9px 10px;
@@ -106,6 +122,11 @@
     box-shadow: var(--shadow); padding: 4px;
   }
   .multiselect.open .ms-panel { display: block; }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 8px;
+    margin-bottom: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink);
+  }
+  .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
   .ms-option:hover { background: var(--accent-soft); }
   .ms-option input { margin: 0; accent-color: var(--accent); }
@@ -188,14 +209,22 @@
     <form id="form-novedad">
       <div class="form-grid form-grid-novedad">
         <div class="field">
-          <label for="n-area">Área <span class="req">*</span></label>
-          <select id="n-area" required>
+          <label for="n-area-buscar">Área <span class="req">*</span></label>
+          <div class="combo" id="n-area-combo">
+            <input type="text" id="n-area-buscar" placeholder="Escribe para buscar…" autocomplete="off">
+            <div class="combo-panel" id="n-area-panel"></div>
+          </div>
+          <select id="n-area" style="display:none">
             <option value="">Selecciona un área…</option>
           </select>
         </div>
         <div class="field">
-          <label for="n-codigo">Código - Descripción <span class="req">*</span></label>
-          <select id="n-codigo" required>
+          <label for="n-codigo-buscar">Código - Descripción <span class="req">*</span></label>
+          <div class="combo" id="n-codigo-combo">
+            <input type="text" id="n-codigo-buscar" placeholder="Escribe para buscar…" autocomplete="off">
+            <div class="combo-panel" id="n-codigo-panel"></div>
+          </div>
+          <select id="n-codigo" style="display:none">
             <option value="">Selecciona un código…</option>
           </select>
         </div>
@@ -417,6 +446,12 @@ AUTH_READY.then(function () {
       if (trigger.disabled) return;
       document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
       el.classList.toggle("open");
+      const buscar = panel.querySelector(".ms-search");
+      if (el.classList.contains("open") && buscar) {
+        buscar.value = "";
+        panel.querySelectorAll(".ms-option").forEach(o => { o.style.display = ""; });
+        buscar.focus();
+      }
     });
 
     return {
@@ -431,9 +466,11 @@ AUTH_READY.then(function () {
           return;
         }
         trigger.disabled = false;
+        panel.innerHTML = `<input type="text" class="ms-search" placeholder="Buscar…" autocomplete="off">`;
+        const buscar = panel.querySelector(".ms-search");
         opciones.forEach(([valor, texto]) => {
           etiquetaPorValor[valor] = texto;
-          panel.insertAdjacentHTML("beforeend", `<label class="ms-option"><input type="checkbox" value="${valor}"><span>${texto}</span></label>`);
+          panel.insertAdjacentHTML("beforeend", `<label class="ms-option" data-texto="${texto.toLowerCase()}"><input type="checkbox" value="${valor}"><span>${texto}</span></label>`);
         });
         panel.querySelectorAll("input[type=checkbox]").forEach((chk, i) => {
           chk.addEventListener("change", () => {
@@ -441,6 +478,13 @@ AUTH_READY.then(function () {
             else seleccion.delete(opciones[i][0]);
             actualizarEtiqueta();
             if (onChange) onChange();
+          });
+        });
+        buscar.addEventListener("click", (e) => e.stopPropagation());
+        buscar.addEventListener("input", () => {
+          const q = buscar.value.trim().toLowerCase();
+          panel.querySelectorAll(".ms-option").forEach((opt) => {
+            opt.style.display = opt.dataset.texto.includes(q) ? "" : "none";
           });
         });
         actualizarEtiqueta();
@@ -461,6 +505,53 @@ AUTH_READY.then(function () {
   document.addEventListener("click", (e) => {
     document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
   });
+
+  // ---------------- combobox generico: campo de texto con sugerencias ----------------
+  // Mantiene un <select> oculto como fuente de verdad (dispara "change" al
+  // seleccionar), para no duplicar la logica que ya escucha ese evento.
+  function crearCombobox(comboId, inputId, panelId, selectOculto, obtenerOpciones) {
+    const el = document.getElementById(comboId);
+    const input = document.getElementById(inputId);
+    const panel = document.getElementById(panelId);
+
+    function etiquetaDe(valor) {
+      const opcion = obtenerOpciones().find(([v]) => v === valor);
+      return opcion ? opcion[1] : "";
+    }
+
+    function render(filtro) {
+      const q = filtro.trim().toLowerCase();
+      const opciones = obtenerOpciones();
+      const filtradas = q ? opciones.filter(([, texto]) => texto.toLowerCase().includes(q)) : opciones;
+      panel.innerHTML = filtradas.length === 0
+        ? `<div class="combo-empty">Sin coincidencias</div>`
+        : filtradas.map(([valor, texto]) => `<div class="combo-option" data-valor="${valor}">${texto}</div>`).join("");
+    }
+
+    function abrir() { render(input.value); el.classList.add("open"); }
+    function cerrar() { el.classList.remove("open"); }
+
+    input.addEventListener("focus", abrir);
+    input.addEventListener("input", abrir);
+    panel.addEventListener("click", (e) => {
+      const opt = e.target.closest(".combo-option");
+      if (!opt) return;
+      selectOculto.value = opt.dataset.valor;
+      input.value = opt.textContent;
+      cerrar();
+      selectOculto.dispatchEvent(new Event("change"));
+    });
+    input.addEventListener("blur", () => {
+      setTimeout(() => {
+        const etiquetaActual = etiquetaDe(selectOculto.value);
+        if (input.value !== etiquetaActual) input.value = etiquetaActual;
+        cerrar();
+      }, 150);
+    });
+    document.addEventListener("click", (e) => { if (!el.contains(e.target)) cerrar(); });
+
+    return { sincronizar() { input.value = etiquetaDe(selectOculto.value); } };
+  }
 
   // ---------------- formulario: novedad por colaborador ----------------
   const selArea = document.getElementById("n-area");
@@ -491,6 +582,11 @@ AUTH_READY.then(function () {
 
   let codigosPorValor = {};
   let empleadosPorCedula = {};
+
+  const comboArea = crearCombobox("n-area-combo", "n-area-buscar", "n-area-panel", selArea,
+    () => AREAS_CONOCIDAS.map(a => [a, a]));
+  const comboCodigo = crearCombobox("n-codigo-combo", "n-codigo-buscar", "n-codigo-panel", selCodigo,
+    () => Object.values(codigosPorValor).map(c => [c.codigo, c.codigo_descripcion]));
 
   async function cargarCodigos() {
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=*&habilitado=eq.true&order=codigo_descripcion.asc`, { headers: authHeaders() });
@@ -608,6 +704,7 @@ AUTH_READY.then(function () {
       msgNovedad.className = "form-msg ok";
       inHora.value = "";
       selCodigo.value = "";
+      comboCodigo.sincronizar();
       inCodigoNovedad.value = "";
       inDescripcion.value = "";
       inFecha.value = fechaHoy();
