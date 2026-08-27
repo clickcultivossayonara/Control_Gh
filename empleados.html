@@ -351,7 +351,7 @@ AUTH_READY.then(function () {
   async function cargarEmpleados() {
     const params = new URLSearchParams();
     params.set("select", "cedula,nombre,area,sede,labor,fecha_ingreso,activo");
-    params.set("order", "activo.desc,fecha_ingreso.desc");
+    params.set("order", "activo.desc,fecha_ingreso.desc.nullslast");
     params.set("limit", "500");
 
     const buscar = elBuscar.value.trim();
