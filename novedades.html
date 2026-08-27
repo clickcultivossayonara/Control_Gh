@@ -399,13 +399,17 @@ AUTH_READY.then(function () {
   function crearMultiselect(containerId, etiquetaTodos, onChange) {
     const el = document.getElementById(containerId);
     const seleccion = new Set();
+    let etiquetaPorValor = {};
     el.innerHTML = `<button type="button" class="ms-trigger" disabled>${etiquetaTodos}</button><div class="ms-panel"></div>`;
     const trigger = el.querySelector(".ms-trigger");
     const panel = el.querySelector(".ms-panel");
 
     function actualizarEtiqueta() {
       if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
-      else trigger.textContent = `${seleccion.size} seleccionado${seleccion.size === 1 ? "" : "s"}`;
+      else if (seleccion.size === 1) {
+        const valor = [...seleccion][0];
+        trigger.textContent = etiquetaPorValor[valor] ?? valor;
+      } else trigger.textContent = `${seleccion.size} seleccionados`;
     }
 
     trigger.addEventListener("click", (e) => {
@@ -420,6 +424,7 @@ AUTH_READY.then(function () {
       establecerOpciones(opciones, etiquetaVacio) {
         seleccion.clear();
         panel.innerHTML = "";
+        etiquetaPorValor = {};
         if (opciones.length === 0) {
           trigger.disabled = true;
           trigger.textContent = etiquetaVacio || "Sin opciones";
@@ -427,6 +432,7 @@ AUTH_READY.then(function () {
         }
         trigger.disabled = false;
         opciones.forEach(([valor, texto]) => {
+          etiquetaPorValor[valor] = texto;
           panel.insertAdjacentHTML("beforeend", `<label class="ms-option"><input type="checkbox" value="${valor}"><span>${texto}</span></label>`);
         });
         panel.querySelectorAll("input[type=checkbox]").forEach((chk, i) => {
