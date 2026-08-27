@@ -331,6 +331,19 @@ AUTH_READY.then(function () {
     return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
   }
 
+  // Horas de "HE" todavia disponibles para una fecha+area, segun el
+  // presupuesto cargado en Presupuesto Horas Extra. null = sin presupuesto.
+  async function consultarHorasExtraDisponibles(fecha, area) {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/horas_extra_disponibles`, {
+      method: "POST",
+      headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ p_fecha: fecha, p_area: area }),
+    });
+    if (!resp.ok) return null;
+    const valor = await resp.json();
+    return valor === null ? null : Number(valor);
+  }
+
   // ---------------- tabs ----------------
   const tabNovedad = document.getElementById("tab-novedad");
   const tabExtra = document.getElementById("tab-extra");
@@ -466,6 +479,26 @@ AUTH_READY.then(function () {
     if (!cod) { msgNovedad.textContent = "Selecciona un código."; msgNovedad.className = "form-msg error"; return; }
     if (!inFecha.value) { msgNovedad.textContent = "La fecha es obligatoria."; msgNovedad.className = "form-msg error"; return; }
     if (!inHora.value) { msgNovedad.textContent = "Las horas son obligatorias."; msgNovedad.className = "form-msg error"; return; }
+
+    if (ROL_AREA_LIMITADA.includes(window.SESION.rol) && cod.codigo === "HE") {
+      btnNovedad.disabled = true;
+      msgNovedad.textContent = "Verificando presupuesto de horas extra...";
+      msgNovedad.className = "form-msg";
+      const horasSolicitadas = Number(inHora.value) * cedulasSeleccionadas.length;
+      const disponibles = await consultarHorasExtraDisponibles(inFecha.value, selArea.value);
+      if (disponibles === null) {
+        msgNovedad.textContent = "No tiene horas asignadas para esta fecha y área.";
+        msgNovedad.className = "form-msg error";
+        btnNovedad.disabled = false;
+        return;
+      }
+      if (horasSolicitadas > disponibles) {
+        msgNovedad.textContent = `No es posible cargarlas: excede las horas asignadas para esta fecha y área (disponibles: ${disponibles}).`;
+        msgNovedad.className = "form-msg error";
+        btnNovedad.disabled = false;
+        return;
+      }
+    }
 
     const registros = cedulasSeleccionadas.map((cedula) => {
       const emp = empleadosPorCedula[cedula];
