@@ -523,6 +523,7 @@ AUTH_READY.then(function () {
     const panel = document.getElementById(panelId);
 
     function etiquetaDe(valor) {
+      if (valor === "") return "";
       const opcion = obtenerOpciones().find(([v]) => v === valor);
       return opcion ? opcion[1] : "";
     }
@@ -545,7 +546,7 @@ AUTH_READY.then(function () {
       const opt = e.target.closest(".combo-option");
       if (!opt) return;
       selectOculto.value = opt.dataset.valor;
-      input.value = opt.textContent;
+      input.value = opt.dataset.valor === "" ? "" : opt.textContent;
       cerrar();
       selectOculto.dispatchEvent(new Event("change"));
     });
