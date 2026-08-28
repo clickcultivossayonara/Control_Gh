@@ -80,6 +80,11 @@
     box-shadow: var(--shadow); padding: 4px;
   }
   .multiselect.open .ms-panel { display: block; }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 8px;
+    margin-bottom: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink);
+  }
+  .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
   .ms-option:hover { background: var(--accent-soft); }
   .ms-option input { margin: 0; accent-color: var(--accent); }
@@ -223,7 +228,9 @@ AUTH_READY.then(async function () {
       else trigger.textContent = `${seleccion.size} seleccionadas`;
     }
 
-    panel.innerHTML = opciones.map(a => `<label class="ms-option"><input type="checkbox" value="${a}"><span>${a}</span></label>`).join("");
+    panel.innerHTML = `<input type="text" class="ms-search" placeholder="Buscar…" autocomplete="off">` +
+      opciones.map(a => `<label class="ms-option" data-texto="${a.toLowerCase()}"><input type="checkbox" value="${a}"><span>${a}</span></label>`).join("");
+    const buscar = panel.querySelector(".ms-search");
     panel.querySelectorAll("input[type=checkbox]").forEach((chk) => {
       chk.addEventListener("change", () => {
         if (chk.checked) seleccion.add(chk.value);
@@ -232,16 +239,28 @@ AUTH_READY.then(async function () {
         if (onChange) onChange();
       });
     });
+    buscar.addEventListener("click", (e) => e.stopPropagation());
+    buscar.addEventListener("input", () => {
+      const q = buscar.value.trim().toLowerCase();
+      panel.querySelectorAll(".ms-option").forEach((opt) => {
+        opt.style.display = opt.dataset.texto.includes(q) ? "" : "none";
+      });
+    });
 
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
       document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
       el.classList.toggle("open");
+      if (el.classList.contains("open")) {
+        buscar.value = "";
+        panel.querySelectorAll(".ms-option").forEach(o => { o.style.display = ""; });
+        buscar.focus();
+      }
     });
 
     return {
       seleccion,
-      limpiar() { seleccion.clear(); panel.querySelectorAll("input").forEach(c => c.checked = false); actualizarEtiqueta(); },
+      limpiar() { seleccion.clear(); panel.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = false); actualizarEtiqueta(); },
     };
   }
   document.addEventListener("click", (e) => {
@@ -250,15 +269,6 @@ AUTH_READY.then(async function () {
 
   const msArea = crearMultiselect("ms-area", TODAS_LAS_AREAS, "Todas", () => reset());
 
-  function isoWeekNum(fechaStr) {
-    const [y, m, d] = fechaStr.split("-").map(Number);
-    const dt = new Date(Date.UTC(y, m - 1, d));
-    const dayNum = (dt.getUTCDay() + 6) % 7;
-    dt.setUTCDate(dt.getUTCDate() - dayNum + 3);
-    const primerJueves = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
-    const diff = dt - primerJueves;
-    return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
-  }
   const OPCIONES_SEMANA = Array.from({ length: 53 }, (_, i) => String(i + 1));
   const msSemana = crearMultiselect("ms-semana", OPCIONES_SEMANA, "Todas", () => reset());
 
@@ -469,15 +479,7 @@ AUTH_READY.then(async function () {
   });
 
   fechasPorDefecto();
-
-  // Predeterminado: semana actual seleccionada.
-  const semanaActualChk = document.querySelector(`#ms-semana input[value="${isoWeekNum(fechaISO(new Date()))}"]`);
-  if (semanaActualChk) {
-    semanaActualChk.checked = true;
-    semanaActualChk.dispatchEvent(new Event("change"));
-  } else {
-    reset();
-  }
+  reset();
 });
 </script>
 </body>
