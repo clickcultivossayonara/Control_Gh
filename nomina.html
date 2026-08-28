@@ -312,10 +312,13 @@ AUTH_READY.then(async function () {
     let hn = "—";
     if (r.horas_novedad != null) {
       const valor = Number(r.horas_novedad);
-      if (r.diferencia_tiempo != null && valor < Number(r.diferencia_tiempo)) {
-        hn = `<span class="hn-alerta">${valor}${ICONO_ALERTA}</span>`;
-      } else {
+      const dif = r.diferencia_tiempo != null ? Number(r.diferencia_tiempo) : null;
+      // Rojo + alerta si no hay con que comparar (sin datos biometricos ese
+      // dia) o si las horas de la novedad no alcanzan la diferencia.
+      if (dif !== null && valor >= dif) {
         hn = `<span class="hn-ok">${valor}</span>`;
+      } else {
+        hn = `<span class="hn-alerta">${valor}${ICONO_ALERTA}</span>`;
       }
     }
     return `<tr>
