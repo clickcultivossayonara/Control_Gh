@@ -47,7 +47,9 @@
   section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
 
+  .filters-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
   .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .filters-stack .filters { margin-bottom: 0; }
   .field { display: flex; flex-direction: column; gap: 5px; min-width: 160px; }
   .field.grow { flex: 1; min-width: 200px; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
@@ -157,46 +159,50 @@
 
   <section class="card">
     <h2>Consulta de nómina</h2>
-    <div class="filters">
-      <div class="field">
-        <label for="f-desde">Desde</label>
-        <input type="date" id="f-desde">
+    <div class="filters-stack">
+      <div class="filters">
+        <div class="field">
+          <label for="f-desde">Desde</label>
+          <input type="date" id="f-desde">
+        </div>
+        <div class="field">
+          <label for="f-hasta">Hasta</label>
+          <input type="date" id="f-hasta">
+        </div>
+        <div class="field">
+          <label>Semana</label>
+          <div class="multiselect" id="ms-semana"></div>
+        </div>
+        <div class="field">
+          <label>Área</label>
+          <div class="multiselect" id="ms-area"></div>
+        </div>
+        <div class="field grow">
+          <label for="f-buscar">Cédula o nombre</label>
+          <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+        </div>
       </div>
-      <div class="field">
-        <label for="f-hasta">Hasta</label>
-        <input type="date" id="f-hasta">
+      <div class="filters">
+        <div class="field">
+          <label>Novedad</label>
+          <div class="multiselect" id="ms-novedad"></div>
+        </div>
+        <div class="field checkbox-field">
+          <label for="f-solo-novedad" class="checkbox-label">
+            <input type="checkbox" id="f-solo-novedad">
+            <span>Solo con novedad</span>
+          </label>
+        </div>
+        <div class="field checkbox-field">
+          <label for="f-sin-marcacion" class="checkbox-label">
+            <input type="checkbox" id="f-sin-marcacion">
+            <span>Sin marcación</span>
+          </label>
+        </div>
+        <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
+        <button class="excel-btn" id="btn-excel">Descargar Excel</button>
+        <span class="result-count" id="result-count"></span>
       </div>
-      <div class="field">
-        <label>Semana</label>
-        <div class="multiselect" id="ms-semana"></div>
-      </div>
-      <div class="field">
-        <label>Área</label>
-        <div class="multiselect" id="ms-area"></div>
-      </div>
-      <div class="field grow">
-        <label for="f-buscar">Cédula o nombre</label>
-        <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
-      </div>
-      <div class="field">
-        <label>Novedad</label>
-        <div class="multiselect" id="ms-novedad"></div>
-      </div>
-      <div class="field checkbox-field">
-        <label for="f-solo-novedad" class="checkbox-label">
-          <input type="checkbox" id="f-solo-novedad">
-          <span>Solo con novedad</span>
-        </label>
-      </div>
-      <div class="field checkbox-field">
-        <label for="f-sin-marcacion" class="checkbox-label">
-          <input type="checkbox" id="f-sin-marcacion">
-          <span>Sin marcación</span>
-        </label>
-      </div>
-      <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
-      <button class="excel-btn" id="btn-excel">Descargar Excel</button>
-      <span class="result-count" id="result-count"></span>
     </div>
     <div class="table-scroll">
       <table>
