@@ -89,7 +89,11 @@
   thead th {
     position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 8px 8px;
     font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+    cursor: pointer; user-select: none;
   }
+  thead th:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 9px; margin-left: 3px; }
+  thead th.sorted .arrow { opacity: 1; }
   tbody td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   th:nth-child(1), td:nth-child(1) { width: 12%; }
   th:nth-child(2), td:nth-child(2) { width: 24%; }
@@ -216,7 +220,13 @@
       <table>
         <thead>
           <tr>
-            <th>Cédula</th><th>Nombre</th><th>Área</th><th>Sede</th><th>Labor</th><th>Ingreso</th><th>Estado</th>
+            <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
+            <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
+            <th data-key="area">Área <span class="arrow">↕</span></th>
+            <th data-key="sede">Sede <span class="arrow">↕</span></th>
+            <th data-key="labor">Labor <span class="arrow">↕</span></th>
+            <th data-key="fecha_ingreso">Ingreso <span class="arrow">↕</span></th>
+            <th data-key="activo">Estado <span class="arrow">↕</span></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -348,10 +358,18 @@ AUTH_READY.then(function () {
   const elBody = document.getElementById("tbody");
   const elCount = document.getElementById("result-count");
 
+  let sortKey = "activo", sortDir = -1;
+  function construirOrder() {
+    const dir = sortDir === 1 ? "asc" : "desc";
+    if (sortKey === "activo") return `activo.${dir},fecha_ingreso.desc.nullslast`;
+    if (sortKey === "fecha_ingreso") return `fecha_ingreso.${dir}.nullslast`;
+    return `${sortKey}.${dir}`;
+  }
+
   async function cargarEmpleados() {
     const params = new URLSearchParams();
     params.set("select", "cedula,nombre,area,sede,labor,fecha_ingreso,activo");
-    params.set("order", "activo.desc,fecha_ingreso.desc.nullslast");
+    params.set("order", construirOrder());
     params.set("limit", "500");
 
     const buscar = elBuscar.value.trim();
@@ -391,7 +409,22 @@ AUTH_READY.then(function () {
       elBody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       elCount.textContent = "";
     }
+
+    document.querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.classList.toggle("sorted", th.dataset.key === sortKey);
+      const arrow = th.querySelector(".arrow");
+      if (arrow) arrow.textContent = th.dataset.key === sortKey ? (sortDir === 1 ? "↑" : "↓") : "↕";
+    });
   }
+
+  document.querySelectorAll("thead th[data-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (sortKey === key) sortDir *= -1;
+      else { sortKey = key; sortDir = -1; }
+      cargarEmpleados();
+    });
+  });
 
   let buscarTimeout;
   elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargarEmpleados, 300); });
