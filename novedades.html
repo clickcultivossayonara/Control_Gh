@@ -160,7 +160,11 @@
   thead th {
     position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
     font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+    cursor: pointer; user-select: none;
   }
+  thead th:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 9px; margin-left: 3px; }
+  thead th.sorted .arrow { opacity: 1; }
   tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
@@ -299,7 +303,15 @@
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th>Fecha</th><th>Colaborador</th><th>Área</th><th>Código - Descripción</th><th>Horas</th><th>Día</th><th>Semana</th></tr>
+          <tr>
+            <th data-key="fecha_novedad">Fecha <span class="arrow">↕</span></th>
+            <th data-key="nombre_colaborador">Colaborador <span class="arrow">↕</span></th>
+            <th data-key="area">Área <span class="arrow">↕</span></th>
+            <th data-key="codigo_descripcion">Código - Descripción <span class="arrow">↕</span></th>
+            <th data-key="hora">Horas <span class="arrow">↕</span></th>
+            <th data-key="dia">Día <span class="arrow">↕</span></th>
+            <th data-key="semana">Semana <span class="arrow">↕</span></th>
+          </tr>
         </thead>
         <tbody id="ln-tbody"></tbody>
       </table>
@@ -348,7 +360,12 @@
     <div class="table-scroll">
       <table>
         <thead>
-          <tr><th>Fecha</th><th>Área</th><th>Horas Asignadas</th><th>Semana</th></tr>
+          <tr>
+            <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
+            <th data-key="area">Área <span class="arrow">↕</span></th>
+            <th data-key="horas_asignadas">Horas Asignadas <span class="arrow">↕</span></th>
+            <th data-key="semana">Semana <span class="arrow">↕</span></th>
+          </tr>
         </thead>
         <tbody id="le-tbody"></tbody>
       </table>
@@ -810,10 +827,12 @@ AUTH_READY.then(function () {
     lnSemanaActualChk.dispatchEvent(new Event("change"));
   }
 
+  let lnSortKey = "fecha_novedad", lnSortDir = -1;
+
   async function cargarListaNovedades() {
     const params = new URLSearchParams();
     params.set("select", "fecha_novedad,nombre_colaborador,cedula,area,codigo_descripcion,hora,dia,semana");
-    params.set("order", "fecha_creacion.desc");
+    params.set("order", `${lnSortKey}.${lnSortDir === 1 ? "asc" : "desc"}.nullslast`);
     params.set("limit", "300");
     const buscar = lnBuscar.value.trim();
     if (buscar) {
@@ -851,7 +870,22 @@ AUTH_READY.then(function () {
       lnTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       lnCount.textContent = "";
     }
+
+    lnTbody.closest("table").querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.classList.toggle("sorted", th.dataset.key === lnSortKey);
+      const arrow = th.querySelector(".arrow");
+      if (arrow) arrow.textContent = th.dataset.key === lnSortKey ? (lnSortDir === 1 ? "↑" : "↓") : "↕";
+    });
   }
+
+  lnTbody.closest("table").querySelectorAll("thead th[data-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (lnSortKey === key) lnSortDir *= -1;
+      else { lnSortKey = key; lnSortDir = -1; }
+      cargarListaNovedades();
+    });
+  });
 
   let lnTimeout;
   lnBuscar.addEventListener("input", () => { clearTimeout(lnTimeout); lnTimeout = setTimeout(cargarListaNovedades, 300); });
@@ -873,10 +907,12 @@ AUTH_READY.then(function () {
   const leTbody = document.getElementById("le-tbody");
   const leCount = document.getElementById("le-count");
 
+  let leSortKey = "fecha", leSortDir = -1;
+
   async function cargarListaExtras() {
     const params = new URLSearchParams();
     params.set("select", "fecha,area,horas_asignadas,semana");
-    params.set("order", "fecha_registro.desc");
+    params.set("order", `${leSortKey}.${leSortDir === 1 ? "asc" : "desc"}.nullslast`);
     params.set("limit", "300");
     const buscar = leBuscar.value.trim();
     if (buscar) params.set("area", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
@@ -903,7 +939,23 @@ AUTH_READY.then(function () {
       leTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       leCount.textContent = "";
     }
+
+    leTbody.closest("table").querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.classList.toggle("sorted", th.dataset.key === leSortKey);
+      const arrow = th.querySelector(".arrow");
+      if (arrow) arrow.textContent = th.dataset.key === leSortKey ? (leSortDir === 1 ? "↑" : "↓") : "↕";
+    });
   }
+
+  leTbody.closest("table").querySelectorAll("thead th[data-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (leSortKey === key) leSortDir *= -1;
+      else { leSortKey = key; leSortDir = -1; }
+      cargarListaExtras();
+    });
+  });
+
   let leTimeout;
   leBuscar.addEventListener("input", () => { clearTimeout(leTimeout); leTimeout = setTimeout(cargarListaExtras, 300); });
   document.getElementById("le-limpiar").addEventListener("click", () => {
