@@ -97,13 +97,13 @@
   tbody tr:nth-child(even):hover td { background: var(--accent-soft); }
   th:nth-child(1), td:nth-child(1) { width: 8%; }
   th:nth-child(2), td:nth-child(2) { width: 8%; }
-  th:nth-child(3), td:nth-child(3) { width: 18%; }
-  th:nth-child(4), td:nth-child(4) { width: 14%; }
-  th:nth-child(5), td:nth-child(5) { width: 9%; }
+  th:nth-child(3), td:nth-child(3) { width: 8%; }
+  th:nth-child(4), td:nth-child(4) { width: 18%; }
+  th:nth-child(5), td:nth-child(5) { width: 14%; }
   th:nth-child(6), td:nth-child(6) { width: 9%; }
-  th:nth-child(7), td:nth-child(7) { width: 16%; }
-  th:nth-child(8), td:nth-child(8) { width: 10%; }
-  th:nth-child(9), td:nth-child(9) { width: 8%; }
+  th:nth-child(7), td:nth-child(7) { width: 9%; }
+  th:nth-child(8), td:nth-child(8) { width: 16%; }
+  th:nth-child(9), td:nth-child(9) { width: 10%; }
   .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
   .nombre { font-weight: 500; }
   .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
@@ -156,8 +156,8 @@
       <table>
         <thead>
           <tr>
-            <th>Fecha</th><th>Cédula</th><th>Nombre</th><th>Área</th>
-            <th>Horas Trabajadas</th><th>Diferencia</th><th>Código - Descripción</th><th>Horas Novedad</th><th>Semana</th>
+            <th>Fecha</th><th>Semana</th><th>Cédula</th><th>Nombre</th><th>Área</th>
+            <th>Horas Trabajadas</th><th>Diferencia</th><th>Novedad</th><th>Horas Novedad</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -267,6 +267,7 @@ AUTH_READY.then(function () {
     }
     return `<tr>
       <td class="num">${r.fecha}</td>
+      <td class="num">${r.semana ?? "—"}</td>
       <td class="cedula">${r.cedula}</td>
       <td class="nombre" title="${r.nombre}">${r.nombre}</td>
       <td title="${r.area || ""}">${r.area || "—"}</td>
@@ -274,7 +275,6 @@ AUTH_READY.then(function () {
       <td class="num">${dt}</td>
       <td title="${r.codigo_descripcion || ""}">${r.codigo_descripcion || "—"}</td>
       <td class="num">${hn}</td>
-      <td class="num">${r.semana ?? "—"}</td>
     </tr>`;
   }
 
