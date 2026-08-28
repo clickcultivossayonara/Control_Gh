@@ -561,7 +561,7 @@ AUTH_READY.then(function () {
     th.addEventListener('click', () => {
       const key = th.dataset.key;
       if (sortKey === key) sortDir *= -1;
-      else { sortKey = key; sortDir = key === 'fecha' ? -1 : 1; }
+      else { sortKey = key; sortDir = -1; }
       reset();
     });
   });
