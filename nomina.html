@@ -51,6 +51,12 @@
   .field { display: flex; flex-direction: column; gap: 5px; min-width: 160px; }
   .field.grow { flex: 1; min-width: 200px; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .checkbox-field { min-width: 0; }
+  .checkbox-label {
+    display: flex; align-items: center; gap: 6px; font-size: 13px; text-transform: none; letter-spacing: normal;
+    color: var(--ink-soft); font-weight: 500; cursor: pointer; white-space: nowrap; padding-bottom: 9px;
+  }
+  .checkbox-label input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
   .field input, .field select {
     font: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
     background: var(--paper); color: var(--ink);
@@ -167,6 +173,12 @@
         <label>Novedad</label>
         <div class="multiselect" id="ms-novedad"></div>
       </div>
+      <div class="field checkbox-field">
+        <label for="f-solo-novedad" class="checkbox-label">
+          <input type="checkbox" id="f-solo-novedad">
+          <span>Solo con novedad</span>
+        </label>
+      </div>
       <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
       <button class="excel-btn" id="btn-excel">Descargar Excel</button>
       <span class="result-count" id="result-count"></span>
@@ -264,6 +276,7 @@ AUTH_READY.then(async function () {
   const elDesde = document.getElementById("f-desde");
   const elHasta = document.getElementById("f-hasta");
   const elBuscar = document.getElementById("f-buscar");
+  const elSoloNovedad = document.getElementById("f-solo-novedad");
   const elBody = document.getElementById("tbody");
   const elCount = document.getElementById("result-count");
 
@@ -322,6 +335,7 @@ AUTH_READY.then(async function () {
     if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
     if (msSemana.seleccion.size) params.set("semana", "in.(" + [...msSemana.seleccion].join(",") + ")");
     if (msNovedad.seleccion.size) params.set("codigo_descripcion", "in.(" + [...msNovedad.seleccion].map(c => `"${c}"`).join(",") + ")");
+    else if (elSoloNovedad.checked) params.set("codigo_descripcion", "not.is.null");
 
     const buscar = elBuscar.value.trim();
     if (buscar) {
@@ -443,12 +457,14 @@ AUTH_READY.then(async function () {
   elDesde.addEventListener("change", alCambiarFecha);
   elHasta.addEventListener("change", alCambiarFecha);
   elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
+  elSoloNovedad.addEventListener("change", reset);
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     fechasPorDefecto();
     msArea.limpiar();
     msSemana.limpiar();
     msNovedad.limpiar();
     elBuscar.value = "";
+    elSoloNovedad.checked = false;
     reset();
   });
 
