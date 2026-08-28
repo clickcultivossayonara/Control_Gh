@@ -121,6 +121,12 @@
   .hn-alerta { color: var(--critical); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
   .hn-alerta svg { width: 14px; height: 14px; flex-shrink: 0; }
   .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+  .load-more-row td { text-align: center; padding: 14px; background: var(--paper) !important; }
+  .load-more-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 7px;
+    border: 1px solid var(--accent-soft-line); background: var(--accent-soft); color: var(--accent); cursor: pointer;
+  }
+  .load-more-btn:hover { border-color: var(--accent); }
 
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
 </style>
@@ -230,7 +236,7 @@ AUTH_READY.then(async function () {
     document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
   });
 
-  const msArea = crearMultiselect("ms-area", TODAS_LAS_AREAS, "Todas", () => cargar());
+  const msArea = crearMultiselect("ms-area", TODAS_LAS_AREAS, "Todas", () => reset());
 
   function isoWeekNum(fechaStr) {
     const [y, m, d] = fechaStr.split("-").map(Number);
@@ -242,7 +248,7 @@ AUTH_READY.then(async function () {
     return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
   }
   const OPCIONES_SEMANA = Array.from({ length: 53 }, (_, i) => String(i + 1));
-  const msSemana = crearMultiselect("ms-semana", OPCIONES_SEMANA, "Todas", () => cargar());
+  const msSemana = crearMultiselect("ms-semana", OPCIONES_SEMANA, "Todas", () => reset());
 
   async function cargarOpcionesNovedad() {
     try {
@@ -253,7 +259,7 @@ AUTH_READY.then(async function () {
       return [];
     }
   }
-  const msNovedad = crearMultiselect("ms-novedad", await cargarOpcionesNovedad(), "Todas", () => cargar());
+  const msNovedad = crearMultiselect("ms-novedad", await cargarOpcionesNovedad(), "Todas", () => reset());
 
   const elDesde = document.getElementById("f-desde");
   const elHasta = document.getElementById("f-hasta");
@@ -324,6 +330,10 @@ AUTH_READY.then(async function () {
     }
   }
 
+  let visibles = 300;
+  const PAGE = 300;
+  function reset() { visibles = PAGE; cargar(); }
+
   async function cargar() {
     if (rangoDemasiadoAmplio()) {
       elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para consultar.</div></td></tr>`;
@@ -333,7 +343,7 @@ AUTH_READY.then(async function () {
 
     const params = new URLSearchParams();
     params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana");
-    params.set("limit", "300");
+    params.set("limit", String(visibles));
     aplicarFiltros(params);
 
     try {
@@ -348,7 +358,15 @@ AUTH_READY.then(async function () {
       if (filas.length === 0) {
         elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
       } else {
-        elBody.innerHTML = filas.map(fila).join("");
+        let html = filas.map(fila).join("");
+        if (total > filas.length) {
+          html += `<tr class="load-more-row"><td colspan="9">
+            <button class="load-more-btn" id="btn-cargar-mas">Cargar más (${(total - filas.length).toLocaleString("es-CO")} restantes)</button>
+          </td></tr>`;
+        }
+        elBody.innerHTML = html;
+        const btnMas = document.getElementById("btn-cargar-mas");
+        if (btnMas) btnMas.addEventListener("click", () => { visibles += PAGE; cargar(); });
       }
       elCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
@@ -420,18 +438,18 @@ AUTH_READY.then(async function () {
     // La fecha es el filtro principal: si el usuario la ajusta a mano, la
     // semana preseleccionada ya no debe seguir restringiendo el resultado.
     msSemana.limpiar();
-    cargar();
+    reset();
   }
   elDesde.addEventListener("change", alCambiarFecha);
   elHasta.addEventListener("change", alCambiarFecha);
-  elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargar, 300); });
+  elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     fechasPorDefecto();
     msArea.limpiar();
     msSemana.limpiar();
     msNovedad.limpiar();
     elBuscar.value = "";
-    cargar();
+    reset();
   });
 
   fechasPorDefecto();
@@ -442,7 +460,7 @@ AUTH_READY.then(async function () {
     semanaActualChk.checked = true;
     semanaActualChk.dispatchEvent(new Event("change"));
   } else {
-    cargar();
+    reset();
   }
 });
 </script>
