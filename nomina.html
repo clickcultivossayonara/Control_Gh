@@ -145,6 +145,10 @@
         <label>Semana</label>
         <div class="multiselect" id="ms-semana"></div>
       </div>
+      <div class="field">
+        <label>Novedad</label>
+        <div class="multiselect" id="ms-novedad"></div>
+      </div>
       <div class="field grow">
         <label for="f-buscar">Cédula o nombre</label>
         <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
@@ -171,7 +175,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script>
-AUTH_READY.then(function () {
+AUTH_READY.then(async function () {
   if (!requireRole(["admin", "nomina"])) return;
   pintarSesion("sesion-box");
 
@@ -230,6 +234,17 @@ AUTH_READY.then(function () {
   }
   const OPCIONES_SEMANA = Array.from({ length: 53 }, (_, i) => String(i + 1));
   const msSemana = crearMultiselect("ms-semana", OPCIONES_SEMANA, "Todas", () => cargar());
+
+  async function cargarOpcionesNovedad() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo_descripcion&habilitado=eq.true&order=codigo_descripcion.asc`, { headers: authHeaders() });
+      const filas = await resp.json();
+      return Array.isArray(filas) ? filas.map(f => f.codigo_descripcion) : [];
+    } catch {
+      return [];
+    }
+  }
+  const msNovedad = crearMultiselect("ms-novedad", await cargarOpcionesNovedad(), "Todas", () => cargar());
 
   const elDesde = document.getElementById("f-desde");
   const elHasta = document.getElementById("f-hasta");
@@ -298,6 +313,7 @@ AUTH_READY.then(function () {
     if (elHasta.value) params.append("fecha", "lte." + elHasta.value);
     if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
     if (msSemana.seleccion.size) params.set("semana", "in.(" + [...msSemana.seleccion].join(",") + ")");
+    if (msNovedad.seleccion.size) params.set("codigo_descripcion", "in.(" + [...msNovedad.seleccion].map(c => `"${c}"`).join(",") + ")");
 
     const buscar = elBuscar.value.trim();
     if (buscar) {
@@ -335,6 +351,7 @@ AUTH_READY.then(function () {
     fechasPorDefecto();
     msArea.limpiar();
     msSemana.limpiar();
+    msNovedad.limpiar();
     elBuscar.value = "";
     cargar();
   });
