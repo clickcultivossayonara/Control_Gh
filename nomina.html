@@ -109,7 +109,11 @@
   thead th {
     position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 8px 8px;
     font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
+    cursor: pointer; user-select: none;
   }
+  thead th:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 9px; margin-left: 3px; }
+  thead th.sorted .arrow { opacity: 1; }
   tbody td { padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
@@ -192,8 +196,15 @@
       <table>
         <thead>
           <tr>
-            <th>Fecha</th><th>Semana</th><th>Cédula</th><th>Nombre</th><th>Área</th>
-            <th>Horas Trabajadas</th><th>Diferencia</th><th>Novedad</th><th>Horas Novedad</th>
+            <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
+            <th data-key="semana">Semana <span class="arrow">↕</span></th>
+            <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
+            <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
+            <th data-key="area">Área <span class="arrow">↕</span></th>
+            <th data-key="horas_trabajadas">Horas Trabajadas <span class="arrow">↕</span></th>
+            <th data-key="diferencia_tiempo">Diferencia <span class="arrow">↕</span></th>
+            <th data-key="codigo_descripcion">Novedad <span class="arrow">↕</span></th>
+            <th data-key="horas_novedad">Horas Novedad <span class="arrow">↕</span></th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -370,6 +381,8 @@ AUTH_READY.then(async function () {
   const PAGE = 300;
   function reset() { visibles = PAGE; cargar(); }
 
+  let sortKey = "fecha", sortDir = -1;
+
   async function cargar() {
     if (rangoDemasiadoAmplio()) {
       elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para consultar.</div></td></tr>`;
@@ -379,6 +392,7 @@ AUTH_READY.then(async function () {
 
     const params = new URLSearchParams();
     params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana,codigo_novedad");
+    params.set("order", `${sortKey}.${sortDir === 1 ? "asc" : "desc"}.nullslast`);
     params.set("limit", String(visibles));
     aplicarFiltros(params);
 
@@ -410,7 +424,22 @@ AUTH_READY.then(async function () {
       elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       elCount.textContent = "";
     }
+
+    document.querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.classList.toggle("sorted", th.dataset.key === sortKey);
+      const arrow = th.querySelector(".arrow");
+      if (arrow) arrow.textContent = th.dataset.key === sortKey ? (sortDir === 1 ? "↑" : "↓") : "↕";
+    });
   }
+
+  document.querySelectorAll("thead th[data-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (sortKey === key) sortDir *= -1;
+      else { sortKey = key; sortDir = -1; }
+      reset();
+    });
+  });
 
   async function exportarExcel() {
     if (rangoDemasiadoAmplio()) {
