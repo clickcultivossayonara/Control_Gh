@@ -35,7 +35,7 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
-  .wrap { max-width: 1280px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
 
   .masthead { display: flex; flex-direction: column; align-items: center; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; text-align: center; }
   .masthead h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
@@ -86,20 +86,32 @@
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-  table { border-collapse: collapse; width: 100%; min-width: 820px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 12.5px; table-layout: fixed; }
   thead th {
-    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
-    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 8px 8px;
+    font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap;
   }
-  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tbody td { padding: 5px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
   tbody tr:nth-child(even):hover td { background: var(--accent-soft); }
+  th:nth-child(1), td:nth-child(1) { width: 8%; }
+  th:nth-child(2), td:nth-child(2) { width: 8%; }
+  th:nth-child(3), td:nth-child(3) { width: 18%; }
+  th:nth-child(4), td:nth-child(4) { width: 14%; }
+  th:nth-child(5), td:nth-child(5) { width: 9%; }
+  th:nth-child(6), td:nth-child(6) { width: 9%; }
+  th:nth-child(7), td:nth-child(7) { width: 16%; }
+  th:nth-child(8), td:nth-child(8) { width: 10%; }
+  th:nth-child(9), td:nth-child(9) { width: 8%; }
   .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
   .nombre { font-weight: 500; }
   .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
   .diff-pos { color: var(--accent); font-weight: 500; }
   .diff-neg { color: var(--critical); font-weight: 500; }
+  .hn-ok { color: var(--accent); font-weight: 600; }
+  .hn-alerta { color: var(--critical); font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+  .hn-alerta svg { width: 14px; height: 14px; flex-shrink: 0; }
   .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
 
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
@@ -129,6 +141,10 @@
         <label>Área</label>
         <div class="multiselect" id="ms-area"></div>
       </div>
+      <div class="field">
+        <label>Semana</label>
+        <div class="multiselect" id="ms-semana"></div>
+      </div>
       <div class="field grow">
         <label for="f-buscar">Cédula o nombre</label>
         <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
@@ -141,7 +157,7 @@
         <thead>
           <tr>
             <th>Fecha</th><th>Cédula</th><th>Nombre</th><th>Área</th>
-            <th>Horas Trabajadas</th><th>Diferencia</th><th>Código - Descripción</th><th>Horas Novedad</th>
+            <th>Horas Trabajadas</th><th>Diferencia</th><th>Código - Descripción</th><th>Horas Novedad</th><th>Semana</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -203,6 +219,18 @@ AUTH_READY.then(function () {
 
   const msArea = crearMultiselect("ms-area", TODAS_LAS_AREAS, "Todas", () => cargar());
 
+  function isoWeekNum(fechaStr) {
+    const [y, m, d] = fechaStr.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    const dayNum = (dt.getUTCDay() + 6) % 7;
+    dt.setUTCDate(dt.getUTCDate() - dayNum + 3);
+    const primerJueves = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+    const diff = dt - primerJueves;
+    return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
+  }
+  const OPCIONES_SEMANA = Array.from({ length: 53 }, (_, i) => String(i + 1));
+  const msSemana = crearMultiselect("ms-semana", OPCIONES_SEMANA, "Todas", () => cargar());
+
   const elDesde = document.getElementById("f-desde");
   const elHasta = document.getElementById("f-hasta");
   const elBuscar = document.getElementById("f-buscar");
@@ -217,6 +245,8 @@ AUTH_READY.then(function () {
     elHasta.value = fechaISO(hoy);
   }
 
+  const ICONO_ALERTA = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
+
   function fila(r) {
     const ht = r.horas_trabajadas != null ? Number(r.horas_trabajadas).toFixed(2) : "—";
     let dt = "—";
@@ -226,15 +256,25 @@ AUTH_READY.then(function () {
       const signo = v > 0 ? "+" : "";
       dt = `<span class="${cls}">${signo}${v.toFixed(2)}</span>`;
     }
+    let hn = "—";
+    if (r.horas_novedad != null) {
+      const valor = Number(r.horas_novedad);
+      if (r.diferencia_tiempo != null && valor < Number(r.diferencia_tiempo)) {
+        hn = `<span class="hn-alerta">${valor}${ICONO_ALERTA}</span>`;
+      } else {
+        hn = `<span class="hn-ok">${valor}</span>`;
+      }
+    }
     return `<tr>
       <td class="num">${r.fecha}</td>
       <td class="cedula">${r.cedula}</td>
       <td class="nombre" title="${r.nombre}">${r.nombre}</td>
-      <td>${r.area || "—"}</td>
+      <td title="${r.area || ""}">${r.area || "—"}</td>
       <td class="num">${ht}</td>
       <td class="num">${dt}</td>
-      <td>${r.codigo_descripcion || "—"}</td>
-      <td class="num">${r.horas_novedad ?? "—"}</td>
+      <td title="${r.codigo_descripcion || ""}">${r.codigo_descripcion || "—"}</td>
+      <td class="num">${hn}</td>
+      <td class="num">${r.semana ?? "—"}</td>
     </tr>`;
   }
 
@@ -244,19 +284,20 @@ AUTH_READY.then(function () {
     if (elDesde.value && elHasta.value) {
       const dias = (new Date(elHasta.value) - new Date(elDesde.value)) / (1000 * 60 * 60 * 24);
       if (dias > RANGO_MAX_DIAS) {
-        elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para consultar.</div></td></tr>`;
+        elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para consultar.</div></td></tr>`;
         elCount.textContent = "";
         return;
       }
     }
 
     const params = new URLSearchParams();
-    params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad");
+    params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana");
     params.set("limit", "300");
 
     if (elDesde.value) params.append("fecha", "gte." + elDesde.value);
     if (elHasta.value) params.append("fecha", "lte." + elHasta.value);
     if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
+    if (msSemana.seleccion.size) params.set("semana", "in.(" + [...msSemana.seleccion].join(",") + ")");
 
     const buscar = elBuscar.value.trim();
     if (buscar) {
@@ -274,14 +315,14 @@ AUTH_READY.then(function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       if (filas.length === 0) {
-        elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
+        elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
       } else {
         elBody.innerHTML = filas.map(fila).join("");
       }
       elCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       elCount.textContent = "";
     }
   }
@@ -293,12 +334,21 @@ AUTH_READY.then(function () {
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     fechasPorDefecto();
     msArea.limpiar();
+    msSemana.limpiar();
     elBuscar.value = "";
     cargar();
   });
 
   fechasPorDefecto();
-  cargar();
+
+  // Predeterminado: semana actual seleccionada.
+  const semanaActualChk = document.querySelector(`#ms-semana input[value="${isoWeekNum(fechaISO(new Date()))}"]`);
+  if (semanaActualChk) {
+    semanaActualChk.checked = true;
+    semanaActualChk.dispatchEvent(new Event("change"));
+  } else {
+    cargar();
+  }
 });
 </script>
 </body>
