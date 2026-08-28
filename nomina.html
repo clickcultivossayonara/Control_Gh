@@ -416,8 +416,14 @@ AUTH_READY.then(async function () {
   document.getElementById("btn-excel").addEventListener("click", exportarExcel);
 
   let buscarTimeout;
-  elDesde.addEventListener("change", cargar);
-  elHasta.addEventListener("change", cargar);
+  function alCambiarFecha() {
+    // La fecha es el filtro principal: si el usuario la ajusta a mano, la
+    // semana preseleccionada ya no debe seguir restringiendo el resultado.
+    msSemana.limpiar();
+    cargar();
+  }
+  elDesde.addEventListener("change", alCambiarFecha);
+  elHasta.addEventListener("change", alCambiarFecha);
   elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargar, 300); });
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     fechasPorDefecto();
