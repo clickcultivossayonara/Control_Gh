@@ -7,6 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 <style>
   :root {
@@ -83,6 +84,13 @@
     background: var(--surface); color: var(--ink-soft); cursor: pointer;
   }
   .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .excel-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--accent-soft-line);
+    background: var(--accent-soft); color: var(--accent); cursor: pointer;
+  }
+  .excel-btn:hover { border-color: var(--accent); }
+  .excel-btn:disabled { opacity: 0.6; cursor: wait; }
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
@@ -138,22 +146,23 @@
         <input type="date" id="f-hasta">
       </div>
       <div class="field">
-        <label>Área</label>
-        <div class="multiselect" id="ms-area"></div>
-      </div>
-      <div class="field">
         <label>Semana</label>
         <div class="multiselect" id="ms-semana"></div>
       </div>
       <div class="field">
-        <label>Novedad</label>
-        <div class="multiselect" id="ms-novedad"></div>
+        <label>Área</label>
+        <div class="multiselect" id="ms-area"></div>
       </div>
       <div class="field grow">
         <label for="f-buscar">Cédula o nombre</label>
         <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
       </div>
+      <div class="field">
+        <label>Novedad</label>
+        <div class="multiselect" id="ms-novedad"></div>
+      </div>
       <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
+      <button class="excel-btn" id="btn-excel">Descargar Excel</button>
       <span class="result-count" id="result-count"></span>
     </div>
     <div class="table-scroll">
@@ -295,20 +304,13 @@ AUTH_READY.then(async function () {
 
   const RANGO_MAX_DIAS = 60;
 
-  async function cargar() {
-    if (elDesde.value && elHasta.value) {
-      const dias = (new Date(elHasta.value) - new Date(elDesde.value)) / (1000 * 60 * 60 * 24);
-      if (dias > RANGO_MAX_DIAS) {
-        elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para consultar.</div></td></tr>`;
-        elCount.textContent = "";
-        return;
-      }
-    }
+  function rangoDemasiadoAmplio() {
+    if (!elDesde.value || !elHasta.value) return false;
+    const dias = (new Date(elHasta.value) - new Date(elDesde.value)) / (1000 * 60 * 60 * 24);
+    return dias > RANGO_MAX_DIAS;
+  }
 
-    const params = new URLSearchParams();
-    params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana");
-    params.set("limit", "300");
-
+  function aplicarFiltros(params) {
     if (elDesde.value) params.append("fecha", "gte." + elDesde.value);
     if (elHasta.value) params.append("fecha", "lte." + elHasta.value);
     if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
@@ -320,6 +322,19 @@ AUTH_READY.then(async function () {
       if (/^\d+$/.test(buscar)) params.set("cedula_texto", "ilike.*" + buscar + "*");
       else params.set("nombre", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
     }
+  }
+
+  async function cargar() {
+    if (rangoDemasiadoAmplio()) {
+      elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para consultar.</div></td></tr>`;
+      elCount.textContent = "";
+      return;
+    }
+
+    const params = new URLSearchParams();
+    params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana");
+    params.set("limit", "300");
+    aplicarFiltros(params);
 
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/nomina_consulta_detalle?${params.toString()}`, {
@@ -342,6 +357,63 @@ AUTH_READY.then(async function () {
       elCount.textContent = "";
     }
   }
+
+  async function exportarExcel() {
+    if (rangoDemasiadoAmplio()) {
+      alert(`El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para exportar.`);
+      return;
+    }
+    const btn = document.getElementById("btn-excel");
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+
+    try {
+      const filas = [];
+      let offset = 0;
+      const tamanoPagina = 1000;
+      while (true) {
+        btn.textContent = `Generando... (${filas.length.toLocaleString("es-CO")})`;
+        const params = new URLSearchParams();
+        params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana");
+        aplicarFiltros(params);
+        params.set("limit", String(tamanoPagina));
+        params.set("offset", String(offset));
+
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/nomina_consulta_detalle?${params.toString()}`, { headers: authHeaders() });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const lote = await resp.json();
+        filas.push(...lote);
+        if (lote.length < tamanoPagina) break;
+        offset += tamanoPagina;
+      }
+
+      const filasExcel = filas.map(r => ({
+        "Fecha": r.fecha,
+        "Semana": r.semana ?? "",
+        "Cédula": r.cedula,
+        "Nombre": r.nombre,
+        "Área": r.area || "",
+        "Horas Trabajadas": r.horas_trabajadas != null ? Number(r.horas_trabajadas) : "",
+        "Diferencia": r.diferencia_tiempo != null ? Number(r.diferencia_tiempo) : "",
+        "Novedad": r.codigo_descripcion || "",
+        "Horas Novedad": r.horas_novedad != null ? Number(r.horas_novedad) : "",
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(filasExcel);
+      ws["!cols"] = [{ wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 32 }, { wch: 20 }, { wch: 14 }, { wch: 11 }, { wch: 24 }, { wch: 12 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Nomina");
+
+      const hoy = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `nomina_${hoy}.xlsx`);
+    } catch (err) {
+      alert("No se pudo generar el Excel: " + (err.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = textoOriginal;
+    }
+  }
+  document.getElementById("btn-excel").addEventListener("click", exportarExcel);
 
   let buscarTimeout;
   elDesde.addEventListener("change", cargar);
