@@ -300,6 +300,10 @@ AUTH_READY.then(async function () {
 
   const ICONO_ALERTA = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>`;
 
+  // Novedades de tipo compensatorio/permiso/licencia: no se comparan contra
+  // la diferencia de horas biometricas, asi que quedan fuera del semaforo.
+  const CODIGOS_SIN_VALIDACION = new Set(["B072", "B073", "CAP", "CD", "DF", "HEC", "LIR", "LMA", "LPA", "LPL", "PR", "VAC"]);
+
   function fila(r) {
     const ht = r.horas_trabajadas != null ? Number(r.horas_trabajadas).toFixed(2) : "—";
     let dt = "—";
@@ -312,14 +316,18 @@ AUTH_READY.then(async function () {
     let hn = "—";
     if (r.horas_novedad != null) {
       const valor = Number(r.horas_novedad);
-      const dif = r.diferencia_tiempo != null ? Number(r.diferencia_tiempo) : null;
-      // Rojo + alerta si no hay con que comparar (sin datos biometricos ese
-      // dia), si la diferencia es negativa (no se cumplio el horario), o si
-      // las horas de la novedad no alcanzan la diferencia.
-      const esVerde = dif !== null && dif >= 0 && valor >= dif;
-      hn = esVerde
-        ? `<span class="hn-ok">${valor}</span>`
-        : `<span class="hn-alerta">${valor}${ICONO_ALERTA}</span>`;
+      if (CODIGOS_SIN_VALIDACION.has(r.codigo_novedad)) {
+        hn = String(valor);
+      } else {
+        const dif = r.diferencia_tiempo != null ? Number(r.diferencia_tiempo) : null;
+        // Rojo + alerta si no hay con que comparar (sin datos biometricos ese
+        // dia), si la diferencia es negativa (no se cumplio el horario), o si
+        // las horas de la novedad no alcanzan la diferencia.
+        const esVerde = dif !== null && dif >= 0 && valor >= dif;
+        hn = esVerde
+          ? `<span class="hn-ok">${valor}</span>`
+          : `<span class="hn-alerta">${valor}${ICONO_ALERTA}</span>`;
+      }
     }
     return `<tr>
       <td class="num">${r.fecha}</td>
@@ -369,7 +377,7 @@ AUTH_READY.then(async function () {
     }
 
     const params = new URLSearchParams();
-    params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana");
+    params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana,codigo_novedad");
     params.set("limit", String(visibles));
     aplicarFiltros(params);
 
@@ -419,7 +427,7 @@ AUTH_READY.then(async function () {
       while (true) {
         btn.textContent = `Generando... (${filas.length.toLocaleString("es-CO")})`;
         const params = new URLSearchParams();
-        params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana");
+        params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana,codigo_novedad");
         aplicarFiltros(params);
         params.set("limit", String(tamanoPagina));
         params.set("offset", String(offset));
