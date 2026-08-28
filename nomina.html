@@ -188,13 +188,11 @@
           <span>Solo con novedad</span>
         </label>
       </div>
-      <div class="field">
-        <label for="f-horas-trabajadas">Horas Trabajadas</label>
-        <select id="f-horas-trabajadas">
-          <option value="">Todos</option>
-          <option value="con">Con datos</option>
-          <option value="sin">Sin datos</option>
-        </select>
+      <div class="field checkbox-field">
+        <label for="f-sin-marcacion" class="checkbox-label">
+          <input type="checkbox" id="f-sin-marcacion">
+          <span>Sin marcación</span>
+        </label>
       </div>
       <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
       <button class="excel-btn" id="btn-excel">Descargar Excel</button>
@@ -306,7 +304,7 @@ AUTH_READY.then(async function () {
   const elHasta = document.getElementById("f-hasta");
   const elBuscar = document.getElementById("f-buscar");
   const elSoloNovedad = document.getElementById("f-solo-novedad");
-  const elHorasTrabajadas = document.getElementById("f-horas-trabajadas");
+  const elSinMarcacion = document.getElementById("f-sin-marcacion");
   const elBody = document.getElementById("tbody");
   const elCount = document.getElementById("result-count");
 
@@ -378,8 +376,7 @@ AUTH_READY.then(async function () {
     if (msSemana.seleccion.size) params.set("semana", "in.(" + [...msSemana.seleccion].join(",") + ")");
     if (msNovedad.seleccion.size) params.set("codigo_descripcion", "in.(" + [...msNovedad.seleccion].map(c => `"${c}"`).join(",") + ")");
     else if (elSoloNovedad.checked) params.set("codigo_descripcion", "not.is.null");
-    if (elHorasTrabajadas.value === "con") params.set("horas_trabajadas", "not.is.null");
-    else if (elHorasTrabajadas.value === "sin") params.set("horas_trabajadas", "is.null");
+    if (elSinMarcacion.checked) params.set("horas_trabajadas", "is.null");
 
     const buscar = elBuscar.value.trim();
     if (buscar) {
@@ -520,7 +517,7 @@ AUTH_READY.then(async function () {
   elHasta.addEventListener("change", alCambiarFecha);
   elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
   elSoloNovedad.addEventListener("change", reset);
-  elHorasTrabajadas.addEventListener("change", reset);
+  elSinMarcacion.addEventListener("change", reset);
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     fechasPorDefecto();
     msArea.limpiar();
@@ -528,7 +525,7 @@ AUTH_READY.then(async function () {
     msNovedad.limpiar();
     elBuscar.value = "";
     elSoloNovedad.checked = false;
-    elHorasTrabajadas.value = "";
+    elSinMarcacion.checked = false;
     reset();
   });
 
