@@ -63,6 +63,33 @@
   .checks-group { flex-direction: row; align-items: center; gap: 20px; }
   .checks-group .field.checkbox { gap: 8px; }
 
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 14px; padding: 9px 30px 9px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); width: 100%; text-align: left; cursor: pointer; position: relative;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-trigger:disabled { opacity: 0.55; cursor: not-allowed; }
+  .ms-trigger::after { content: "▾"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 10px; }
+  .ms-trigger:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .multiselect.open .ms-trigger { border-color: var(--accent); }
+  .ms-panel {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+    min-width: 220px; max-height: 260px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); padding: 4px;
+  }
+  .multiselect.open .ms-panel { display: block; }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 8px;
+    margin-bottom: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink);
+  }
+  .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { margin: 0; accent-color: var(--accent); }
+
   .tabs { display: flex; gap: 8px; }
   .tab-btn {
     font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px;
@@ -93,7 +120,7 @@
   .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-  table { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 12.5px; table-layout: fixed; }
+  table { border-collapse: collapse; width: 100%; min-width: 820px; font-size: 12.5px; table-layout: fixed; }
   thead th {
     position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 8px 8px;
     font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
@@ -103,14 +130,15 @@
   thead th .arrow { opacity: 0.5; font-size: 9px; margin-left: 3px; }
   thead th.sorted .arrow { opacity: 1; }
   tbody td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  th:nth-child(1), td:nth-child(1) { width: 12%; }
-  th:nth-child(2), td:nth-child(2) { width: 24%; }
-  th:nth-child(3), td:nth-child(3) { width: 22%; }
-  th:nth-child(4), td:nth-child(4) { width: 10%; }
-  th:nth-child(5), td:nth-child(5) { width: 20%; }
-  th:nth-child(6), td:nth-child(6) { width: 12%; }
+  th:nth-child(1), td:nth-child(1) { width: 10%; }
+  th:nth-child(2), td:nth-child(2) { width: 17%; }
+  th:nth-child(3), td:nth-child(3) { width: 14%; }
+  th:nth-child(4), td:nth-child(4) { width: 14%; }
+  th:nth-child(5), td:nth-child(5) { width: 8%; }
+  th:nth-child(6), td:nth-child(6) { width: 9%; }
   th:nth-child(7), td:nth-child(7) { width: 10%; }
   th:nth-child(8), td:nth-child(8) { width: 8%; }
+  th:nth-child(9), td:nth-child(9) { width: 14%; }
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
   tbody tr:nth-child(even):hover td { background: var(--accent-soft); }
@@ -266,7 +294,7 @@
         </div>
         <div class="field">
           <label for="e-fecha-ingreso">Fecha Ingreso</label>
-          <input type="date" id="e-fecha-ingreso">
+          <input type="date" id="e-fecha-ingreso" disabled>
         </div>
         <div class="field">
           <label for="e-fecha-cambio-area">Fecha último cambio de área</label>
@@ -298,8 +326,8 @@
         <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
       </div>
       <div class="field">
-        <label for="f-filtro-area">Área</label>
-        <select id="f-filtro-area"><option value="">Todas</option></select>
+        <label>Área</label>
+        <div class="multiselect" id="ms-filtro-area"></div>
       </div>
       <div class="field">
         <label for="f-filtro-estado">Estado</label>
@@ -327,9 +355,10 @@
             <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
             <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
             <th data-key="area">Área <span class="arrow">↕</span></th>
-            <th data-key="sede">Sede <span class="arrow">↕</span></th>
             <th data-key="labor">Labor <span class="arrow">↕</span></th>
+            <th data-key="sede">Sede <span class="arrow">↕</span></th>
             <th data-key="fecha_ingreso">Ingreso <span class="arrow">↕</span></th>
+            <th data-key="fecha_ultimo_cambio_area">Cambio área <span class="arrow">↕</span></th>
             <th data-key="activo">Estado <span class="arrow">↕</span></th>
             <th id="th-acciones">Acciones</th>
           </tr>
@@ -358,6 +387,82 @@ AUTH_READY.then(function () {
 
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
 
+  // ---------- multiselect generico ----------
+  function crearMultiselect(containerId, etiquetaTodos, onChange) {
+    const el = document.getElementById(containerId);
+    const seleccion = new Set();
+    let etiquetaPorValor = {};
+    el.innerHTML = `<button type="button" class="ms-trigger" disabled>${etiquetaTodos}</button><div class="ms-panel"></div>`;
+    const trigger = el.querySelector(".ms-trigger");
+    const panel = el.querySelector(".ms-panel");
+
+    function actualizarEtiqueta() {
+      if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
+      else if (seleccion.size === 1) {
+        const valor = [...seleccion][0];
+        trigger.textContent = etiquetaPorValor[valor] ?? valor;
+      } else trigger.textContent = `${seleccion.size} seleccionadas`;
+    }
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      if (trigger.disabled) return;
+      document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
+      el.classList.toggle("open");
+      const buscar = panel.querySelector(".ms-search");
+      if (el.classList.contains("open") && buscar) {
+        buscar.value = "";
+        panel.querySelectorAll(".ms-option").forEach(o => { o.style.display = ""; });
+        buscar.focus();
+      }
+    });
+
+    return {
+      seleccion,
+      establecerOpciones(opciones, etiquetaVacio) {
+        seleccion.clear();
+        panel.innerHTML = "";
+        etiquetaPorValor = {};
+        if (opciones.length === 0) {
+          trigger.disabled = true;
+          trigger.textContent = etiquetaVacio || "Sin opciones";
+          return;
+        }
+        trigger.disabled = false;
+        panel.innerHTML = `<input type="text" class="ms-search" placeholder="Buscar…" autocomplete="off">`;
+        const buscar = panel.querySelector(".ms-search");
+        opciones.forEach(([valor, texto]) => {
+          etiquetaPorValor[valor] = texto;
+          panel.insertAdjacentHTML("beforeend", `<label class="ms-option" data-texto="${texto.toLowerCase()}"><input type="checkbox" value="${valor}"><span>${texto}</span></label>`);
+        });
+        panel.querySelectorAll("input[type=checkbox]").forEach((chk, i) => {
+          chk.addEventListener("change", () => {
+            if (chk.checked) seleccion.add(opciones[i][0]);
+            else seleccion.delete(opciones[i][0]);
+            actualizarEtiqueta();
+            if (onChange) onChange();
+          });
+        });
+        buscar.addEventListener("click", (e) => e.stopPropagation());
+        buscar.addEventListener("input", () => {
+          const q = buscar.value.trim().toLowerCase();
+          panel.querySelectorAll(".ms-option").forEach((opt) => {
+            opt.style.display = opt.dataset.texto.includes(q) ? "" : "none";
+          });
+        });
+        actualizarEtiqueta();
+      },
+      limpiar() {
+        seleccion.clear();
+        panel.querySelectorAll("input").forEach((c) => { c.checked = false; });
+        actualizarEtiqueta();
+      },
+    };
+  }
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
+  });
+
   const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
   const selArea = document.getElementById("f-area");
   AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
@@ -368,8 +473,8 @@ AUTH_READY.then(function () {
   const AREAS_FILTRO = ROL_AREA_LIMITADA.includes(window.SESION.rol)
     ? AREAS_CONOCIDAS.filter(a => window.SESION.areas.includes(a))
     : AREAS_CONOCIDAS;
-  const selFiltroArea = document.getElementById("f-filtro-area");
-  AREAS_FILTRO.forEach(a => selFiltroArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
+  const msFiltroArea = crearMultiselect("ms-filtro-area", "Todas", () => cargarEmpleados());
+  msFiltroArea.establecerOpciones(AREAS_FILTRO.map(a => [a, a]));
 
   const LABORES_CONOCIDAS = ["ARMADO BOUQUETS","ASEGURADOR DE FITOSANIDAD POSTCOSECHA.","ASEGURAMIENTO USA","ASPERJADOR.","ASPIRADO.","AUXILIAR","AYUDANTE DE TALLER,FONTANERIA, LABORES VARIAS.","CARGUE DE GARRUCHA ESQUEJES","CORTADOR","CORTE ALSTROEMERIAS","CORTE ESPECIALES","CORTE USA","COSECHADOR","COSECHADOR CEJA","CUARTO FRIO","DESBOTONE CREMON/SPIDER","DESBOTONE POMPON","DESBOTÓN SPIDER","DESCARGUE BANDEJAS CONFINAMIENTO","DESCARGUE DE GARRUCHA","DESMALECE","DESPACHOS","DESTRONCAR","DESTRONQUE Y ENTERRADA DE SOCA","DISTRIBUCION CUBETAS","DRENCH","ELECTRICO Y MANTENIMIENTOS PREVENTIVOS.","EMPAQUE","EMPAQUE BOUQUETS","ENMALLE","ESTERILIZACION","ESTERILIZACIÓN DE CAMAS","FOSFINA-TERMONEBULIZADORA","FUMIGACIÓN","INSTALACION DE LUCES Y CORTINAS NEGRAS EN SIEMBRA.","JEFE","LLENADO DE BANDEJAS MANUAL","LLENADOR DE BANDEJAS","MANTENIMIENTO EN ALTURAS.","MONITOREO","MONITOREO INTEGRAL","MONITOREO ROYA BLANCA","OF VARIOS","OFICIOS VARIOS","Orden y aseo","PATINADOR","PREPARACIÓN DE CAMAS","PUESTA DE MALLA.","REGISTRO DE GARRUCHA","REVISION DE LUCES EN LA NOCHE.","REVISIÓN FITOSANITARIO EN POSTCOSECHA","REVISIÓN RB","RIEGO","RIEGO CON CODO EN CORTE","RIEGO CON CODO UNIFICACION","RIEGO SIEMBRA","SIEMBRA","SIEMBRA CAMPO","SIEMBRA EN CAMPO","SIEMBRA ENRAIZAMIENTO","SUPERVISOR","Surtidor de cartón","TALLER.","TANQUISTA","TRACTORISTA"];
   const selLabor = document.getElementById("f-labor");
@@ -623,7 +728,6 @@ AUTH_READY.then(function () {
 
   // ---------- tabla ----------
   const elBuscar = document.getElementById("f-buscar");
-  const elArea = document.getElementById("f-filtro-area");
   const elEstado = document.getElementById("f-filtro-estado");
   const elDesde = document.getElementById("f-filtro-desde");
   const elHasta = document.getElementById("f-filtro-hasta");
@@ -635,12 +739,13 @@ AUTH_READY.then(function () {
     const dir = sortDir === 1 ? "asc" : "desc";
     if (sortKey === "activo") return `activo.${dir},fecha_ingreso.desc.nullslast`;
     if (sortKey === "fecha_ingreso") return `fecha_ingreso.${dir}.nullslast`;
+    if (sortKey === "fecha_ultimo_cambio_area") return `fecha_ultimo_cambio_area.${dir}.nullslast`;
     return `${sortKey}.${dir}`;
   }
 
   async function cargarEmpleados() {
     const params = new URLSearchParams();
-    params.set("select", "cedula,nombre,area,sede,labor,fecha_ingreso,activo");
+    params.set("select", "cedula,nombre,area,sede,labor,fecha_ingreso,fecha_ultimo_cambio_area,activo");
     params.set("order", construirOrder());
     params.set("limit", "500");
 
@@ -649,7 +754,9 @@ AUTH_READY.then(function () {
       if (/^\d+$/.test(buscar)) params.set("cedula_texto", "ilike.*" + buscar + "*");
       else params.set("nombre", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
     }
-    if (elArea.value) params.set("area", "eq." + elArea.value);
+    if (msFiltroArea.seleccion.size > 0) {
+      params.set("area", "in.(" + [...msFiltroArea.seleccion].map(a => `"${a}"`).join(",") + ")");
+    }
     if (elEstado.value) params.set("activo", "eq." + elEstado.value);
     if (elDesde.value) params.append("fecha_ingreso", "gte." + elDesde.value);
     if (elHasta.value) params.append("fecha_ingreso", "lte." + elHasta.value);
@@ -664,22 +771,23 @@ AUTH_READY.then(function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       if (filas.length === 0) {
-        elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Sin empleados para estos filtros.</div></td></tr>`;
+        elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin empleados para estos filtros.</div></td></tr>`;
       } else {
         elBody.innerHTML = filas.map(f => `<tr>
           <td class="cedula">${f.cedula}</td>
           <td class="nombre" title="${f.nombre}">${f.nombre}</td>
           <td title="${f.area || ""}">${f.area || "—"}</td>
-          <td>${f.sede || "—"}</td>
           <td title="${f.labor || ""}">${f.labor || "—"}</td>
+          <td>${f.sede || "—"}</td>
           <td>${f.fecha_ingreso ? f.fecha_ingreso.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
+          <td>${f.fecha_ultimo_cambio_area ? f.fecha_ultimo_cambio_area.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
           <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
-          <td>${puedeEditar ? `<button type="button" class="link-btn" data-cedula="${f.cedula}">Editar</button>` : ""}</td>
+          <td>${puedeEditar ? `<button type="button" class="link-btn" data-toggle-cedula="${f.cedula}" data-toggle-activo="${f.activo}">${f.activo ? "Desactivar" : "Activar"}</button> &middot; <button type="button" class="link-btn" data-cedula="${f.cedula}">Editar</button>` : ""}</td>
         </tr>`).join("");
       }
       elCount.textContent = total.toLocaleString("es-CO") + " empleado" + (total === 1 ? "" : "s");
     } catch (err) {
-      elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       elCount.textContent = "";
     }
 
@@ -691,9 +799,33 @@ AUTH_READY.then(function () {
   }
 
   elBody.addEventListener("click", (e) => {
-    const btn = e.target.closest("button[data-cedula]");
-    if (btn) irAEditar(btn.dataset.cedula);
+    const btnEditar = e.target.closest("button[data-cedula]");
+    if (btnEditar) { irAEditar(btnEditar.dataset.cedula); return; }
+    const btnToggle = e.target.closest("button[data-toggle-cedula]");
+    if (btnToggle) toggleActivoEmpleado(btnToggle);
   });
+
+  async function toggleActivoEmpleado(btn) {
+    const cedula = btn.dataset.toggleCedula;
+    const activoActual = btn.dataset.toggleActivo === "true";
+    const nuevoEstado = !activoActual;
+    const accion = nuevoEstado ? "activar" : "desactivar";
+    if (!confirm(`¿Seguro que quieres ${accion} este empleado?`)) return;
+
+    btn.disabled = true;
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedula}`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify({ activo: nuevoEstado }),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      cargarEmpleados();
+    } catch (err) {
+      alert(`No se pudo ${accion} el empleado: ` + (err.message || err));
+      btn.disabled = false;
+    }
+  }
 
   document.querySelectorAll("thead th[data-key]").forEach((th) => {
     th.addEventListener("click", () => {
@@ -706,13 +838,12 @@ AUTH_READY.then(function () {
 
   let buscarTimeout;
   elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargarEmpleados, 300); });
-  elArea.addEventListener("change", cargarEmpleados);
   elEstado.addEventListener("change", cargarEmpleados);
   elDesde.addEventListener("change", cargarEmpleados);
   elHasta.addEventListener("change", cargarEmpleados);
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     elBuscar.value = "";
-    elArea.value = "";
+    msFiltroArea.limpiar();
     elEstado.value = "";
     elDesde.value = "";
     elHasta.value = "";
