@@ -703,11 +703,15 @@ AUTH_READY.then(function () {
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedula}`, {
         method: "PATCH",
-        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify(cambios),
       });
 
-      if (!resp.ok) throw new Error(await resp.text());
+      const resultado = await resp.json();
+      if (!resp.ok) throw new Error(resultado.message || `HTTP ${resp.status}`);
+      if (!Array.isArray(resultado) || resultado.length === 0) {
+        throw new Error("No se guardó ningún cambio: no se encontró el empleado o no tienes permiso para editarlo.");
+      }
 
       editarMsg.textContent = `Empleado "${nombre}" actualizado correctamente.`;
       editarMsg.className = "form-msg ok";
@@ -816,10 +820,14 @@ AUTH_READY.then(function () {
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedula}`, {
         method: "PATCH",
-        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
         body: JSON.stringify({ activo: nuevoEstado }),
       });
-      if (!resp.ok) throw new Error(await resp.text());
+      const resultado = await resp.json();
+      if (!resp.ok) throw new Error(resultado.message || `HTTP ${resp.status}`);
+      if (!Array.isArray(resultado) || resultado.length === 0) {
+        throw new Error("No se encontró el empleado o no tienes permiso para modificarlo.");
+      }
       cargarEmpleados();
     } catch (err) {
       alert(`No se pudo ${accion} el empleado: ` + (err.message || err));
