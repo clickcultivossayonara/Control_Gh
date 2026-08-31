@@ -46,9 +46,9 @@
   section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
 
-  .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-  @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
+  .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
   .field label .req { color: var(--critical); }
@@ -513,7 +513,7 @@ AUTH_READY.then(function () {
     try {
       const params = new URLSearchParams();
       params.set("select", "cedula,nombre,area,sede,labor,eficiencia,fecha_ingreso,fecha_ultimo_cambio_area,activo,administrativo");
-      if (/^\d+$/.test(termino)) params.set("cedula", "eq." + termino);
+      if (/^\d+$/.test(termino)) params.set("cedula_texto", "ilike.*" + termino + "*");
       else params.set("nombre", "ilike.*" + termino.replace(/[,()]/g, "") + "*");
       params.set("order", "nombre.asc");
       params.set("limit", "20");
