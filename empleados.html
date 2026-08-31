@@ -247,8 +247,9 @@
         <label for="e-buscar-cedula">Cédula o nombre</label>
         <input type="text" id="e-buscar-cedula" autocomplete="off" placeholder="Ej. 1193599748 o Roqueme…">
       </div>
-      <div class="field" style="justify-content:flex-end">
+      <div class="field" style="justify-content:flex-end; flex-direction:row; gap:8px;">
         <button type="button" class="btn-primary" id="btn-buscar-editar" style="width:fit-content">Buscar</button>
+        <button type="button" class="clear-btn" id="btn-limpiar-editar" style="width:fit-content">Limpiar</button>
       </div>
       <span class="form-msg" id="editar-buscar-msg" style="align-self:center"></span>
     </div>
@@ -668,6 +669,19 @@ AUTH_READY.then(function () {
   });
   elBuscarCedula.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); document.getElementById("btn-buscar-editar").click(); }
+  });
+
+  document.getElementById("btn-limpiar-editar").addEventListener("click", () => {
+    elBuscarCedula.value = "";
+    elResultados.hidden = true;
+    elResultados.innerHTML = "";
+    formEditar.hidden = true;
+    formEditar.reset();
+    editarBuscarMsg.textContent = "";
+    editarBuscarMsg.className = "form-msg";
+    editarMsg.textContent = "";
+    editarMsg.className = "form-msg";
+    elBuscarCedula.focus();
   });
 
   formEditar.addEventListener("submit", async (e) => {
