@@ -125,6 +125,14 @@
     background: none; border: none; padding: 0; font: inherit; font-size: 12px; font-weight: 600;
     color: var(--accent); text-decoration: underline; cursor: pointer;
   }
+  .resultados-busqueda { display: flex; flex-direction: column; gap: 4px; margin: -6px 0 14px; }
+  .resultados-busqueda[hidden] { display: none; }
+  .resultado-item {
+    display: block; width: 100%; text-align: left; font: inherit; font-size: 13px; padding: 8px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--ink); cursor: pointer;
+  }
+  .resultado-item:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .resultado-item .ced { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); margin-right: 8px; }
 
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
 </style>
@@ -208,14 +216,16 @@
     <h2>Editar empleado</h2>
     <div class="form-grid" style="margin-bottom:14px">
       <div class="field">
-        <label for="e-buscar-cedula">Cédula del empleado</label>
-        <input type="text" id="e-buscar-cedula" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Ej. 1193599748">
+        <label for="e-buscar-cedula">Cédula o nombre</label>
+        <input type="text" id="e-buscar-cedula" autocomplete="off" placeholder="Ej. 1193599748 o Roqueme…">
       </div>
       <div class="field" style="justify-content:flex-end">
         <button type="button" class="btn-primary" id="btn-buscar-editar" style="width:fit-content">Buscar</button>
       </div>
       <span class="form-msg" id="editar-buscar-msg" style="align-self:center"></span>
     </div>
+
+    <div class="resultados-busqueda" id="editar-resultados" hidden></div>
 
     <form id="form-editar-empleado" hidden>
       <div class="form-grid">
@@ -469,59 +479,87 @@ AUTH_READY.then(function () {
   const editarBuscarMsg = document.getElementById("editar-buscar-msg");
   const editarMsg = document.getElementById("form-editar-msg");
 
-  elBuscarCedula.addEventListener("input", (e) => {
-    e.target.value = e.target.value.replace(/\D/g, "");
-  });
   document.getElementById("e-nombre").addEventListener("input", (e) => {
     const pos = e.target.selectionStart;
     e.target.value = e.target.value.toUpperCase();
     e.target.setSelectionRange(pos, pos);
   });
 
-  async function buscarEmpleadoParaEditar(cedula) {
+  const elResultados = document.getElementById("editar-resultados");
+  let ultimosResultadosBusqueda = [];
+
+  function cargarEmpleadoEnFormulario(emp) {
+    elResultados.hidden = true;
+    document.getElementById("e-cedula").value = emp.cedula;
+    document.getElementById("e-nombre").value = emp.nombre || "";
+    document.getElementById("e-area").value = emp.area || "";
+    document.getElementById("e-labor").value = emp.labor || "";
+    document.getElementById("e-sede").value = emp.sede || "Unión";
+    document.getElementById("e-eficiencia").value = emp.eficiencia || "";
+    document.getElementById("e-fecha-ingreso").value = emp.fecha_ingreso ? emp.fecha_ingreso.slice(0, 10) : "";
+    document.getElementById("e-fecha-cambio-area").value = emp.fecha_ultimo_cambio_area ? emp.fecha_ultimo_cambio_area.slice(0, 10) : "";
+    document.getElementById("e-activo").checked = !!emp.activo;
+    document.getElementById("e-administrativo").checked = !!emp.administrativo;
+    formEditar.hidden = false;
+  }
+
+  async function buscarEmpleados(termino) {
     formEditar.hidden = true;
     editarMsg.textContent = "";
+    elResultados.hidden = true;
+    elResultados.innerHTML = "";
     editarBuscarMsg.textContent = "Buscando...";
     editarBuscarMsg.className = "form-msg";
     try {
       const params = new URLSearchParams();
       params.set("select", "cedula,nombre,area,sede,labor,eficiencia,fecha_ingreso,fecha_ultimo_cambio_area,activo,administrativo");
-      params.set("cedula", "eq." + cedula);
+      if (/^\d+$/.test(termino)) params.set("cedula", "eq." + termino);
+      else params.set("nombre", "ilike.*" + termino.replace(/[,()]/g, "") + "*");
+      params.set("order", "nombre.asc");
+      params.set("limit", "20");
+
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers: authHeaders() });
       const filas = await resp.json();
       if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+
       if (!filas.length) {
-        editarBuscarMsg.textContent = `No se encontró ningún empleado con la cédula ${cedula}.`;
+        editarBuscarMsg.textContent = `No se encontró ningún empleado con "${termino}".`;
         editarBuscarMsg.className = "form-msg error";
         return;
       }
-      const emp = filas[0];
-      document.getElementById("e-cedula").value = emp.cedula;
-      document.getElementById("e-nombre").value = emp.nombre || "";
-      document.getElementById("e-area").value = emp.area || "";
-      document.getElementById("e-labor").value = emp.labor || "";
-      document.getElementById("e-sede").value = emp.sede || "Unión";
-      document.getElementById("e-eficiencia").value = emp.eficiencia || "";
-      document.getElementById("e-fecha-ingreso").value = emp.fecha_ingreso ? emp.fecha_ingreso.slice(0, 10) : "";
-      document.getElementById("e-fecha-cambio-area").value = emp.fecha_ultimo_cambio_area ? emp.fecha_ultimo_cambio_area.slice(0, 10) : "";
-      document.getElementById("e-activo").checked = !!emp.activo;
-      document.getElementById("e-administrativo").checked = !!emp.administrativo;
-      editarBuscarMsg.textContent = "";
-      formEditar.hidden = false;
+
+      if (filas.length === 1) {
+        editarBuscarMsg.textContent = "";
+        cargarEmpleadoEnFormulario(filas[0]);
+        return;
+      }
+
+      ultimosResultadosBusqueda = filas;
+      editarBuscarMsg.textContent = `${filas.length} coincidencias, elige un empleado.`;
+      editarBuscarMsg.className = "form-msg";
+      elResultados.innerHTML = filas.map(f => `<button type="button" class="resultado-item" data-cedula="${f.cedula}"><span class="ced">${f.cedula}</span>${f.nombre}${f.area ? " — " + f.area : ""}</button>`).join("");
+      elResultados.hidden = false;
     } catch (err) {
       editarBuscarMsg.textContent = "Error al buscar: " + (err.message || err);
       editarBuscarMsg.className = "form-msg error";
     }
   }
 
+  elResultados.addEventListener("click", (e) => {
+    const btn = e.target.closest(".resultado-item");
+    if (!btn) return;
+    const emp = ultimosResultadosBusqueda.find(f => String(f.cedula) === btn.dataset.cedula);
+    if (emp) cargarEmpleadoEnFormulario(emp);
+  });
+
   document.getElementById("btn-buscar-editar").addEventListener("click", () => {
-    const cedula = elBuscarCedula.value.trim();
-    if (!cedula || !/^\d+$/.test(cedula)) {
-      editarBuscarMsg.textContent = "Escribe una cédula numérica válida.";
+    const termino = elBuscarCedula.value.trim();
+    if (!termino) {
+      editarBuscarMsg.textContent = "Escribe una cédula o un nombre.";
       editarBuscarMsg.className = "form-msg error";
       return;
     }
-    buscarEmpleadoParaEditar(cedula);
+    buscarEmpleados(termino);
   });
   elBuscarCedula.addEventListener("keydown", (e) => {
     if (e.key === "Enter") { e.preventDefault(); document.getElementById("btn-buscar-editar").click(); }
@@ -580,7 +618,7 @@ AUTH_READY.then(function () {
   function irAEditar(cedula) {
     document.querySelector('#tabs-empleado [data-tab="editar"]').click();
     elBuscarCedula.value = cedula;
-    buscarEmpleadoParaEditar(cedula);
+    buscarEmpleados(String(cedula));
   }
 
   // ---------- tabla ----------
