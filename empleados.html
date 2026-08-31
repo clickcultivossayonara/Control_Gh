@@ -63,6 +63,14 @@
   .checks-group { flex-direction: row; align-items: center; gap: 20px; }
   .checks-group .field.checkbox { gap: 8px; }
 
+  .tabs { display: flex; gap: 8px; }
+  .tab-btn {
+    font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .tab-btn.activo { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  section.card[hidden] { display: none; }
+
   .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
   .btn-primary {
     font: inherit; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 7px; border: none;
@@ -102,6 +110,7 @@
   th:nth-child(5), td:nth-child(5) { width: 20%; }
   th:nth-child(6), td:nth-child(6) { width: 12%; }
   th:nth-child(7), td:nth-child(7) { width: 10%; }
+  th:nth-child(8), td:nth-child(8) { width: 8%; }
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
   tbody tr:nth-child(even):hover td { background: var(--accent-soft); }
@@ -112,6 +121,10 @@
   .chip.ok { background: var(--accent-soft); color: var(--accent); }
   .chip.off { background: var(--critical-soft); color: var(--critical); }
   .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+  .link-btn {
+    background: none; border: none; padding: 0; font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--accent); text-decoration: underline; cursor: pointer;
+  }
 
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
 </style>
@@ -123,6 +136,11 @@
     <h1>Empleados</h1>
     <div class="sub"><img src="logo-sayonara.png" alt="Cultivos Sayonara" style="height:18px;width:auto;vertical-align:middle;margin-right:4px"> &middot; <a href="index.html">Inicio</a> &middot; <a href="registro-biometrico.html">Ver registro de asistencia</a> &middot; <a href="novedades.html">Novedades de nómina</a></div>
     <div class="sesion-box" id="sesion-box" style="justify-content:center"></div>
+  </div>
+
+  <div class="tabs" id="tabs-empleado">
+    <button type="button" class="tab-btn activo" data-tab="agregar">Agregar empleado</button>
+    <button type="button" class="tab-btn" data-tab="editar">Editar empleado</button>
   </div>
 
   <section class="card" id="card-agregar-empleado">
@@ -186,6 +204,82 @@
     </form>
   </section>
 
+  <section class="card" id="card-editar-empleado" hidden>
+    <h2>Editar empleado</h2>
+    <div class="form-grid" style="margin-bottom:14px">
+      <div class="field">
+        <label for="e-buscar-cedula">Cédula del empleado</label>
+        <input type="text" id="e-buscar-cedula" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="Ej. 1193599748">
+      </div>
+      <div class="field" style="justify-content:flex-end">
+        <button type="button" class="btn-primary" id="btn-buscar-editar" style="width:fit-content">Buscar</button>
+      </div>
+      <span class="form-msg" id="editar-buscar-msg" style="align-self:center"></span>
+    </div>
+
+    <form id="form-editar-empleado" hidden>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-cedula">Cédula</label>
+          <input type="text" id="e-cedula" disabled>
+        </div>
+        <div class="field">
+          <label for="e-nombre">Nombre <span class="req">*</span></label>
+          <input type="text" id="e-nombre" required autocomplete="off" style="text-transform:uppercase">
+        </div>
+        <div class="field">
+          <label for="e-area">Área</label>
+          <select id="e-area">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-labor">Labor</label>
+          <select id="e-labor">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-sede">Sede</label>
+          <select id="e-sede">
+            <option value="Unión">Unión</option>
+            <option value="Ceja">Ceja</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-eficiencia">Eficiencia</label>
+          <select id="e-eficiencia">
+            <option value="">—</option>
+            <option value="Cuenta">Cuenta</option>
+            <option value="No Cuenta">No Cuenta</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-fecha-ingreso">Fecha Ingreso</label>
+          <input type="date" id="e-fecha-ingreso">
+        </div>
+        <div class="field">
+          <label for="e-fecha-cambio-area">Fecha último cambio de área</label>
+          <input type="date" id="e-fecha-cambio-area">
+        </div>
+        <div class="field checks-group">
+          <div class="field checkbox">
+            <input type="checkbox" id="e-activo">
+            <label for="e-activo">Activo</label>
+          </div>
+          <div class="field checkbox">
+            <input type="checkbox" id="e-administrativo">
+            <label for="e-administrativo">Administrativo</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-guardar-editar">Guardar cambios</button>
+        <span class="form-msg" id="form-editar-msg"></span>
+      </div>
+    </form>
+  </section>
+
   <section class="card">
     <h2>Empleados registrados</h2>
     <div class="filters">
@@ -227,6 +321,7 @@
             <th data-key="labor">Labor <span class="arrow">↕</span></th>
             <th data-key="fecha_ingreso">Ingreso <span class="arrow">↕</span></th>
             <th data-key="activo">Estado <span class="arrow">↕</span></th>
+            <th id="th-acciones">Acciones</th>
           </tr>
         </thead>
         <tbody id="tbody"></tbody>
@@ -243,8 +338,12 @@
 AUTH_READY.then(function () {
   if (!requireRole(["admin", "nomina", "jefe_area", "supervisor"])) return;
   pintarSesion("sesion-box");
-  if (["jefe_area", "supervisor"].includes(window.SESION.rol)) {
+  const puedeEditar = ["admin", "nomina"].includes(window.SESION.rol);
+  if (!puedeEditar) {
     document.getElementById("card-agregar-empleado").hidden = true;
+    document.getElementById("tabs-empleado").hidden = true;
+    document.getElementById("card-editar-empleado").hidden = true;
+    document.getElementById("th-acciones").hidden = true;
   }
 
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
@@ -252,6 +351,8 @@ AUTH_READY.then(function () {
   const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
   const selArea = document.getElementById("f-area");
   AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
+  const selAreaEditar = document.getElementById("e-area");
+  AREAS_CONOCIDAS.forEach(a => selAreaEditar.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
 
   const ROL_AREA_LIMITADA = ["jefe_area", "supervisor"];
   const AREAS_FILTRO = ROL_AREA_LIMITADA.includes(window.SESION.rol)
@@ -263,6 +364,8 @@ AUTH_READY.then(function () {
   const LABORES_CONOCIDAS = ["ARMADO BOUQUETS","ASEGURADOR DE FITOSANIDAD POSTCOSECHA.","ASEGURAMIENTO USA","ASPERJADOR.","ASPIRADO.","AUXILIAR","AYUDANTE DE TALLER,FONTANERIA, LABORES VARIAS.","CARGUE DE GARRUCHA ESQUEJES","CORTADOR","CORTE ALSTROEMERIAS","CORTE ESPECIALES","CORTE USA","COSECHADOR","COSECHADOR CEJA","CUARTO FRIO","DESBOTONE CREMON/SPIDER","DESBOTONE POMPON","DESBOTÓN SPIDER","DESCARGUE BANDEJAS CONFINAMIENTO","DESCARGUE DE GARRUCHA","DESMALECE","DESPACHOS","DESTRONCAR","DESTRONQUE Y ENTERRADA DE SOCA","DISTRIBUCION CUBETAS","DRENCH","ELECTRICO Y MANTENIMIENTOS PREVENTIVOS.","EMPAQUE","EMPAQUE BOUQUETS","ENMALLE","ESTERILIZACION","ESTERILIZACIÓN DE CAMAS","FOSFINA-TERMONEBULIZADORA","FUMIGACIÓN","INSTALACION DE LUCES Y CORTINAS NEGRAS EN SIEMBRA.","JEFE","LLENADO DE BANDEJAS MANUAL","LLENADOR DE BANDEJAS","MANTENIMIENTO EN ALTURAS.","MONITOREO","MONITOREO INTEGRAL","MONITOREO ROYA BLANCA","OF VARIOS","OFICIOS VARIOS","Orden y aseo","PATINADOR","PREPARACIÓN DE CAMAS","PUESTA DE MALLA.","REGISTRO DE GARRUCHA","REVISION DE LUCES EN LA NOCHE.","REVISIÓN FITOSANITARIO EN POSTCOSECHA","REVISIÓN RB","RIEGO","RIEGO CON CODO EN CORTE","RIEGO CON CODO UNIFICACION","RIEGO SIEMBRA","SIEMBRA","SIEMBRA CAMPO","SIEMBRA EN CAMPO","SIEMBRA ENRAIZAMIENTO","SUPERVISOR","Surtidor de cartón","TALLER.","TANQUISTA","TRACTORISTA"];
   const selLabor = document.getElementById("f-labor");
   LABORES_CONOCIDAS.forEach(l => selLabor.insertAdjacentHTML("beforeend", `<option value="${l}">${l}</option>`));
+  const selLaborEditar = document.getElementById("e-labor");
+  LABORES_CONOCIDAS.forEach(l => selLaborEditar.insertAdjacentHTML("beforeend", `<option value="${l}">${l}</option>`));
 
   // Cedula: solo digitos
   document.getElementById("f-cedula").addEventListener("input", (e) => {
@@ -349,6 +452,137 @@ AUTH_READY.then(function () {
     }
   });
 
+  // ---------- pestañas Agregar / Editar ----------
+  document.querySelectorAll("#tabs-empleado .tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#tabs-empleado .tab-btn").forEach((b) => b.classList.remove("activo"));
+      btn.classList.add("activo");
+      const tab = btn.dataset.tab;
+      document.getElementById("card-agregar-empleado").hidden = tab !== "agregar";
+      document.getElementById("card-editar-empleado").hidden = tab !== "editar";
+    });
+  });
+
+  // ---------- editar empleado ----------
+  const elBuscarCedula = document.getElementById("e-buscar-cedula");
+  const formEditar = document.getElementById("form-editar-empleado");
+  const editarBuscarMsg = document.getElementById("editar-buscar-msg");
+  const editarMsg = document.getElementById("form-editar-msg");
+
+  elBuscarCedula.addEventListener("input", (e) => {
+    e.target.value = e.target.value.replace(/\D/g, "");
+  });
+  document.getElementById("e-nombre").addEventListener("input", (e) => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+  });
+
+  async function buscarEmpleadoParaEditar(cedula) {
+    formEditar.hidden = true;
+    editarMsg.textContent = "";
+    editarBuscarMsg.textContent = "Buscando...";
+    editarBuscarMsg.className = "form-msg";
+    try {
+      const params = new URLSearchParams();
+      params.set("select", "cedula,nombre,area,sede,labor,eficiencia,fecha_ingreso,fecha_ultimo_cambio_area,activo,administrativo");
+      params.set("cedula", "eq." + cedula);
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers: authHeaders() });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      if (!filas.length) {
+        editarBuscarMsg.textContent = `No se encontró ningún empleado con la cédula ${cedula}.`;
+        editarBuscarMsg.className = "form-msg error";
+        return;
+      }
+      const emp = filas[0];
+      document.getElementById("e-cedula").value = emp.cedula;
+      document.getElementById("e-nombre").value = emp.nombre || "";
+      document.getElementById("e-area").value = emp.area || "";
+      document.getElementById("e-labor").value = emp.labor || "";
+      document.getElementById("e-sede").value = emp.sede || "Unión";
+      document.getElementById("e-eficiencia").value = emp.eficiencia || "";
+      document.getElementById("e-fecha-ingreso").value = emp.fecha_ingreso ? emp.fecha_ingreso.slice(0, 10) : "";
+      document.getElementById("e-fecha-cambio-area").value = emp.fecha_ultimo_cambio_area ? emp.fecha_ultimo_cambio_area.slice(0, 10) : "";
+      document.getElementById("e-activo").checked = !!emp.activo;
+      document.getElementById("e-administrativo").checked = !!emp.administrativo;
+      editarBuscarMsg.textContent = "";
+      formEditar.hidden = false;
+    } catch (err) {
+      editarBuscarMsg.textContent = "Error al buscar: " + (err.message || err);
+      editarBuscarMsg.className = "form-msg error";
+    }
+  }
+
+  document.getElementById("btn-buscar-editar").addEventListener("click", () => {
+    const cedula = elBuscarCedula.value.trim();
+    if (!cedula || !/^\d+$/.test(cedula)) {
+      editarBuscarMsg.textContent = "Escribe una cédula numérica válida.";
+      editarBuscarMsg.className = "form-msg error";
+      return;
+    }
+    buscarEmpleadoParaEditar(cedula);
+  });
+  elBuscarCedula.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") { e.preventDefault(); document.getElementById("btn-buscar-editar").click(); }
+  });
+
+  formEditar.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    const cedula = document.getElementById("e-cedula").value;
+    const nombre = document.getElementById("e-nombre").value.trim();
+    if (!nombre) {
+      editarMsg.textContent = "El nombre es obligatorio.";
+      editarMsg.className = "form-msg error";
+      return;
+    }
+
+    const val = (id) => document.getElementById(id).value.trim() || null;
+
+    const cambios = {
+      nombre: nombre.toUpperCase(),
+      area: val("e-area"),
+      sede: val("e-sede"),
+      labor: val("e-labor"),
+      eficiencia: val("e-eficiencia"),
+      fecha_ingreso: val("e-fecha-ingreso"),
+      fecha_ultimo_cambio_area: val("e-fecha-cambio-area"),
+      activo: document.getElementById("e-activo").checked,
+      administrativo: document.getElementById("e-administrativo").checked,
+    };
+
+    const btnGuardarEditar = document.getElementById("btn-guardar-editar");
+    btnGuardarEditar.disabled = true;
+    editarMsg.textContent = "Guardando...";
+    editarMsg.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedula}`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify(cambios),
+      });
+
+      if (!resp.ok) throw new Error(await resp.text());
+
+      editarMsg.textContent = `Empleado "${nombre}" actualizado correctamente.`;
+      editarMsg.className = "form-msg ok";
+      cargarEmpleados();
+    } catch (err) {
+      editarMsg.textContent = "No se pudo guardar: " + (err.message || err);
+      editarMsg.className = "form-msg error";
+    } finally {
+      btnGuardarEditar.disabled = false;
+    }
+  });
+
+  function irAEditar(cedula) {
+    document.querySelector('#tabs-empleado [data-tab="editar"]').click();
+    elBuscarCedula.value = cedula;
+    buscarEmpleadoParaEditar(cedula);
+  }
+
   // ---------- tabla ----------
   const elBuscar = document.getElementById("f-buscar");
   const elArea = document.getElementById("f-filtro-area");
@@ -392,7 +626,7 @@ AUTH_READY.then(function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       if (filas.length === 0) {
-        elBody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Sin empleados para estos filtros.</div></td></tr>`;
+        elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Sin empleados para estos filtros.</div></td></tr>`;
       } else {
         elBody.innerHTML = filas.map(f => `<tr>
           <td class="cedula">${f.cedula}</td>
@@ -402,11 +636,12 @@ AUTH_READY.then(function () {
           <td title="${f.labor || ""}">${f.labor || "—"}</td>
           <td>${f.fecha_ingreso ? f.fecha_ingreso.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
           <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+          <td>${puedeEditar ? `<button type="button" class="link-btn" data-cedula="${f.cedula}">Editar</button>` : ""}</td>
         </tr>`).join("");
       }
       elCount.textContent = total.toLocaleString("es-CO") + " empleado" + (total === 1 ? "" : "s");
     } catch (err) {
-      elBody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       elCount.textContent = "";
     }
 
@@ -416,6 +651,11 @@ AUTH_READY.then(function () {
       if (arrow) arrow.textContent = th.dataset.key === sortKey ? (sortDir === 1 ? "↑" : "↓") : "↕";
     });
   }
+
+  elBody.addEventListener("click", (e) => {
+    const btn = e.target.closest("button[data-cedula]");
+    if (btn) irAEditar(btn.dataset.cedula);
+  });
 
   document.querySelectorAll("thead th[data-key]").forEach((th) => {
     th.addEventListener("click", () => {
