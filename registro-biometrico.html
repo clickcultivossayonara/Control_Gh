@@ -421,6 +421,7 @@ AUTH_READY.then(function () {
 
   function aplicarFiltros(params) {
     params.set('select', 'cedula,nombre,area,sede,fecha,hora_entrada,hora_salida,horas_trabajadas,diferencia_tiempo,estado,semana');
+    params.append('nombre', 'not.eq.No Registrado');
 
     if (elDesde.value) params.append('fecha', 'gte.' + elDesde.value);
     if (elHasta.value) params.append('fecha', 'lte.' + elHasta.value);

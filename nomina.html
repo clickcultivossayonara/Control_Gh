@@ -376,6 +376,7 @@ AUTH_READY.then(async function () {
   }
 
   function aplicarFiltros(params) {
+    params.append("nombre", "not.eq.No Registrado");
     if (elDesde.value) params.append("fecha", "gte." + elDesde.value);
     if (elHasta.value) params.append("fecha", "lte." + elHasta.value);
     if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
