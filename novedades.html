@@ -157,6 +157,16 @@
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
+  table.tabla-novedades { min-width: 900px; table-layout: fixed; }
+  table.tabla-novedades th:nth-child(1), table.tabla-novedades td:nth-child(1) { width: 10%; }
+  table.tabla-novedades th:nth-child(2), table.tabla-novedades td:nth-child(2) { width: 8%; }
+  table.tabla-novedades th:nth-child(3), table.tabla-novedades td:nth-child(3) { width: 10%; }
+  table.tabla-novedades th:nth-child(4), table.tabla-novedades td:nth-child(4) { width: 11%; }
+  table.tabla-novedades th:nth-child(5), table.tabla-novedades td:nth-child(5) { width: 21%; }
+  table.tabla-novedades th:nth-child(6), table.tabla-novedades td:nth-child(6) { width: 14%; }
+  table.tabla-novedades th:nth-child(7), table.tabla-novedades td:nth-child(7) { width: 18%; }
+  table.tabla-novedades th:nth-child(8), table.tabla-novedades td:nth-child(8) { width: 8%; }
+  table.tabla-novedades td { overflow: hidden; text-overflow: ellipsis; }
   thead th {
     position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
     font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
@@ -240,9 +250,17 @@
           <label for="n-descripcion">Descripción novedad</label>
           <input type="text" id="n-descripcion" readonly>
         </div>
-        <div class="field">
+        <div class="field" id="n-fecha-campo">
           <label for="n-fecha">Fecha <span class="req">*</span></label>
           <input type="date" id="n-fecha" required>
+        </div>
+        <div class="field" id="n-fecha-inicio-campo" hidden>
+          <label for="n-fecha-inicio">Fecha inicio <span class="req">*</span></label>
+          <input type="date" id="n-fecha-inicio">
+        </div>
+        <div class="field" id="n-fecha-final-campo" hidden>
+          <label for="n-fecha-final">Fecha final <span class="req">*</span></label>
+          <input type="date" id="n-fecha-final">
         </div>
         <div class="field">
           <label>Colaborador(es) <span class="req">*</span></label>
@@ -301,16 +319,17 @@
       </div>
     </div>
     <div class="table-scroll">
-      <table>
+      <table class="tabla-novedades">
         <thead>
           <tr>
             <th data-key="fecha_novedad">Fecha <span class="arrow">↕</span></th>
+            <th data-key="semana">Semana <span class="arrow">↕</span></th>
+            <th data-key="dia">Día <span class="arrow">↕</span></th>
+            <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
             <th data-key="nombre_colaborador">Colaborador <span class="arrow">↕</span></th>
             <th data-key="area">Área <span class="arrow">↕</span></th>
             <th data-key="codigo_descripcion">Código - Descripción <span class="arrow">↕</span></th>
             <th data-key="hora">Horas <span class="arrow">↕</span></th>
-            <th data-key="dia">Día <span class="arrow">↕</span></th>
-            <th data-key="semana">Semana <span class="arrow">↕</span></th>
           </tr>
         </thead>
         <tbody id="ln-tbody"></tbody>
@@ -580,16 +599,51 @@ AUTH_READY.then(function () {
   }
 
   // ---------------- formulario: novedad por colaborador ----------------
+  const TIPOS_RANGO_FECHA = ["Ausencia", "Vacaciones"];
+
   const selArea = document.getElementById("n-area");
   const msColaborador = crearMultiselect("n-colaborador", "Primero selecciona el área…");
   const selCodigo = document.getElementById("n-codigo");
   const inCodigoNovedad = document.getElementById("n-codigo-novedad");
   const inDescripcion = document.getElementById("n-descripcion");
+  const campoFecha = document.getElementById("n-fecha-campo");
   const inFecha = document.getElementById("n-fecha");
+  const campoFechaInicio = document.getElementById("n-fecha-inicio-campo");
+  const inFechaInicio = document.getElementById("n-fecha-inicio");
+  const campoFechaFinal = document.getElementById("n-fecha-final-campo");
+  const inFechaFinal = document.getElementById("n-fecha-final");
   const inHora = document.getElementById("n-hora");
   const formNovedad = document.getElementById("form-novedad");
   const btnNovedad = document.getElementById("btn-novedad");
   const msgNovedad = document.getElementById("msg-novedad");
+
+  function generarRangoFechas(desde, hasta) {
+    const fechas = [];
+    let [y, m, d] = desde.split("-").map(Number);
+    let cursor = new Date(y, m - 1, d);
+    const [yh, mh, dh] = hasta.split("-").map(Number);
+    const fin = new Date(yh, mh - 1, dh);
+    while (cursor <= fin) {
+      const yy = cursor.getFullYear(), mm = String(cursor.getMonth() + 1).padStart(2, "0"), dd = String(cursor.getDate()).padStart(2, "0");
+      fechas.push(`${yy}-${mm}-${dd}`);
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return fechas;
+  }
+
+  // Fecha inicio/fin (rango de varios dias) solo para tipo Ausencia/Vacaciones;
+  // los demas tipos usan el campo de fecha unica de siempre.
+  function actualizarCamposFechaRango() {
+    const cod = codigosPorValor[selCodigo.value];
+    const usaRango = cod && TIPOS_RANGO_FECHA.includes(cod.tipo);
+    campoFecha.hidden = usaRango;
+    inFecha.required = !usaRango;
+    campoFechaInicio.hidden = !usaRango;
+    campoFechaFinal.hidden = !usaRango;
+    inFechaInicio.required = usaRango;
+    inFechaFinal.required = usaRango;
+    if (!usaRango) { inFechaInicio.value = ""; inFechaFinal.value = ""; }
+  }
 
   const alertaPresupuesto = document.getElementById("alerta-presupuesto");
   const alertaTitulo = document.getElementById("alerta-titulo");
@@ -608,6 +662,7 @@ AUTH_READY.then(function () {
 
   let codigosPorValor = {};
   let empleadosPorCedula = {};
+  actualizarCamposFechaRango();
 
   const comboArea = crearCombobox("n-area-combo", "n-area-buscar", "n-area-panel", selArea,
     () => AREAS_CONOCIDAS.map(a => [a, a]));
@@ -625,13 +680,7 @@ AUTH_READY.then(function () {
   }
   cargarCodigos();
 
-  selCodigo.addEventListener("change", () => {
-    const c = codigosPorValor[selCodigo.value];
-    inCodigoNovedad.value = c ? c.codigo : "";
-    inDescripcion.value = c ? c.descripcion : "";
-  });
-
-  selArea.addEventListener("change", async () => {
+  async function cargarColaboradores() {
     empleadosPorCedula = {};
     if (!selArea.value) {
       msColaborador.deshabilitar("Primero selecciona el área…");
@@ -650,7 +699,74 @@ AUTH_READY.then(function () {
       filas.map(f => [f.cedula, f.nombre]),
       "Sin colaboradores activos en esta área"
     );
+  }
+
+  // Gate de presupuesto de horas extra: en vez de esperar a "Guardar novedad"
+  // para avisar que falta presupuesto, se valida apenas quedan completos
+  // area + codigo HE + fecha, y mientras no haya presupuesto se bloquea la
+  // seleccion de colaboradores y horas (para no hacer diligenciar el resto
+  // del formulario en vano).
+  let presupuestoOK = true;
+  let colaboradorBloqueadoPorPresupuesto = false;
+
+  async function verificarGatePresupuesto() {
+    const cod = codigosPorValor[selCodigo.value];
+    const esHE = cod && cod.codigo === "HE";
+    const aplica = esHE && ROL_AREA_LIMITADA.includes(window.SESION.rol) && selArea.value && inFecha.value;
+
+    if (!aplica) {
+      presupuestoOK = true;
+      inHora.disabled = false;
+      alertaPresupuesto.hidden = true;
+      // Si el colaborador quedo bloqueado por falta de presupuesto en un
+      // codigo HE anterior, hay que recargarlo al salir de ese estado
+      // (ej. el usuario cambio a otro codigo o quito el area).
+      if (colaboradorBloqueadoPorPresupuesto) {
+        colaboradorBloqueadoPorPresupuesto = false;
+        await cargarColaboradores();
+      }
+      return;
+    }
+
+    msgNovedad.textContent = "Verificando presupuesto de horas extra...";
+    msgNovedad.className = "form-msg";
+    const disponibles = await consultarHorasExtraDisponibles(inFecha.value, selArea.value);
+    msgNovedad.textContent = "";
+
+    if (disponibles === null) {
+      presupuestoOK = false;
+      mostrarAlertaPresupuesto(
+        "Sin presupuesto de horas extra",
+        `No tiene horas asignadas para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
+      );
+      msColaborador.deshabilitar("Sin presupuesto de horas extra para esta fecha/área");
+      colaboradorBloqueadoPorPresupuesto = true;
+      inHora.disabled = true;
+    } else {
+      presupuestoOK = true;
+      alertaPresupuesto.hidden = true;
+      inHora.disabled = false;
+      if (colaboradorBloqueadoPorPresupuesto) {
+        colaboradorBloqueadoPorPresupuesto = false;
+        await cargarColaboradores();
+      }
+    }
+  }
+
+  selCodigo.addEventListener("change", async () => {
+    const c = codigosPorValor[selCodigo.value];
+    inCodigoNovedad.value = c ? c.codigo : "";
+    inDescripcion.value = c ? c.descripcion : "";
+    actualizarCamposFechaRango();
+    await verificarGatePresupuesto();
   });
+
+  selArea.addEventListener("change", async () => {
+    await cargarColaboradores();
+    await verificarGatePresupuesto();
+  });
+
+  inFecha.addEventListener("change", verificarGatePresupuesto);
 
   formNovedad.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -658,12 +774,30 @@ AUTH_READY.then(function () {
 
     const cedulasSeleccionadas = [...msColaborador.seleccion];
     const cod = codigosPorValor[selCodigo.value];
+    const usaRango = cod && TIPOS_RANGO_FECHA.includes(cod.tipo);
+
     if (cedulasSeleccionadas.length === 0) { msgNovedad.textContent = "Selecciona al menos un colaborador."; msgNovedad.className = "form-msg error"; return; }
     if (!cod) { msgNovedad.textContent = "Selecciona un código."; msgNovedad.className = "form-msg error"; return; }
-    if (!inFecha.value) { msgNovedad.textContent = "La fecha es obligatoria."; msgNovedad.className = "form-msg error"; return; }
     if (!inHora.value) { msgNovedad.textContent = "Las horas son obligatorias."; msgNovedad.className = "form-msg error"; return; }
 
+    let fechas;
+    if (usaRango) {
+      if (!inFechaInicio.value || !inFechaFinal.value) { msgNovedad.textContent = "La fecha inicio y fecha final son obligatorias."; msgNovedad.className = "form-msg error"; return; }
+      if (inFechaInicio.value > inFechaFinal.value) { msgNovedad.textContent = "La fecha inicio no puede ser posterior a la fecha final."; msgNovedad.className = "form-msg error"; return; }
+      fechas = generarRangoFechas(inFechaInicio.value, inFechaFinal.value);
+    } else {
+      if (!inFecha.value) { msgNovedad.textContent = "La fecha es obligatoria."; msgNovedad.className = "form-msg error"; return; }
+      fechas = [inFecha.value];
+    }
+
     if (ROL_AREA_LIMITADA.includes(window.SESION.rol) && cod.codigo === "HE") {
+      if (!presupuestoOK) {
+        mostrarAlertaPresupuesto(
+          "Sin presupuesto de horas extra",
+          `No tiene horas asignadas para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
+        );
+        return;
+      }
       btnNovedad.disabled = true;
       msgNovedad.textContent = "Verificando presupuesto de horas extra...";
       msgNovedad.className = "form-msg";
@@ -688,28 +822,31 @@ AUTH_READY.then(function () {
       }
     }
 
-    const registros = cedulasSeleccionadas.map((cedula) => {
+    const registros = [];
+    cedulasSeleccionadas.forEach((cedula) => {
       const emp = empleadosPorCedula[cedula];
-      return {
-        id_nomina: idUnico(),
-        cedula: emp.cedula,
-        nombre_colaborador: emp.nombre,
-        area: emp.area,
-        nombre_jefe: emp.nombre_jefe,
-        email_jefe: emp.email_jefe,
-        finca: emp.sede,
-        administrativo: emp.administrativo,
-        codigo_descripcion: cod.codigo_descripcion,
-        codigo_novedad: cod.codigo,
-        descripcion_novedad: cod.descripcion,
-        tipo_novedad: cod.tipo,
-        codigo: cod.codigo_nomina,
-        fecha_novedad: inFecha.value + "T00:00:00",
-        dia: diaSemana(inFecha.value),
-        semana: isoWeekNum(inFecha.value),
-        hora: Number(inHora.value),
-        fecha_creacion: ahoraNaive(),
-      };
+      fechas.forEach((fecha) => {
+        registros.push({
+          id_nomina: idUnico(),
+          cedula: emp.cedula,
+          nombre_colaborador: emp.nombre,
+          area: emp.area,
+          nombre_jefe: emp.nombre_jefe,
+          email_jefe: emp.email_jefe,
+          finca: emp.sede,
+          administrativo: emp.administrativo,
+          codigo_descripcion: cod.codigo_descripcion,
+          codigo_novedad: cod.codigo,
+          descripcion_novedad: cod.descripcion,
+          tipo_novedad: cod.tipo,
+          codigo: cod.codigo_nomina,
+          fecha_novedad: fecha + "T00:00:00",
+          dia: diaSemana(fecha),
+          semana: isoWeekNum(fecha),
+          hora: Number(inHora.value),
+          fecha_creacion: ahoraNaive(),
+        });
+      });
     });
 
     btnNovedad.disabled = true;
@@ -724,9 +861,9 @@ AUTH_READY.then(function () {
       });
       if (!resp.ok) throw new Error(await resp.text());
 
-      msgNovedad.textContent = registros.length === 1
+      msgNovedad.textContent = cedulasSeleccionadas.length === 1 && fechas.length === 1
         ? `Novedad guardada para ${registros[0].nombre_colaborador}.`
-        : `Novedad guardada para ${registros.length} colaboradores.`;
+        : `${registros.length} novedad(es) guardada(s) para ${cedulasSeleccionadas.length} colaborador(es) y ${fechas.length} día(s).`;
       msgNovedad.className = "form-msg ok";
       inHora.value = "";
       selCodigo.value = "";
@@ -734,8 +871,12 @@ AUTH_READY.then(function () {
       inCodigoNovedad.value = "";
       inDescripcion.value = "";
       inFecha.value = fechaHoy();
+      inFechaInicio.value = "";
+      inFechaFinal.value = "";
+      actualizarCamposFechaRango();
       msColaborador.seleccion.clear();
-      selArea.dispatchEvent(new Event("change"));
+      await cargarColaboradores();
+      await verificarGatePresupuesto();
       cargarListaNovedades();
     } catch (err) {
       msgNovedad.textContent = "No se pudo guardar: " + (err.message || err);
@@ -817,6 +958,8 @@ AUTH_READY.then(function () {
     () => [["", "Todos"], ...Object.values(codigosPorValor).map(c => [c.codigo_descripcion, c.codigo_descripcion])]);
   comboLnCodigo.sincronizar();
 
+  let lnSortKey = "fecha_novedad", lnSortDir = -1;
+
   const msSemanaNovedad = crearMultiselect("ln-semana", "Todas", () => cargarListaNovedades());
   msSemanaNovedad.establecerOpciones(Array.from({ length: 53 }, (_, i) => [String(i + 1), String(i + 1)]));
 
@@ -826,8 +969,6 @@ AUTH_READY.then(function () {
     lnSemanaActualChk.checked = true;
     lnSemanaActualChk.dispatchEvent(new Event("change"));
   }
-
-  let lnSortKey = "fecha_novedad", lnSortDir = -1;
 
   async function cargarListaNovedades() {
     const params = new URLSearchParams();
@@ -852,22 +993,23 @@ AUTH_READY.then(function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       if (filas.length === 0) {
-        lnTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
+        lnTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
       } else {
         lnTbody.innerHTML = filas.map(f => `<tr>
           <td class="num">${f.fecha_novedad ? f.fecha_novedad.slice(0, 10) : "—"}</td>
+          <td class="num">${f.semana ?? "—"}</td>
+          <td>${f.dia || "—"}</td>
+          <td class="cedula">${f.cedula ?? "—"}</td>
           <td class="nombre">${f.nombre_colaborador || "—"}</td>
           <td>${f.area || "—"}</td>
           <td>${f.codigo_descripcion || "—"}</td>
           <td class="num">${f.hora ?? "—"}</td>
-          <td>${f.dia || "—"}</td>
-          <td class="num">${f.semana ?? "—"}</td>
         </tr>`).join("");
       }
       lnCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      lnTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      lnTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       lnCount.textContent = "";
     }
 
