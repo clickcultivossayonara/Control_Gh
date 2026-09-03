@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Configuraciones — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+
+  .masthead { display: flex; flex-direction: column; align-items: center; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; text-align: center; }
+  .masthead h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
+  .masthead .sub { font-size: 13px; color: var(--ink-soft); }
+  .masthead a { color: var(--accent); text-decoration: none; }
+  .masthead a:hover { text-decoration: underline; }
+
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .tab-btn {
+    font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .tab-btn.activo { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+  section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
+  section.card[hidden] { display: none; }
+  h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 4px; }
+  .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 16px; }
+
+  .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 520px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field label .req { color: var(--critical); }
+  .field input[type=text], .field input[type=number], .field select {
+    font: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field.checkbox { flex-direction: row; align-items: center; gap: 8px; padding-top: 20px; }
+  .field.checkbox label { text-transform: none; font-size: 14px; letter-spacing: normal; color: var(--ink); font-weight: 500; }
+  .field.checkbox input { accent-color: var(--accent); width: 16px; height: 16px; }
+  .field-hint { font-size: 11.5px; color: var(--ink-faint); }
+
+  .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
+  .btn-primary {
+    font: inherit; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 7px; border: none;
+    background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+  .btn-small {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 6px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-small.critical:hover { border-color: var(--critical); color: var(--critical); }
+  .form-msg { font-size: 13.5px; font-weight: 500; }
+  .form-msg.ok { color: var(--accent); }
+  .form-msg.error { color: var(--critical); }
+
+  .clear-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .filters .field { min-width: 160px; }
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
+  table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 13px; }
+  table.tabla-codigos { min-width: 920px; }
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
+    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+  }
+  thead th[data-key] { cursor: pointer; user-select: none; }
+  thead th[data-key]:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 9px; margin-left: 3px; }
+  thead th.sorted .arrow { opacity: 1; }
+  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); }
+  tbody input[type=text], tbody input[type=number] { font: inherit; font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); width: 100%; }
+  tbody input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+  tbody tr:hover td { background: var(--accent-soft); }
+  .nombre { font-weight: 500; }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.ok { background: var(--accent-soft); color: var(--accent); }
+  .chip.off { background: var(--critical-soft); color: var(--critical); }
+  .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+  .fila-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+
+  footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <h1>Configuraciones</h1>
+    <div class="sub" id="nav-sub"><img src="logo-sayonara.png" alt="Cultivos Sayonara" style="height:18px;width:auto;vertical-align:middle;margin-right:4px"> &middot; <a href="index.html">Inicio</a> &middot; <a href="empleados.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a> &middot; <a href="novedades.html">Novedades</a> &middot; <a href="nomina.html">Nómina</a></div>
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab-btn activo" id="tab-areas" type="button">Áreas</button>
+    <button class="tab-btn" id="tab-labores" type="button">Labor</button>
+    <button class="tab-btn" id="tab-codigos" type="button">Código - Descripción</button>
+    <button class="tab-btn" id="tab-horas" type="button">Horas por día</button>
+  </div>
+
+  <section class="card" id="card-area">
+    <h2>Agregar área</h2>
+    <p class="card-hint">Las áreas activas aparecen en Empleados, Novedades, Registro Biométrico y Nómina.</p>
+    <form id="form-area">
+      <div class="form-grid">
+        <div class="field">
+          <label for="area-nombre">Nombre <span class="req">*</span></label>
+          <input type="text" id="area-nombre" required autocomplete="off" style="text-transform:uppercase">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-area">Guardar área</button>
+        <span class="form-msg" id="msg-area"></span>
+      </div>
+    </form>
+
+    <p class="card-hint" style="margin-top:24px">Áreas registradas</p>
+    <div class="filters">
+      <div class="field">
+        <label for="area-buscar">Buscar</label>
+        <input type="text" id="area-buscar" placeholder="Ej. RIEGO…" autocomplete="off">
+      </div>
+      <button class="clear-btn" id="area-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="area-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
+            <th data-key="activo">Estado <span class="arrow">↕</span></th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="area-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="card-labor" hidden>
+    <h2>Agregar labor</h2>
+    <p class="card-hint">Las labores activas aparecen al agregar o editar un empleado.</p>
+    <form id="form-labor">
+      <div class="form-grid">
+        <div class="field">
+          <label for="labor-nombre">Nombre <span class="req">*</span></label>
+          <input type="text" id="labor-nombre" required autocomplete="off">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-labor">Guardar labor</button>
+        <span class="form-msg" id="msg-labor"></span>
+      </div>
+    </form>
+
+    <p class="card-hint" style="margin-top:24px">Labores registradas</p>
+    <div class="filters">
+      <div class="field">
+        <label for="labor-buscar">Buscar</label>
+        <input type="text" id="labor-buscar" placeholder="Ej. CORTADOR…" autocomplete="off">
+      </div>
+      <button class="clear-btn" id="labor-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="labor-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
+            <th data-key="activo">Estado <span class="arrow">↕</span></th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="labor-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="card-codigo" hidden>
+    <h2>Agregar código de novedad</h2>
+    <p class="card-hint">Aparecen en Novedades de Nómina (Ingreso de Novedades) y en los filtros de Nómina.</p>
+    <form id="form-codigo">
+      <div class="form-grid">
+        <div class="field">
+          <label for="codigo-codigo">Código <span class="req">*</span></label>
+          <input type="text" id="codigo-codigo" required autocomplete="off" style="text-transform:uppercase" placeholder="Ej. VAC">
+        </div>
+        <div class="field">
+          <label for="codigo-descripcion">Descripción <span class="req">*</span></label>
+          <input type="text" id="codigo-descripcion" required autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="codigo-tipo">Tipo</label>
+          <input type="text" id="codigo-tipo" autocomplete="off" placeholder="Ej. Ausencia, Vacaciones, EXTRAS…">
+          <span class="field-hint">"Ausencia" y "Vacaciones" activan el rango de fechas en Novedades.</span>
+        </div>
+        <div class="field">
+          <label for="codigo-codigo-descripcion">Código - Descripción <span class="req">*</span></label>
+          <input type="text" id="codigo-codigo-descripcion" required autocomplete="off" placeholder="Ej. VAC-VACACIONES">
+        </div>
+        <div class="field">
+          <label for="codigo-codigo-nomina">Código nómina</label>
+          <input type="text" id="codigo-codigo-nomina" autocomplete="off">
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="codigo-prestamos">
+          <label for="codigo-prestamos">Préstamos</label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-codigo">Guardar código</button>
+        <span class="form-msg" id="msg-codigo"></span>
+      </div>
+    </form>
+
+    <p class="card-hint" style="margin-top:24px">Códigos registrados</p>
+    <div class="filters">
+      <div class="field">
+        <label for="codigo-buscar">Buscar</label>
+        <input type="text" id="codigo-buscar" placeholder="Ej. VACACIONES…" autocomplete="off">
+      </div>
+      <button class="clear-btn" id="codigo-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="codigo-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table class="tabla-codigos">
+        <thead>
+          <tr>
+            <th data-key="codigo">Código <span class="arrow">↕</span></th>
+            <th data-key="descripcion">Descripción <span class="arrow">↕</span></th>
+            <th data-key="tipo">Tipo <span class="arrow">↕</span></th>
+            <th data-key="codigo_descripcion">Código - Descripción <span class="arrow">↕</span></th>
+            <th data-key="codigo_nomina">Cód. Nómina <span class="arrow">↕</span></th>
+            <th>Préstamos</th>
+            <th data-key="habilitado">Estado <span class="arrow">↕</span></th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="codigo-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="card-horas" hidden>
+    <h2>Horas esperadas por día</h2>
+    <p class="card-hint">Se usan para calcular la diferencia de horas trabajadas en Registro Biométrico y Nómina. Son siempre estos 7 días — no se pueden agregar ni quitar filas.</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Día</th>
+            <th>Horas esperadas</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="horas-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+AUTH_READY.then(async function () {
+  if (!requireRole(["admin", "nomina"])) return;
+  pintarSesion("sesion-box");
+  if (window.SESION.rol === "admin") {
+    document.getElementById("nav-sub").insertAdjacentHTML("beforeend", ' &middot; <a href="usuarios.html">Usuarios</a>');
+  }
+
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+
+  // ---------------- pestañas ----------------
+  const tabs = [
+    { btn: "tab-areas", card: "card-area" },
+    { btn: "tab-labores", card: "card-labor" },
+    { btn: "tab-codigos", card: "card-codigo" },
+    { btn: "tab-horas", card: "card-horas" },
+  ];
+  tabs.forEach(({ btn, card }) => {
+    document.getElementById(btn).addEventListener("click", () => {
+      tabs.forEach(({ btn: b2, card: c2 }) => {
+        document.getElementById(b2).classList.toggle("activo", b2 === btn);
+        document.getElementById(c2).hidden = c2 !== card;
+      });
+    });
+  });
+
+  // ---------------- seccion generica: tabla simple {id, nombre, activo} ----------------
+  // Reutilizado para Areas y Labor, que son identicas salvo la tabla y los ids del DOM.
+  function crearSeccionSimple({ tabla, prefijo, etiquetaPlural }) {
+    const form = document.getElementById(`form-${prefijo}`);
+    const inNombre = document.getElementById(`${prefijo}-nombre`);
+    const btn = document.getElementById(`btn-${prefijo}`);
+    const msg = document.getElementById(`msg-${prefijo}`);
+    const buscar = document.getElementById(`${prefijo}-buscar`);
+    const limpiar = document.getElementById(`${prefijo}-limpiar`);
+    const tbody = document.getElementById(`${prefijo}-tbody`);
+    const count = document.getElementById(`${prefijo}-count`);
+    const tabla_scope = tbody.closest("table");
+
+    let cache = [];
+    let sortKey = "nombre", sortDir = 1;
+
+    function filaVista(f) {
+      return `<tr data-id="${f.id}">
+        <td class="nombre">${f.nombre}</td>
+        <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+        <td class="fila-acciones">
+          <button type="button" class="btn-small fila-editar">Editar</button>
+          <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
+        </td>
+      </tr>`;
+    }
+    function filaEdicion(f) {
+      return `<tr data-id="${f.id}">
+        <td><input type="text" class="fila-nombre" value="${f.nombre}"></td>
+        <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+        <td class="fila-acciones">
+          <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
+          <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
+        </td>
+      </tr>`;
+    }
+
+    async function cargar() {
+      const params = new URLSearchParams();
+      params.set("select", "id,nombre,activo");
+      params.set("order", `${sortKey}.${sortDir === 1 ? "asc" : "desc"}`);
+      const q = buscar.value.trim();
+      if (q) params.set("nombre", "ilike.*" + q.replace(/[,()]/g, "") + "*");
+
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?${params.toString()}`, {
+          headers: { ...authHeaders(), Prefer: "count=exact" },
+        });
+        const filas = await resp.json();
+        if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+        const rango = resp.headers.get("content-range");
+        const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+        cache = Array.isArray(filas) ? filas : [];
+        tbody.innerHTML = cache.length === 0
+          ? `<tr><td colspan="3"><div class="empty-state">Sin ${etiquetaPlural} para estos filtros.</div></td></tr>`
+          : cache.map(filaVista).join("");
+        count.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="3"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+        count.textContent = "";
+      }
+
+      tabla_scope.querySelectorAll("thead th[data-key]").forEach((th) => {
+        th.classList.toggle("sorted", th.dataset.key === sortKey);
+        const arrow = th.querySelector(".arrow");
+        if (arrow) arrow.textContent = th.dataset.key === sortKey ? (sortDir === 1 ? "↑" : "↓") : "↕";
+      });
+    }
+
+    tabla_scope.querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.addEventListener("click", () => {
+        const key = th.dataset.key;
+        if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
+        cargar();
+      });
+    });
+
+    inNombre.addEventListener("input", (e) => {
+      const pos = e.target.selectionStart;
+      e.target.value = e.target.value.toUpperCase();
+      e.target.setSelectionRange(pos, pos);
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const nombre = inNombre.value.trim();
+      if (!nombre) { msg.textContent = "El nombre es obligatorio."; msg.className = "form-msg error"; return; }
+
+      btn.disabled = true;
+      msg.textContent = "Guardando...";
+      msg.className = "form-msg";
+
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}`, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify([{ nombre }]),
+        });
+        if (!resp.ok) {
+          const texto = await resp.text();
+          if (resp.status === 409 || texto.includes("duplicate key")) throw new Error(`Ya existe "${nombre}".`);
+          throw new Error(texto);
+        }
+        msg.textContent = `"${nombre}" agregado correctamente.`;
+        msg.className = "form-msg ok";
+        form.reset();
+        cargar();
+      } catch (err) {
+        msg.textContent = "No se pudo guardar: " + (err.message || err);
+        msg.className = "form-msg error";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    tbody.addEventListener("click", async (e) => {
+      const fila = e.target.closest("tr");
+      if (!fila) return;
+      const id = fila.dataset.id;
+      const datos = cache.find(x => String(x.id) === id);
+      if (!datos) return;
+
+      if (e.target.classList.contains("fila-editar")) { fila.outerHTML = filaEdicion(datos); return; }
+      if (e.target.classList.contains("fila-cancelar-edicion")) { fila.outerHTML = filaVista(datos); return; }
+
+      if (e.target.classList.contains("fila-guardar-edicion")) {
+        const nombre = fila.querySelector(".fila-nombre").value.trim();
+        if (!nombre) { alert("El nombre es obligatorio."); return; }
+        e.target.disabled = true;
+        try {
+          const resp = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${id}`, {
+            method: "PATCH",
+            headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+            body: JSON.stringify({ nombre }),
+          });
+          if (!resp.ok) throw new Error(await resp.text());
+          cargar();
+        } catch (err) {
+          alert("No se pudo guardar: " + (err.message || err));
+          e.target.disabled = false;
+        }
+        return;
+      }
+
+      if (e.target.classList.contains("fila-toggle")) {
+        const activarA = e.target.textContent.trim() === "Activar";
+        e.target.disabled = true;
+        try {
+          const resp = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${id}`, {
+            method: "PATCH",
+            headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+            body: JSON.stringify({ activo: activarA }),
+          });
+          if (!resp.ok) throw new Error(await resp.text());
+          cargar();
+        } catch (err) {
+          alert("No se pudo actualizar: " + (err.message || err));
+          e.target.disabled = false;
+        }
+      }
+    });
+
+    let buscarTimeout;
+    buscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargar, 300); });
+    limpiar.addEventListener("click", () => { buscar.value = ""; cargar(); });
+
+    return { cargar };
+  }
+
+  const seccionAreas = crearSeccionSimple({ tabla: "areas", prefijo: "area", etiquetaPlural: "áreas" });
+  const seccionLabores = crearSeccionSimple({ tabla: "labores", prefijo: "labor", etiquetaPlural: "labores" });
+
+  // ---------------- seccion: codigos de novedad ----------------
+  const formCodigo = document.getElementById("form-codigo");
+  const inCodigoCodigo = document.getElementById("codigo-codigo");
+  const inCodigoDescripcion = document.getElementById("codigo-descripcion");
+  const inCodigoTipo = document.getElementById("codigo-tipo");
+  const inCodigoCodigoDescripcion = document.getElementById("codigo-codigo-descripcion");
+  const inCodigoCodigoNomina = document.getElementById("codigo-codigo-nomina");
+  const inCodigoPrestamos = document.getElementById("codigo-prestamos");
+  const btnCodigo = document.getElementById("btn-codigo");
+  const msgCodigo = document.getElementById("msg-codigo");
+  const codigoBuscar = document.getElementById("codigo-buscar");
+  const codigoLimpiar = document.getElementById("codigo-limpiar");
+  const codigoTbody = document.getElementById("codigo-tbody");
+  const codigoCount = document.getElementById("codigo-count");
+  const codigoTabla = codigoTbody.closest("table");
+
+  let codigosCache = [];
+  let codigoSortKey = "codigo_descripcion", codigoSortDir = 1;
+
+  inCodigoCodigo.addEventListener("input", (e) => {
+    const pos = e.target.selectionStart;
+    e.target.value = e.target.value.toUpperCase();
+    e.target.setSelectionRange(pos, pos);
+  });
+
+  function filaVistaCodigo(f) {
+    return `<tr data-codigo="${f.codigo}">
+      <td class="cedula">${f.codigo}</td>
+      <td>${f.descripcion || "—"}</td>
+      <td>${f.tipo || "—"}</td>
+      <td>${f.codigo_descripcion || "—"}</td>
+      <td>${f.codigo_nomina || "—"}</td>
+      <td>${f.prestamos ? "Sí" : "No"}</td>
+      <td>${f.habilitado ? '<span class="chip ok">Habilitado</span>' : '<span class="chip off">Deshabilitado</span>'}</td>
+      <td class="fila-acciones">
+        <button type="button" class="btn-small fila-editar">Editar</button>
+        <button type="button" class="btn-small ${f.habilitado ? "critical" : ""} fila-toggle">${f.habilitado ? "Deshabilitar" : "Habilitar"}</button>
+      </td>
+    </tr>`;
+  }
+  function filaEdicionCodigo(f) {
+    return `<tr data-codigo="${f.codigo}">
+      <td class="cedula">${f.codigo}</td>
+      <td><input type="text" class="fila-descripcion" value="${f.descripcion || ""}"></td>
+      <td><input type="text" class="fila-tipo" value="${f.tipo || ""}"></td>
+      <td><input type="text" class="fila-codigo-descripcion" value="${f.codigo_descripcion || ""}"></td>
+      <td><input type="text" class="fila-codigo-nomina" value="${f.codigo_nomina || ""}"></td>
+      <td><input type="checkbox" class="fila-prestamos" ${f.prestamos ? "checked" : ""}></td>
+      <td>${f.habilitado ? '<span class="chip ok">Habilitado</span>' : '<span class="chip off">Deshabilitado</span>'}</td>
+      <td class="fila-acciones">
+        <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
+        <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
+      </td>
+    </tr>`;
+  }
+
+  async function cargarCodigos() {
+    const params = new URLSearchParams();
+    params.set("select", "codigo,descripcion,tipo,codigo_descripcion,codigo_nomina,prestamos,habilitado");
+    params.set("order", `${codigoSortKey}.${codigoSortDir === 1 ? "asc" : "desc"}`);
+    const q = codigoBuscar.value.trim();
+    if (q) params.set("codigo_descripcion", "ilike.*" + q.replace(/[,()]/g, "") + "*");
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?${params.toString()}`, {
+        headers: { ...authHeaders(), Prefer: "count=exact" },
+      });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+      codigosCache = Array.isArray(filas) ? filas : [];
+      codigoTbody.innerHTML = codigosCache.length === 0
+        ? `<tr><td colspan="8"><div class="empty-state">Sin códigos para estos filtros.</div></td></tr>`
+        : codigosCache.map(filaVistaCodigo).join("");
+      codigoCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
+    } catch (err) {
+      codigoTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      codigoCount.textContent = "";
+    }
+
+    codigoTabla.querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.classList.toggle("sorted", th.dataset.key === codigoSortKey);
+      const arrow = th.querySelector(".arrow");
+      if (arrow) arrow.textContent = th.dataset.key === codigoSortKey ? (codigoSortDir === 1 ? "↑" : "↓") : "↕";
+    });
+  }
+
+  codigoTabla.querySelectorAll("thead th[data-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (codigoSortKey === key) codigoSortDir *= -1; else { codigoSortKey = key; codigoSortDir = -1; }
+      cargarCodigos();
+    });
+  });
+
+  formCodigo.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const codigo = inCodigoCodigo.value.trim();
+    const descripcion = inCodigoDescripcion.value.trim();
+    const codigoDescripcion = inCodigoCodigoDescripcion.value.trim();
+    if (!codigo || !descripcion || !codigoDescripcion) {
+      msgCodigo.textContent = "Código, descripción y código-descripción son obligatorios.";
+      msgCodigo.className = "form-msg error";
+      return;
+    }
+
+    btnCodigo.disabled = true;
+    msgCodigo.textContent = "Guardando...";
+    msgCodigo.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify([{
+          codigo,
+          descripcion,
+          tipo: inCodigoTipo.value.trim() || null,
+          codigo_descripcion: codigoDescripcion,
+          codigo_nomina: inCodigoCodigoNomina.value.trim() || null,
+          prestamos: inCodigoPrestamos.checked,
+        }]),
+      });
+      if (!resp.ok) {
+        const texto = await resp.text();
+        if (resp.status === 409 || texto.includes("duplicate key")) throw new Error(`Ya existe el código "${codigo}".`);
+        throw new Error(texto);
+      }
+      msgCodigo.textContent = `Código "${codigo}" guardado correctamente.`;
+      msgCodigo.className = "form-msg ok";
+      formCodigo.reset();
+      cargarCodigos();
+    } catch (err) {
+      msgCodigo.textContent = "No se pudo guardar: " + (err.message || err);
+      msgCodigo.className = "form-msg error";
+    } finally {
+      btnCodigo.disabled = false;
+    }
+  });
+
+  codigoTbody.addEventListener("click", async (e) => {
+    const fila = e.target.closest("tr");
+    if (!fila) return;
+    const codigo = fila.dataset.codigo;
+    const datos = codigosCache.find(x => x.codigo === codigo);
+    if (!datos) return;
+
+    if (e.target.classList.contains("fila-editar")) { fila.outerHTML = filaEdicionCodigo(datos); return; }
+    if (e.target.classList.contains("fila-cancelar-edicion")) { fila.outerHTML = filaVistaCodigo(datos); return; }
+
+    if (e.target.classList.contains("fila-guardar-edicion")) {
+      const descripcion = fila.querySelector(".fila-descripcion").value.trim();
+      const codigoDescripcion = fila.querySelector(".fila-codigo-descripcion").value.trim();
+      if (!descripcion || !codigoDescripcion) { alert("Descripción y código-descripción son obligatorios."); return; }
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?codigo=eq.${encodeURIComponent(codigo)}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({
+            descripcion,
+            tipo: fila.querySelector(".fila-tipo").value.trim() || null,
+            codigo_descripcion: codigoDescripcion,
+            codigo_nomina: fila.querySelector(".fila-codigo-nomina").value.trim() || null,
+            prestamos: fila.querySelector(".fila-prestamos").checked,
+          }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarCodigos();
+      } catch (err) {
+        alert("No se pudo guardar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+      return;
+    }
+
+    if (e.target.classList.contains("fila-toggle")) {
+      const habilitarA = e.target.textContent.trim() === "Habilitar";
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?codigo=eq.${encodeURIComponent(codigo)}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ habilitado: habilitarA }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarCodigos();
+      } catch (err) {
+        alert("No se pudo actualizar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+  });
+
+  let codigoBuscarTimeout;
+  codigoBuscar.addEventListener("input", () => { clearTimeout(codigoBuscarTimeout); codigoBuscarTimeout = setTimeout(cargarCodigos, 300); });
+  codigoLimpiar.addEventListener("click", () => { codigoBuscar.value = ""; cargarCodigos(); });
+
+  // ---------------- seccion: horas esperadas por dia ----------------
+  const horasTbody = document.getElementById("horas-tbody");
+  let horasCache = [];
+
+  function filaVistaHora(f) {
+    return `<tr data-dia="${f.dia_semana}">
+      <td class="nombre">${f.dia_nombre}</td>
+      <td class="num">${f.horas}</td>
+      <td class="fila-acciones">
+        <button type="button" class="btn-small fila-editar">Editar</button>
+      </td>
+    </tr>`;
+  }
+  function filaEdicionHora(f) {
+    return `<tr data-dia="${f.dia_semana}">
+      <td class="nombre">${f.dia_nombre}</td>
+      <td><input type="number" step="0.01" min="0" class="fila-horas" value="${f.horas}"></td>
+      <td class="fila-acciones">
+        <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
+        <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
+      </td>
+    </tr>`;
+  }
+
+  async function cargarHoras() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/horas_esperadas_dia?select=dia_semana,dia_nombre,horas&order=dia_semana.asc`, {
+        headers: authHeaders(),
+      });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      horasCache = Array.isArray(filas) ? filas : [];
+      horasTbody.innerHTML = horasCache.length === 0
+        ? `<tr><td colspan="3"><div class="empty-state">Sin datos.</div></td></tr>`
+        : horasCache.map(filaVistaHora).join("");
+    } catch (err) {
+      horasTbody.innerHTML = `<tr><td colspan="3"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+    }
+  }
+
+  horasTbody.addEventListener("click", async (e) => {
+    const fila = e.target.closest("tr");
+    if (!fila) return;
+    const dia = fila.dataset.dia;
+    const datos = horasCache.find(x => String(x.dia_semana) === dia);
+    if (!datos) return;
+
+    if (e.target.classList.contains("fila-editar")) { fila.outerHTML = filaEdicionHora(datos); return; }
+    if (e.target.classList.contains("fila-cancelar-edicion")) { fila.outerHTML = filaVistaHora(datos); return; }
+
+    if (e.target.classList.contains("fila-guardar-edicion")) {
+      const horas = Number(fila.querySelector(".fila-horas").value);
+      if (!Number.isFinite(horas) || horas < 0) { alert("Las horas deben ser un número válido."); return; }
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/horas_esperadas_dia?dia_semana=eq.${dia}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ horas }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarHoras();
+      } catch (err) {
+        alert("No se pudo guardar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+  });
+
+  seccionAreas.cargar();
+  seccionLabores.cargar();
+  cargarCodigos();
+  cargarHoras();
+});
+</script>
+</body>
+</html>

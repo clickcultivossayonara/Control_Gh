@@ -397,9 +397,12 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script>
-AUTH_READY.then(function () {
+AUTH_READY.then(async function () {
   if (!requireRole(["admin", "nomina", "jefe_area", "supervisor"])) return;
   pintarSesion("sesion-box");
+  if (["admin", "nomina"].includes(window.SESION.rol)) {
+    document.getElementById("nav-sub").insertAdjacentHTML("beforeend", ' &middot; <a href="configuraciones.html">Configuraciones</a>');
+  }
   if (window.SESION.rol === "admin") {
     document.getElementById("nav-sub").insertAdjacentHTML("beforeend", ' &middot; <a href="usuarios.html">Usuarios</a>');
   }
@@ -412,7 +415,12 @@ AUTH_READY.then(function () {
     document.getElementById("tab-extra").hidden = true;
   }
 
-  const TODAS_LAS_AREAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+  let TODAS_LAS_AREAS = [];
+  try {
+    const respAreas = await fetch(`${SUPABASE_URL}/rest/v1/areas?select=nombre&activo=eq.true&order=nombre`, { headers: authHeaders() });
+    const filasAreas = await respAreas.json();
+    if (respAreas.ok && Array.isArray(filasAreas)) TODAS_LAS_AREAS = filasAreas.map(f => f.nombre);
+  } catch {}
   const AREAS_CONOCIDAS = ROL_AREA_LIMITADA.includes(window.SESION.rol)
     ? TODAS_LAS_AREAS.filter(a => window.SESION.areas.includes(a))
     : TODAS_LAS_AREAS;

@@ -170,7 +170,7 @@
 <div class="wrap">
   <div class="masthead">
     <h1>Empleados</h1>
-    <div class="sub"><img src="logo-sayonara.png" alt="Cultivos Sayonara" style="height:18px;width:auto;vertical-align:middle;margin-right:4px"> &middot; <a href="index.html">Inicio</a> &middot; <a href="registro-biometrico.html">Ver registro de asistencia</a> &middot; <a href="novedades.html">Novedades de nómina</a></div>
+    <div class="sub" id="nav-sub"><img src="logo-sayonara.png" alt="Cultivos Sayonara" style="height:18px;width:auto;vertical-align:middle;margin-right:4px"> &middot; <a href="index.html">Inicio</a> &middot; <a href="registro-biometrico.html">Ver registro de asistencia</a> &middot; <a href="novedades.html">Novedades de nómina</a></div>
     <div class="sesion-box" id="sesion-box" style="justify-content:center"></div>
   </div>
 
@@ -375,10 +375,13 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script>
-AUTH_READY.then(function () {
+AUTH_READY.then(async function () {
   if (!requireRole(["admin", "nomina", "jefe_area", "supervisor"])) return;
   pintarSesion("sesion-box");
   const puedeEditar = ["admin", "nomina"].includes(window.SESION.rol);
+  if (puedeEditar) {
+    document.getElementById("nav-sub").insertAdjacentHTML("beforeend", ' &middot; <a href="configuraciones.html">Configuraciones</a>');
+  }
   if (!puedeEditar) {
     document.getElementById("card-agregar-empleado").hidden = true;
     document.getElementById("tabs-empleado").hidden = true;
@@ -464,7 +467,19 @@ AUTH_READY.then(function () {
     document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
   });
 
-  const AREAS_CONOCIDAS = ["ADMINISTRACIÓN","ALSTROMERIA","AMBIENTAL","ASPERSIÓN","CALIDAD","CONFINAMIENTO CEJA","CORTE","CORTE CEJA","COSECHA ABUELAS CEJA","COSECHA CEJA","DESBOTONE","DESBOTONE CEJA","ESTERILIZACIÓN","FITOSANIDAD","LIMONIUM","MANTENIMIENTO","MANTENIMIENTO CEJA","MIPE CEJA","OFICIOS VARIOS","POSCOSECHA CEJA","POSTCOSECHA","PRODUCCIÓN CEJA","PROPAGACIÓN CONFINAMIENTO","PROPAGACIÓN COSECHA","REVISION POSCOSECHA","RIEGO","RIEGO CEJA","SERVICIOS","SERVICIOS CEJA","SIEMBRA","SIEMBRA CEJA","UNIQUE CREATION"];
+  async function cargarNombresActivos(tabla) {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?select=nombre&activo=eq.true&order=nombre`, {
+        headers: authHeaders(),
+      });
+      const filas = await resp.json();
+      return resp.ok && Array.isArray(filas) ? filas.map(f => f.nombre) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  const AREAS_CONOCIDAS = await cargarNombresActivos("areas");
   const selArea = document.getElementById("f-area");
   AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
   const selAreaEditar = document.getElementById("e-area");
@@ -477,7 +492,7 @@ AUTH_READY.then(function () {
   const msFiltroArea = crearMultiselect("ms-filtro-area", "Todas", () => cargarEmpleados());
   msFiltroArea.establecerOpciones(AREAS_FILTRO.map(a => [a, a]));
 
-  const LABORES_CONOCIDAS = ["ARMADO BOUQUETS","ASEGURADOR DE FITOSANIDAD POSTCOSECHA.","ASEGURAMIENTO USA","ASPERJADOR.","ASPIRADO.","AUXILIAR","AYUDANTE DE TALLER,FONTANERIA, LABORES VARIAS.","CARGUE DE GARRUCHA ESQUEJES","CORTADOR","CORTE ALSTROEMERIAS","CORTE ESPECIALES","CORTE USA","COSECHADOR","COSECHADOR CEJA","CUARTO FRIO","DESBOTONE CREMON/SPIDER","DESBOTONE POMPON","DESBOTÓN SPIDER","DESCARGUE BANDEJAS CONFINAMIENTO","DESCARGUE DE GARRUCHA","DESMALECE","DESPACHOS","DESTRONCAR","DESTRONQUE Y ENTERRADA DE SOCA","DISTRIBUCION CUBETAS","DRENCH","ELECTRICO Y MANTENIMIENTOS PREVENTIVOS.","EMPAQUE","EMPAQUE BOUQUETS","ENMALLE","ESTERILIZACION","ESTERILIZACIÓN DE CAMAS","FOSFINA-TERMONEBULIZADORA","FUMIGACIÓN","INSTALACION DE LUCES Y CORTINAS NEGRAS EN SIEMBRA.","JEFE","LLENADO DE BANDEJAS MANUAL","LLENADOR DE BANDEJAS","MANTENIMIENTO EN ALTURAS.","MONITOREO","MONITOREO INTEGRAL","MONITOREO ROYA BLANCA","OF VARIOS","OFICIOS VARIOS","Orden y aseo","PATINADOR","PREPARACIÓN DE CAMAS","PUESTA DE MALLA.","REGISTRO DE GARRUCHA","REVISION DE LUCES EN LA NOCHE.","REVISIÓN FITOSANITARIO EN POSTCOSECHA","REVISIÓN RB","RIEGO","RIEGO CON CODO EN CORTE","RIEGO CON CODO UNIFICACION","RIEGO SIEMBRA","SIEMBRA","SIEMBRA CAMPO","SIEMBRA EN CAMPO","SIEMBRA ENRAIZAMIENTO","SUPERVISOR","Surtidor de cartón","TALLER.","TANQUISTA","TRACTORISTA"];
+  const LABORES_CONOCIDAS = await cargarNombresActivos("labores");
   const selLabor = document.getElementById("f-labor");
   LABORES_CONOCIDAS.forEach(l => selLabor.insertAdjacentHTML("beforeend", `<option value="${l}">${l}</option>`));
   const selLaborEditar = document.getElementById("e-labor");
