@@ -551,11 +551,13 @@ AUTH_READY.then(async function () {
   let codigosCache = [];
   let codigoSortKey = "descripcion", codigoSortDir = 1;
 
-  inCodigoCodigo.addEventListener("input", (e) => {
+  function forzarMayusculas(e) {
     const pos = e.target.selectionStart;
     e.target.value = e.target.value.toUpperCase();
     e.target.setSelectionRange(pos, pos);
-  });
+  }
+  inCodigoCodigo.addEventListener("input", forzarMayusculas);
+  inCodigoDescripcion.addEventListener("input", forzarMayusculas);
 
   function filaVistaCodigo(f) {
     return `<tr data-codigo="${f.codigo}">
@@ -682,7 +684,7 @@ AUTH_READY.then(async function () {
     if (e.target.classList.contains("fila-cancelar-edicion")) { fila.outerHTML = filaVistaCodigo(datos); return; }
 
     if (e.target.classList.contains("fila-guardar-edicion")) {
-      const descripcion = fila.querySelector(".fila-descripcion").value.trim();
+      const descripcion = fila.querySelector(".fila-descripcion").value.trim().toUpperCase();
       if (!descripcion) { alert("La descripción es obligatoria."); return; }
       e.target.disabled = true;
       try {
