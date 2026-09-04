@@ -145,7 +145,7 @@
 
   <section class="card" id="card-area">
     <h2>Agregar área</h2>
-    <p class="card-hint">Las áreas activas aparecen en Empleados, Novedades, Registro Biométrico y Nómina.</p>
+    <p class="card-hint">Las áreas activas aparecen en Empleados, Novedades, Registro Biométrico y Nómina. Si renombras un área ya usada, los empleados que la tenían asignada quedan con el nombre nuevo automáticamente; desactivarla no afecta a los empleados que ya la tenían.</p>
     <form id="form-area">
       <div class="form-grid">
         <div class="field">
@@ -184,7 +184,7 @@
 
   <section class="card" id="card-labor" hidden>
     <h2>Agregar labor</h2>
-    <p class="card-hint">Las labores activas aparecen al agregar o editar un empleado.</p>
+    <p class="card-hint">Las labores activas aparecen al agregar o editar un empleado. Si renombras una labor ya usada, los empleados que la tenían asignada quedan con el nombre nuevo automáticamente; desactivarla no afecta a los empleados que ya la tenían.</p>
     <form id="form-labor">
       <div class="form-grid">
         <div class="field">
@@ -288,7 +288,7 @@
 
   <section class="card" id="card-horas" hidden>
     <h2>Horas esperadas por día</h2>
-    <p class="card-hint">Se usan para calcular la diferencia de horas trabajadas en Registro Biométrico y Nómina. Son siempre estos 7 días — no se pueden agregar ni quitar filas.</p>
+    <p class="card-hint">Se usan para calcular la diferencia de horas trabajadas en Registro Biométrico y Nómina. Son siempre estos 7 días — no se pueden agregar ni quitar filas. Al guardar un cambio, se recalcula de inmediato ese día en todos los registros ya existentes, no solo en los nuevos.</p>
     <div class="table-scroll">
       <table>
         <thead>
@@ -357,6 +357,7 @@ AUTH_READY.then(async function () {
         <td class="fila-acciones">
           <button type="button" class="btn-small fila-editar">Editar</button>
           <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
+          <button type="button" class="btn-small critical fila-eliminar">Eliminar</button>
         </td>
       </tr>`;
     }
@@ -494,6 +495,23 @@ AUTH_READY.then(async function () {
           alert("No se pudo actualizar: " + (err.message || err));
           e.target.disabled = false;
         }
+        return;
+      }
+
+      if (e.target.classList.contains("fila-eliminar")) {
+        if (!confirm(`¿Eliminar "${datos.nombre}" definitivamente? Esta acción no se puede deshacer.`)) return;
+        e.target.disabled = true;
+        try {
+          const resp = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?id=eq.${id}`, {
+            method: "DELETE",
+            headers: { ...authHeaders(), Prefer: "return=minimal" },
+          });
+          if (!resp.ok) throw new Error(await resp.text());
+          cargar();
+        } catch (err) {
+          alert("No se pudo eliminar: " + (err.message || err));
+          e.target.disabled = false;
+        }
       }
     });
 
@@ -544,6 +562,7 @@ AUTH_READY.then(async function () {
       <td class="fila-acciones">
         <button type="button" class="btn-small fila-editar">Editar</button>
         <button type="button" class="btn-small ${f.habilitado ? "critical" : ""} fila-toggle">${f.habilitado ? "Deshabilitar" : "Habilitar"}</button>
+        <button type="button" class="btn-small critical fila-eliminar">Eliminar</button>
       </td>
     </tr>`;
   }
@@ -698,6 +717,23 @@ AUTH_READY.then(async function () {
         cargarCodigos();
       } catch (err) {
         alert("No se pudo actualizar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+      return;
+    }
+
+    if (e.target.classList.contains("fila-eliminar")) {
+      if (!confirm(`¿Eliminar el código "${codigo}" definitivamente? Esta acción no se puede deshacer.`)) return;
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?codigo=eq.${encodeURIComponent(codigo)}`, {
+          method: "DELETE",
+          headers: { ...authHeaders(), Prefer: "return=minimal" },
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarCodigos();
+      } catch (err) {
+        alert("No se pudo eliminar: " + (err.message || err));
         e.target.disabled = false;
       }
     }
