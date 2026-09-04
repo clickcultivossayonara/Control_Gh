@@ -101,15 +101,13 @@
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 13px; }
-  table.tabla-codigos { min-width: 1040px; table-layout: fixed; }
-  table.tabla-codigos th:nth-child(1), table.tabla-codigos td:nth-child(1) { width: 6%; }
-  table.tabla-codigos th:nth-child(2), table.tabla-codigos td:nth-child(2) { width: 15%; }
-  table.tabla-codigos th:nth-child(3), table.tabla-codigos td:nth-child(3) { width: 10%; }
-  table.tabla-codigos th:nth-child(4), table.tabla-codigos td:nth-child(4) { width: 15%; }
-  table.tabla-codigos th:nth-child(5), table.tabla-codigos td:nth-child(5) { width: 8%; }
-  table.tabla-codigos th:nth-child(6), table.tabla-codigos td:nth-child(6) { width: 8%; }
-  table.tabla-codigos th:nth-child(7), table.tabla-codigos td:nth-child(7) { width: 10%; }
-  table.tabla-codigos th:nth-child(8), table.tabla-codigos td:nth-child(8) { width: 28%; }
+  table.tabla-codigos { min-width: 900px; table-layout: fixed; }
+  table.tabla-codigos th:nth-child(1), table.tabla-codigos td:nth-child(1) { width: 8%; }
+  table.tabla-codigos th:nth-child(2), table.tabla-codigos td:nth-child(2) { width: 28%; }
+  table.tabla-codigos th:nth-child(3), table.tabla-codigos td:nth-child(3) { width: 14%; }
+  table.tabla-codigos th:nth-child(4), table.tabla-codigos td:nth-child(4) { width: 10%; }
+  table.tabla-codigos th:nth-child(5), table.tabla-codigos td:nth-child(5) { width: 12%; }
+  table.tabla-codigos th:nth-child(6), table.tabla-codigos td:nth-child(6) { width: 28%; }
   table.tabla-codigos td:not(:last-child) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   table.tabla-codigos tbody input[type=text] { min-width: 0; }
   thead th {
@@ -285,8 +283,6 @@
             <th data-key="codigo">Código <span class="arrow">↕</span></th>
             <th data-key="descripcion">Descripción <span class="arrow">↕</span></th>
             <th data-key="tipo">Tipo <span class="arrow">↕</span></th>
-            <th data-key="codigo_descripcion">Código - Descripción <span class="arrow">↕</span></th>
-            <th data-key="codigo_nomina">Cód. Nómina <span class="arrow">↕</span></th>
             <th>Préstamos</th>
             <th data-key="habilitado">Estado <span class="arrow">↕</span></th>
             <th>Acciones</th>
@@ -553,7 +549,7 @@ AUTH_READY.then(async function () {
   const codigoTabla = codigoTbody.closest("table");
 
   let codigosCache = [];
-  let codigoSortKey = "codigo_descripcion", codigoSortDir = 1;
+  let codigoSortKey = "descripcion", codigoSortDir = 1;
 
   inCodigoCodigo.addEventListener("input", (e) => {
     const pos = e.target.selectionStart;
@@ -566,8 +562,6 @@ AUTH_READY.then(async function () {
       <td class="cedula">${f.codigo}</td>
       <td>${f.descripcion || "—"}</td>
       <td>${f.tipo || "—"}</td>
-      <td>${f.codigo_descripcion || "—"}</td>
-      <td>${f.codigo_nomina || "—"}</td>
       <td>${f.prestamos ? "Sí" : "No"}</td>
       <td>${f.habilitado ? '<span class="chip ok">Habilitado</span>' : '<span class="chip off">Deshabilitado</span>'}</td>
       <td><div class="fila-acciones">
@@ -582,8 +576,6 @@ AUTH_READY.then(async function () {
       <td class="cedula">${f.codigo}</td>
       <td><input type="text" class="fila-descripcion" value="${f.descripcion || ""}"></td>
       <td><input type="text" class="fila-tipo" value="${f.tipo || ""}"></td>
-      <td><input type="text" class="fila-codigo-descripcion" value="${f.codigo_descripcion || ""}"></td>
-      <td><input type="text" class="fila-codigo-nomina" value="${f.codigo_nomina || ""}"></td>
       <td><input type="checkbox" class="fila-prestamos" ${f.prestamos ? "checked" : ""}></td>
       <td>${f.habilitado ? '<span class="chip ok">Habilitado</span>' : '<span class="chip off">Deshabilitado</span>'}</td>
       <td><div class="fila-acciones">
@@ -598,7 +590,7 @@ AUTH_READY.then(async function () {
     params.set("select", "codigo,descripcion,tipo,codigo_descripcion,codigo_nomina,prestamos,habilitado");
     params.set("order", `${codigoSortKey}.${codigoSortDir === 1 ? "asc" : "desc"}`);
     const q = codigoBuscar.value.trim();
-    if (q) params.set("codigo_descripcion", "ilike.*" + q.replace(/[,()]/g, "") + "*");
+    if (q) params.set("descripcion", "ilike.*" + q.replace(/[,()]/g, "") + "*");
 
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?${params.toString()}`, {
@@ -611,11 +603,11 @@ AUTH_READY.then(async function () {
 
       codigosCache = Array.isArray(filas) ? filas : [];
       codigoTbody.innerHTML = codigosCache.length === 0
-        ? `<tr><td colspan="8"><div class="empty-state">Sin códigos para estos filtros.</div></td></tr>`
+        ? `<tr><td colspan="6"><div class="empty-state">Sin códigos para estos filtros.</div></td></tr>`
         : codigosCache.map(filaVistaCodigo).join("");
       codigoCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
     } catch (err) {
-      codigoTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      codigoTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       codigoCount.textContent = "";
     }
 
@@ -691,8 +683,7 @@ AUTH_READY.then(async function () {
 
     if (e.target.classList.contains("fila-guardar-edicion")) {
       const descripcion = fila.querySelector(".fila-descripcion").value.trim();
-      const codigoDescripcion = fila.querySelector(".fila-codigo-descripcion").value.trim();
-      if (!descripcion || !codigoDescripcion) { alert("Descripción y código-descripción son obligatorios."); return; }
+      if (!descripcion) { alert("La descripción es obligatoria."); return; }
       e.target.disabled = true;
       try {
         const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?codigo=eq.${encodeURIComponent(codigo)}`, {
@@ -701,8 +692,6 @@ AUTH_READY.then(async function () {
           body: JSON.stringify({
             descripcion,
             tipo: fila.querySelector(".fila-tipo").value.trim() || null,
-            codigo_descripcion: codigoDescripcion,
-            codigo_nomina: fila.querySelector(".fila-codigo-nomina").value.trim() || null,
             prestamos: fila.querySelector(".fila-prestamos").checked,
           }),
         });
