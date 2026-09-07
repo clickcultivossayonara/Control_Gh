@@ -217,16 +217,16 @@
 
   tbody td { padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
 
-  thead th:nth-child(1), tbody td:nth-child(1) { width: 7%; }
-  thead th:nth-child(2), tbody td:nth-child(2) { width: 6%; }
+  thead th:nth-child(1), tbody td:nth-child(1) { width: 6%; }
+  thead th:nth-child(2), tbody td:nth-child(2) { width: 3%; }
   thead th:nth-child(3), tbody td:nth-child(3) { width: 8%; }
-  thead th:nth-child(4), tbody td:nth-child(4) { width: 19%; }
-  thead th:nth-child(5), tbody td:nth-child(5) { width: 12%; }
+  thead th:nth-child(4), tbody td:nth-child(4) { width: 24%; }
+  thead th:nth-child(5), tbody td:nth-child(5) { width: 19%; }
   thead th:nth-child(6), tbody td:nth-child(6) { width: 6%; }
   thead th:nth-child(7), tbody td:nth-child(7) { width: 9%; }
   thead th:nth-child(8), tbody td:nth-child(8) { width: 9%; }
-  thead th:nth-child(9), tbody td:nth-child(9) { width: 13%; }
-  thead th:nth-child(10), tbody td:nth-child(10) { width: 13%; }
+  thead th:nth-child(9), tbody td:nth-child(9) { width: 8%; }
+  thead th:nth-child(10), tbody td:nth-child(10) { width: 8%; }
 
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
@@ -508,7 +508,7 @@ AUTH_READY.then(async function () {
       <td class="num">${r.semana ?? '—'}</td>
       <td class="cedula">${r.cedula}</td>
       <td class="nombre" title="${r.nombre}">${r.nombre}</td>
-      <td>${r.area}</td>
+      <td title="${r.area}">${r.area}</td>
       <td>${r.sede || '—'}</td>
       <td class="num">${he || '—'}</td>
       <td class="num">${hs || '—'}</td>
