@@ -63,9 +63,14 @@
   }
   .ms-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; background: var(--surface);
     border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--shadow); max-height: 260px; overflow-y: auto;
-    min-width: 220px; padding: 6px; }
+    min-width: 240px; padding: 6px; }
   .multiselect.open .ms-panel { display: block; }
-  .ms-option { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 13.5px; }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 8px;
+    margin-bottom: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink);
+  }
+  .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .ms-option { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
   .ms-option:hover { background: var(--accent-soft); }
   .ms-option input { accent-color: var(--accent); }
 
@@ -92,13 +97,21 @@
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
   tbody tr:hover td { background: var(--accent-soft); }
 
-  th:nth-child(1), td:nth-child(1) { width: 8%; }
-  th:nth-child(2), td:nth-child(2) { width: 6%; }
-  th:nth-child(3), td:nth-child(3) { width: 10%; }
-  th:nth-child(4), td:nth-child(4) { width: 24%; }
-  th:nth-child(5), td:nth-child(5) { width: 18%; }
-  th:nth-child(6), td:nth-child(6) { width: 18%; }
-  th:nth-child(7), td:nth-child(7) { width: 16%; }
+  th:nth-child(1), td:nth-child(1) { width: 7%; }
+  th:nth-child(2), td:nth-child(2) { width: 5%; }
+  th:nth-child(3), td:nth-child(3) { width: 9%; }
+  th:nth-child(4), td:nth-child(4) { width: 21%; }
+  th:nth-child(5), td:nth-child(5) { width: 16%; }
+  th:nth-child(6), td:nth-child(6) { width: 16%; }
+  th:nth-child(7), td:nth-child(7) { width: 6%; }
+  th:nth-child(8), td:nth-child(8) { width: 20%; }
+
+  .load-more-row td { text-align: center; padding: 14px; background: var(--paper) !important; }
+  .load-more-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 7px;
+    border: 1px solid var(--accent-soft-line); background: var(--accent-soft); color: var(--accent); cursor: pointer;
+  }
+  .load-more-btn:hover { border-color: var(--accent); }
 
   .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
   .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
@@ -164,6 +177,7 @@
           <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
           <th data-key="area">Área <span class="arrow">↕</span></th>
           <th data-key="novedad">Novedad <span class="arrow">↕</span></th>
+          <th data-key="horas">Horas <span class="arrow">↕</span></th>
           <th>Acciones</th>
         </tr>
       </thead>
@@ -248,42 +262,58 @@ AUTH_READY.then(async function () {
     const trigger = el.querySelector(".ms-trigger");
     const panel = el.querySelector(".ms-panel");
 
-    opciones.forEach((valor) => {
-      panel.insertAdjacentHTML("beforeend", `<label class="ms-option"><input type="checkbox" value="${valor}"><span>${valor}</span></label>`);
-    });
-
-    panel.querySelectorAll("input[type=checkbox]").forEach((chk, i) => {
-      chk.addEventListener("change", () => {
-        if (chk.checked) seleccion.add(opciones[i]); else seleccion.delete(opciones[i]);
-        actualizarEtiqueta();
-        onChange();
-      });
-    });
-
     function actualizarEtiqueta() {
       if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
       else if (seleccion.size === 1) trigger.textContent = [...seleccion][0];
       else trigger.textContent = `${seleccion.size} seleccionadas`;
     }
 
+    panel.innerHTML = `<input type="text" class="ms-search" placeholder="Buscar…" autocomplete="off">` +
+      opciones.map(a => `<label class="ms-option" data-texto="${a.toLowerCase()}"><input type="checkbox" value="${a}"><span>${a}</span></label>`).join("");
+    const buscar = panel.querySelector(".ms-search");
+    panel.querySelectorAll("input[type=checkbox]").forEach((chk) => {
+      chk.addEventListener("change", () => {
+        if (chk.checked) seleccion.add(chk.value); else seleccion.delete(chk.value);
+        actualizarEtiqueta();
+        onChange();
+      });
+    });
+    buscar.addEventListener("click", (e) => e.stopPropagation());
+    buscar.addEventListener("input", () => {
+      const q = buscar.value.trim().toLowerCase();
+      panel.querySelectorAll(".ms-option").forEach((opt) => {
+        opt.style.display = opt.dataset.texto.includes(q) ? "" : "none";
+      });
+    });
+
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
       document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
       el.classList.toggle("open");
+      if (el.classList.contains("open")) {
+        buscar.value = "";
+        panel.querySelectorAll(".ms-option").forEach(o => { o.style.display = ""; });
+        buscar.focus();
+      }
     });
 
-    return { seleccion, limpiar: () => { seleccion.clear(); panel.querySelectorAll("input").forEach(c => c.checked = false); actualizarEtiqueta(); } };
+    return {
+      seleccion,
+      limpiar: () => { seleccion.clear(); panel.querySelectorAll("input[type=checkbox]").forEach(c => c.checked = false); actualizarEtiqueta(); },
+    };
   }
 
   document.addEventListener("click", (e) => {
     document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
   });
 
-  const msArea = crearMultiselect("ms-area", OPCIONES_AREA, "Todas", () => cargar());
-  const msNovedad = crearMultiselect("ms-novedad", OPCIONES_NOVEDAD, "Todas", () => cargar());
+  const msArea = crearMultiselect("ms-area", OPCIONES_AREA, "Todas", () => reset());
+  const msNovedad = crearMultiselect("ms-novedad", OPCIONES_NOVEDAD, "Todas", () => reset());
 
   let sortKey = "fecha", sortDir = -1;
   let cache = [];
+  let visibles = 300;
+  const PAGE = 300;
 
   const elDesde = document.getElementById("f-desde");
   const elHasta = document.getElementById("f-hasta");
@@ -297,7 +327,7 @@ AUTH_READY.then(async function () {
   }
 
   function aplicarFiltros(params) {
-    params.set("select", "id,fecha,semana,cedula,cedula_texto,nombre,area,novedad");
+    params.set("select", "id,fecha,semana,cedula,cedula_texto,nombre,area,novedad,horas");
     if (elDesde.value) params.append("fecha", "gte." + elDesde.value);
     if (elHasta.value) params.append("fecha", "lte." + elHasta.value);
     if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
@@ -326,14 +356,19 @@ AUTH_READY.then(async function () {
       <td class="nombre" title="${r.nombre}">${r.nombre}</td>
       <td title="${r.area}">${r.area}</td>
       <td title="${r.novedad}">${chip}</td>
+      <td class="num">${r.horas != null ? Number(r.horas) : "—"}</td>
       <td>${accion}</td>
     </tr>`;
   }
+
+  function reset() { visibles = PAGE; cargar(); }
 
   async function cargar() {
     try {
       const params = new URLSearchParams();
       aplicarFiltros(params);
+      params.set("limit", String(visibles));
+      params.set("offset", "0");
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/ausentismo_detalle?${params.toString()}`, {
         headers: { ...authHeaders(), Prefer: "count=exact" },
       });
@@ -343,12 +378,23 @@ AUTH_READY.then(async function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       cache = filas;
-      elBody.innerHTML = filas.length === 0
-        ? `<tr><td colspan="7"><div class="empty-state">Sin ausencias para estos filtros.</div></td></tr>`
-        : filas.map(filaHTML).join("");
-      elCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
+      if (filas.length === 0) {
+        elBody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Sin ausencias para estos filtros.</div></td></tr>`;
+      } else {
+        let html = filas.map(filaHTML).join("");
+        if (total > filas.length) {
+          html += `<tr class="load-more-row"><td colspan="8">
+            <button class="load-more-btn" id="btn-cargar-mas">Cargar más (${(total - filas.length).toLocaleString("es-CO")} restantes)</button>
+          </td></tr>`;
+        }
+        elBody.innerHTML = html;
+        const btnMas = document.getElementById("btn-cargar-mas");
+        if (btnMas) btnMas.addEventListener("click", () => { visibles += PAGE; cargar(); });
+      }
+      elCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
+        (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      elBody.innerHTML = `<tr><td colspan="7"><div class="error-state">No se pudo cargar: ${err.message || err}</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="8"><div class="error-state">No se pudo cargar: ${err.message || err}</div></td></tr>`;
       elCount.textContent = "";
     }
 
@@ -363,7 +409,7 @@ AUTH_READY.then(async function () {
     th.addEventListener("click", () => {
       const key = th.dataset.key;
       if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
-      cargar();
+      reset();
     });
   });
 
@@ -427,13 +473,14 @@ AUTH_READY.then(async function () {
     elHasta.value = "";
     elBuscar.value = "";
     msArea.limpiar();
-    cargar();
+    msNovedad.limpiar();
+    reset();
   });
 
-  elDesde.addEventListener("change", cargar);
-  elHasta.addEventListener("change", cargar);
+  elDesde.addEventListener("change", reset);
+  elHasta.addEventListener("change", reset);
   let buscarTimeout;
-  elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargar, 300); });
+  elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(reset, 300); });
 
   document.getElementById("btn-excel").addEventListener("click", async () => {
     const btn = document.getElementById("btn-excel");
@@ -464,9 +511,10 @@ AUTH_READY.then(async function () {
         "Nombre": r.nombre,
         "Área": r.area,
         "Novedad": r.novedad,
+        "Horas": r.horas != null ? Number(r.horas) : "",
       }));
       const ws = XLSX.utils.json_to_sheet(filasExcel);
-      ws["!cols"] = [{ wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 32 }, { wch: 22 }, { wch: 28 }];
+      ws["!cols"] = [{ wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 32 }, { wch: 22 }, { wch: 28 }, { wch: 8 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Ausentismo");
       const hoy = new Date().toISOString().slice(0, 10);
