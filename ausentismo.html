@@ -141,6 +141,10 @@
         <div class="multiselect" id="ms-area"></div>
       </div>
       <div class="field">
+        <label>Novedad</label>
+        <div class="multiselect" id="ms-novedad"></div>
+      </div>
+      <div class="field">
         <label for="f-buscar">Buscar (cédula o nombre)</label>
         <input type="text" id="f-buscar" placeholder="Ej. 1036783088 o Johana…" autocomplete="off">
       </div>
@@ -197,6 +201,46 @@ AUTH_READY.then(async function () {
     ? TODAS_LAS_AREAS.filter(a => window.SESION.areas.includes(a))
     : TODAS_LAS_AREAS;
 
+  const NOVEDAD_PENDIENTE = "AUSENCIA PENDIENTE POR DEFINIR";
+  let codigosAusencia = [];
+  try {
+    const respCod = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,descripcion,codigo_descripcion,codigo_nomina,tipo&tipo=eq.Ausencia&habilitado=eq.true`, { headers: authHeaders() });
+    const filasCod = await respCod.json();
+    if (respCod.ok && Array.isArray(filasCod)) codigosAusencia = filasCod;
+  } catch {}
+  const codigoInjustificada = codigosAusencia.find(c => (c.descripcion || "").toUpperCase().includes("INJUSTIFICADA"));
+  const OPCIONES_NOVEDAD = [NOVEDAD_PENDIENTE, ...codigosAusencia.map(c => c.codigo_descripcion)];
+
+  let horasEsperadasDia = {};
+  try {
+    const respHoras = await fetch(`${SUPABASE_URL}/rest/v1/horas_esperadas_dia?select=dia_semana,horas`, { headers: authHeaders() });
+    const filasHoras = await respHoras.json();
+    if (respHoras.ok && Array.isArray(filasHoras)) filasHoras.forEach(f => { horasEsperadasDia[f.dia_semana] = f.horas; });
+  } catch {}
+
+  const DIAS_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  function diaSemana(fechaStr) {
+    const [y, m, d] = fechaStr.split("-").map(Number);
+    return DIAS_ES[new Date(y, m - 1, d).getDay()];
+  }
+  function isoWeekNum(fechaStr) {
+    const [y, m, d] = fechaStr.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    const dayNum = (dt.getUTCDay() + 6) % 7;
+    dt.setUTCDate(dt.getUTCDate() - dayNum + 3);
+    const primerJueves = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
+    const diff = dt - primerJueves;
+    return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
+  }
+  function ahoraNaive() {
+    const d = new Date();
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  }
+  function idUnico() {
+    return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
+  }
+
   function crearMultiselect(containerId, opciones, etiquetaTodos, onChange) {
     const el = document.getElementById(containerId);
     const seleccion = new Set();
@@ -236,6 +280,7 @@ AUTH_READY.then(async function () {
   });
 
   const msArea = crearMultiselect("ms-area", OPCIONES_AREA, "Todas", () => cargar());
+  const msNovedad = crearMultiselect("ms-novedad", OPCIONES_NOVEDAD, "Todas", () => cargar());
 
   let sortKey = "fecha", sortDir = -1;
   let cache = [];
@@ -256,6 +301,7 @@ AUTH_READY.then(async function () {
     if (elDesde.value) params.append("fecha", "gte." + elDesde.value);
     if (elHasta.value) params.append("fecha", "lte." + elHasta.value);
     if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
+    if (msNovedad.seleccion.size) params.set("novedad", "in.(" + [...msNovedad.seleccion].map(n => `"${n}"`).join(",") + ")");
 
     const buscar = elBuscar.value.trim();
     if (buscar) {
@@ -266,12 +312,12 @@ AUTH_READY.then(async function () {
   }
 
   function filaHTML(r) {
-    const esInjustificada = r.novedad === "AUSENCIA INJUSTIFICADA";
-    const chip = esInjustificada
-      ? '<span class="chip injustificada">Injustificada</span>'
-      : '<span class="chip pendiente">Pendiente por definir</span>';
-    const accion = puedeEditar
-      ? `<button type="button" class="btn-small fila-toggle" data-id="${r.id}" data-actual="${r.novedad}">${esInjustificada ? "Marcar pendiente" : "Marcar injustificada"}</button>`
+    const pendiente = r.novedad === NOVEDAD_PENDIENTE;
+    const chip = pendiente
+      ? `<span class="chip pendiente">${NOVEDAD_PENDIENTE}</span>`
+      : `<span class="chip injustificada">${r.novedad}</span>`;
+    const accion = (puedeEditar && pendiente && codigoInjustificada)
+      ? `<button type="button" class="btn-small fila-marcar" data-id="${r.id}" data-cedula="${r.cedula}" data-fecha="${r.fecha}" data-nombre="${r.nombre}" data-area="${r.area}">Marcar injustificada</button>`
       : "";
     return `<tr data-id="${r.id}">
       <td class="num">${fmtFecha(r.fecha)}</td>
@@ -279,7 +325,7 @@ AUTH_READY.then(async function () {
       <td class="cedula">${r.cedula}</td>
       <td class="nombre" title="${r.nombre}">${r.nombre}</td>
       <td title="${r.area}">${r.area}</td>
-      <td>${chip}</td>
+      <td title="${r.novedad}">${chip}</td>
       <td>${accion}</td>
     </tr>`;
   }
@@ -323,24 +369,54 @@ AUTH_READY.then(async function () {
 
   if (puedeEditar) {
     elBody.addEventListener("click", async (e) => {
-      if (!e.target.classList.contains("fila-toggle")) return;
-      const id = e.target.dataset.id;
-      const actual = e.target.dataset.actual;
-      const nuevo = actual === "AUSENCIA INJUSTIFICADA" ? "AUSENCIA PENDIENTE POR DEFINIR" : "AUSENCIA INJUSTIFICADA";
+      if (!e.target.classList.contains("fila-marcar")) return;
+      if (!codigoInjustificada) { alert("No se encontró un código de novedad tipo Ausencia con \"injustificada\" en la descripción. Créalo en Configuraciones."); return; }
+      const { cedula, fecha, nombre, area } = e.target.dataset;
+      if (!confirm(`¿Registrar "${codigoInjustificada.codigo_descripcion}" para ${nombre} el ${fmtFecha(fecha)}? Esto crea la novedad en el módulo Novedades.`)) return;
+
       e.target.disabled = true;
       try {
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/ausentismo?id=eq.${id}`, {
-          method: "PATCH",
-          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify({ novedad: nuevo }),
+        let emp = { sede: null, nombre_jefe: null, email_jefe: null, administrativo: false };
+        try {
+          const respEmp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?cedula=eq.${cedula}&select=sede,nombre_jefe,email_jefe,administrativo`, { headers: authHeaders() });
+          const filasEmp = await respEmp.json();
+          if (respEmp.ok && Array.isArray(filasEmp) && filasEmp[0]) emp = filasEmp[0];
+        } catch {}
+
+        const [anio, mes, diaNum] = fecha.split("-").map(Number);
+        const diaSemanaNum = new Date(anio, mes - 1, diaNum).getDay();
+        const horas = horasEsperadasDia[diaSemanaNum] ?? 0;
+
+        const registro = {
+          id_nomina: idUnico(),
+          cedula: Number(cedula),
+          nombre_colaborador: nombre,
+          area,
+          nombre_jefe: emp.nombre_jefe,
+          email_jefe: emp.email_jefe,
+          finca: emp.sede,
+          administrativo: emp.administrativo,
+          codigo_descripcion: codigoInjustificada.codigo_descripcion,
+          codigo_novedad: codigoInjustificada.codigo,
+          descripcion_novedad: codigoInjustificada.descripcion,
+          tipo_novedad: codigoInjustificada.tipo,
+          codigo: codigoInjustificada.codigo_nomina,
+          fecha_novedad: fecha + "T00:00:00",
+          dia: diaSemana(fecha),
+          semana: isoWeekNum(fecha),
+          hora: horas,
+          fecha_creacion: ahoraNaive(),
+        };
+
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina`, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify([registro]),
         });
-        const data = await resp.json();
-        if (!resp.ok || !Array.isArray(data) || data.length === 0) {
-          throw new Error(!resp.ok ? (data.message || `HTTP ${resp.status}`) : "no se guardo ningun cambio (revisa permisos)");
-        }
+        if (!resp.ok) throw new Error(await resp.text());
         cargar();
       } catch (err) {
-        alert("No se pudo actualizar: " + (err.message || err));
+        alert("No se pudo registrar la novedad: " + (err.message || err));
         e.target.disabled = false;
       }
     });
