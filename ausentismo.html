@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ausentismo — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
+  .wrap { max-width: 1440px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 16px; }
+
+  .masthead { display: flex; flex-direction: column; align-items: center; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; text-align: center; }
+  .masthead h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
+  .masthead .sub { font-size: 13px; color: var(--ink-soft); }
+  .masthead a { color: var(--accent); text-decoration: none; }
+  .masthead a:hover { text-decoration: underline; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; }
+  .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 14px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field input[type=text], .field input[type=date] {
+    font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); cursor: pointer; min-width: 150px; text-align: left;
+  }
+  .ms-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--shadow); max-height: 260px; overflow-y: auto;
+    min-width: 220px; padding: 6px; }
+  .multiselect.open .ms-panel { display: block; }
+  .ms-option { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 13.5px; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { accent-color: var(--accent); }
+
+  .clear-btn, .btn-export {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 7px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover, .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-export:disabled { opacity: 0.5; cursor: wait; }
+
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 900px; table-layout: fixed; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 8px;
+    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+    cursor: pointer; user-select: none; border-bottom: 1px solid var(--ink);
+  }
+  thead th:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 10px; margin-left: 4px; }
+  thead th.sorted .arrow { opacity: 1; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
+  tbody tr:hover td { background: var(--accent-soft); }
+
+  th:nth-child(1), td:nth-child(1) { width: 8%; }
+  th:nth-child(2), td:nth-child(2) { width: 6%; }
+  th:nth-child(3), td:nth-child(3) { width: 10%; }
+  th:nth-child(4), td:nth-child(4) { width: 24%; }
+  th:nth-child(5), td:nth-child(5) { width: 18%; }
+  th:nth-child(6), td:nth-child(6) { width: 18%; }
+  th:nth-child(7), td:nth-child(7) { width: 16%; }
+
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
+  .nombre { font-weight: 500; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.pendiente { background: var(--warn-soft); color: var(--warn); }
+  .chip.injustificada { background: var(--critical-soft); color: var(--critical); }
+  .btn-small {
+    font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-small:disabled { opacity: 0.5; cursor: wait; }
+  .empty-state, .error-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="masthead">
+    <h1>Ausentismo</h1>
+    <div class="sub" id="nav-sub"><img src="logo-sayonara.png" alt="Cultivos Sayonara" style="height:18px;width:auto;vertical-align:middle;margin-right:4px"> &middot; <a href="index.html">Inicio</a> &middot; <a href="empleados.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a> &middot; <a href="novedades.html">Novedades</a> &middot; <a href="nomina.html">Nómina</a></div>
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+
+  <section class="card">
+    <p class="card-hint">Empleados activos sin ninguna marcación (ni entrada ni salida) en un día, excluyendo los que ya tienen una novedad registrada esa fecha. Se recalcula automáticamente con cada sincronización del biométrico.</p>
+    <div class="filters">
+      <div class="field">
+        <label for="f-desde">Desde</label>
+        <input type="date" id="f-desde">
+      </div>
+      <div class="field">
+        <label for="f-hasta">Hasta</label>
+        <input type="date" id="f-hasta">
+      </div>
+      <div class="field">
+        <label>Área</label>
+        <div class="multiselect" id="ms-area"></div>
+      </div>
+      <div class="field">
+        <label for="f-buscar">Buscar (cédula o nombre)</label>
+        <input type="text" id="f-buscar" placeholder="Ej. 1036783088 o Johana…" autocomplete="off">
+      </div>
+      <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
+      <button class="btn-export" id="btn-excel">Exportar a Excel</button>
+      <span class="result-count" id="result-count"></span>
+    </div>
+  </section>
+
+  <div class="table-scroll">
+    <table>
+      <thead>
+        <tr>
+          <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
+          <th data-key="semana">Semana <span class="arrow">↕</span></th>
+          <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
+          <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
+          <th data-key="area">Área <span class="arrow">↕</span></th>
+          <th data-key="novedad">Novedad <span class="arrow">↕</span></th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+
+  <footer style="font-size:12px;color:var(--ink-faint);text-align:center">Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+AUTH_READY.then(async function () {
+  if (!requireRole(["admin", "nomina", "jefe_area", "supervisor"])) return;
+  pintarSesion("sesion-box");
+  const puedeEditar = ["admin", "nomina"].includes(window.SESION.rol);
+  if (puedeEditar) {
+    document.getElementById("nav-sub").insertAdjacentHTML("beforeend", ' &middot; <a href="configuraciones.html">Configuraciones</a>');
+  }
+  if (window.SESION.rol === "admin") {
+    document.getElementById("nav-sub").insertAdjacentHTML("beforeend", ' &middot; <a href="usuarios.html">Usuarios</a>');
+  }
+
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const ROL_AREA_LIMITADA = ["jefe_area", "supervisor"];
+
+  let TODAS_LAS_AREAS = [];
+  try {
+    const respAreas = await fetch(`${SUPABASE_URL}/rest/v1/areas?select=nombre&activo=eq.true&order=nombre`, { headers: authHeaders() });
+    const filasAreas = await respAreas.json();
+    if (respAreas.ok && Array.isArray(filasAreas)) TODAS_LAS_AREAS = filasAreas.map(f => f.nombre);
+  } catch {}
+  const OPCIONES_AREA = ROL_AREA_LIMITADA.includes(window.SESION.rol)
+    ? TODAS_LAS_AREAS.filter(a => window.SESION.areas.includes(a))
+    : TODAS_LAS_AREAS;
+
+  function crearMultiselect(containerId, opciones, etiquetaTodos, onChange) {
+    const el = document.getElementById(containerId);
+    const seleccion = new Set();
+    el.innerHTML = `<button type="button" class="ms-trigger">${etiquetaTodos}</button><div class="ms-panel"></div>`;
+    const trigger = el.querySelector(".ms-trigger");
+    const panel = el.querySelector(".ms-panel");
+
+    opciones.forEach((valor) => {
+      panel.insertAdjacentHTML("beforeend", `<label class="ms-option"><input type="checkbox" value="${valor}"><span>${valor}</span></label>`);
+    });
+
+    panel.querySelectorAll("input[type=checkbox]").forEach((chk, i) => {
+      chk.addEventListener("change", () => {
+        if (chk.checked) seleccion.add(opciones[i]); else seleccion.delete(opciones[i]);
+        actualizarEtiqueta();
+        onChange();
+      });
+    });
+
+    function actualizarEtiqueta() {
+      if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
+      else if (seleccion.size === 1) trigger.textContent = [...seleccion][0];
+      else trigger.textContent = `${seleccion.size} seleccionadas`;
+    }
+
+    trigger.addEventListener("click", (e) => {
+      e.stopPropagation();
+      document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
+      el.classList.toggle("open");
+    });
+
+    return { seleccion, limpiar: () => { seleccion.clear(); panel.querySelectorAll("input").forEach(c => c.checked = false); actualizarEtiqueta(); } };
+  }
+
+  document.addEventListener("click", (e) => {
+    document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
+  });
+
+  const msArea = crearMultiselect("ms-area", OPCIONES_AREA, "Todas", () => cargar());
+
+  let sortKey = "fecha", sortDir = -1;
+  let cache = [];
+
+  const elDesde = document.getElementById("f-desde");
+  const elHasta = document.getElementById("f-hasta");
+  const elBuscar = document.getElementById("f-buscar");
+  const elBody = document.getElementById("tbody");
+  const elCount = document.getElementById("result-count");
+
+  function fmtFecha(iso) {
+    const [y, m, d] = iso.split("-");
+    return `${d}/${m}/${y.slice(-2)}`;
+  }
+
+  function aplicarFiltros(params) {
+    params.set("select", "id,fecha,semana,cedula,cedula_texto,nombre,area,novedad");
+    if (elDesde.value) params.append("fecha", "gte." + elDesde.value);
+    if (elHasta.value) params.append("fecha", "lte." + elHasta.value);
+    if (msArea.seleccion.size) params.set("area", "in.(" + [...msArea.seleccion].map(a => `"${a}"`).join(",") + ")");
+
+    const buscar = elBuscar.value.trim();
+    if (buscar) {
+      if (/^\d+$/.test(buscar)) params.set("cedula_texto", "ilike.*" + buscar + "*");
+      else params.set("nombre", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
+    }
+    params.set("order", `${sortKey}.${sortDir === 1 ? "asc" : "desc"}`);
+  }
+
+  function filaHTML(r) {
+    const esInjustificada = r.novedad === "AUSENCIA INJUSTIFICADA";
+    const chip = esInjustificada
+      ? '<span class="chip injustificada">Injustificada</span>'
+      : '<span class="chip pendiente">Pendiente por definir</span>';
+    const accion = puedeEditar
+      ? `<button type="button" class="btn-small fila-toggle" data-id="${r.id}" data-actual="${r.novedad}">${esInjustificada ? "Marcar pendiente" : "Marcar injustificada"}</button>`
+      : "";
+    return `<tr data-id="${r.id}">
+      <td class="num">${fmtFecha(r.fecha)}</td>
+      <td class="num">${r.semana ?? "—"}</td>
+      <td class="cedula">${r.cedula}</td>
+      <td class="nombre" title="${r.nombre}">${r.nombre}</td>
+      <td title="${r.area}">${r.area}</td>
+      <td>${chip}</td>
+      <td>${accion}</td>
+    </tr>`;
+  }
+
+  async function cargar() {
+    try {
+      const params = new URLSearchParams();
+      aplicarFiltros(params);
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/ausentismo_detalle?${params.toString()}`, {
+        headers: { ...authHeaders(), Prefer: "count=exact" },
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}: ${await resp.text()}`);
+      const filas = await resp.json();
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+      cache = filas;
+      elBody.innerHTML = filas.length === 0
+        ? `<tr><td colspan="7"><div class="empty-state">Sin ausencias para estos filtros.</div></td></tr>`
+        : filas.map(filaHTML).join("");
+      elCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
+    } catch (err) {
+      elBody.innerHTML = `<tr><td colspan="7"><div class="error-state">No se pudo cargar: ${err.message || err}</div></td></tr>`;
+      elCount.textContent = "";
+    }
+
+    document.querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.classList.toggle("sorted", th.dataset.key === sortKey);
+      const arrow = th.querySelector(".arrow");
+      if (arrow) arrow.textContent = th.dataset.key === sortKey ? (sortDir === 1 ? "↑" : "↓") : "↕";
+    });
+  }
+
+  document.querySelectorAll("thead th[data-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
+      cargar();
+    });
+  });
+
+  if (puedeEditar) {
+    elBody.addEventListener("click", async (e) => {
+      if (!e.target.classList.contains("fila-toggle")) return;
+      const id = e.target.dataset.id;
+      const actual = e.target.dataset.actual;
+      const nuevo = actual === "AUSENCIA INJUSTIFICADA" ? "AUSENCIA PENDIENTE POR DEFINIR" : "AUSENCIA INJUSTIFICADA";
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/ausentismo?id=eq.${id}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ novedad: nuevo }),
+        });
+        const data = await resp.json();
+        if (!resp.ok || !Array.isArray(data) || data.length === 0) {
+          throw new Error(!resp.ok ? (data.message || `HTTP ${resp.status}`) : "no se guardo ningun cambio (revisa permisos)");
+        }
+        cargar();
+      } catch (err) {
+        alert("No se pudo actualizar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    });
+  }
+
+  document.getElementById("btn-limpiar").addEventListener("click", () => {
+    elDesde.value = "";
+    elHasta.value = "";
+    elBuscar.value = "";
+    msArea.limpiar();
+    cargar();
+  });
+
+  elDesde.addEventListener("change", cargar);
+  elHasta.addEventListener("change", cargar);
+  let buscarTimeout;
+  elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargar, 300); });
+
+  document.getElementById("btn-excel").addEventListener("click", async () => {
+    const btn = document.getElementById("btn-excel");
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    try {
+      const filas = [];
+      let offset = 0;
+      const tamanoPagina = 1000;
+      while (true) {
+        btn.textContent = `Generando... (${filas.length.toLocaleString("es-CO")})`;
+        const params = new URLSearchParams();
+        aplicarFiltros(params);
+        params.set("limit", String(tamanoPagina));
+        params.set("offset", String(offset));
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/ausentismo_detalle?${params.toString()}`, { headers: authHeaders() });
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const lote = await resp.json();
+        filas.push(...lote);
+        if (lote.length < tamanoPagina) break;
+        offset += tamanoPagina;
+      }
+
+      const filasExcel = filas.map(r => ({
+        "Fecha": fmtFecha(r.fecha),
+        "Semana": r.semana ?? "",
+        "Cédula": r.cedula,
+        "Nombre": r.nombre,
+        "Área": r.area,
+        "Novedad": r.novedad,
+      }));
+      const ws = XLSX.utils.json_to_sheet(filasExcel);
+      ws["!cols"] = [{ wch: 10 }, { wch: 8 }, { wch: 12 }, { wch: 32 }, { wch: 22 }, { wch: 28 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Ausentismo");
+      const hoy = new Date().toISOString().slice(0, 10);
+      XLSX.writeFile(wb, `ausentismo_${hoy}.xlsx`);
+    } catch (err) {
+      alert("No se pudo generar el Excel: " + (err.message || err));
+    } finally {
+      btn.disabled = false;
+      btn.textContent = textoOriginal;
+    }
+  });
+
+  cargar();
+});
+</script>
+</body>
+</html>
