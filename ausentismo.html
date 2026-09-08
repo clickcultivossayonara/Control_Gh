@@ -223,7 +223,7 @@ AUTH_READY.then(async function () {
     if (respCod.ok && Array.isArray(filasCod)) codigosAusencia = filasCod;
   } catch {}
   const codigoInjustificada = codigosAusencia.find(c => (c.descripcion || "").toUpperCase().includes("INJUSTIFICADA"));
-  const OPCIONES_NOVEDAD = [NOVEDAD_PENDIENTE, ...codigosAusencia.map(c => c.codigo_descripcion)];
+  const OPCIONES_NOVEDAD = [...new Set([NOVEDAD_PENDIENTE, ...codigosAusencia.map(c => c.descripcion)])];
 
   let horasEsperadasDia = {};
   try {
@@ -418,7 +418,7 @@ AUTH_READY.then(async function () {
       if (!e.target.classList.contains("fila-marcar")) return;
       if (!codigoInjustificada) { alert("No se encontró un código de novedad tipo Ausencia con \"injustificada\" en la descripción. Créalo en Configuraciones."); return; }
       const { cedula, fecha, nombre, area } = e.target.dataset;
-      if (!confirm(`¿Registrar "${codigoInjustificada.codigo_descripcion}" para ${nombre} el ${fmtFecha(fecha)}? Esto crea la novedad en el módulo Novedades.`)) return;
+      if (!confirm(`¿Registrar "${codigoInjustificada.descripcion}" para ${nombre} el ${fmtFecha(fecha)}? Esto crea la novedad en el módulo Novedades.`)) return;
 
       e.target.disabled = true;
       try {
