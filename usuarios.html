@@ -34,14 +34,60 @@
     --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
   }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; }
-  .wrap { max-width: 1200px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; align-items: stretch; }
+  .sidebar { width: 264px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; transition: width 0.16s ease; }
+  .sidebar.colapsado { width: 64px; }
+  .sidebar-top { display: flex; align-items: center; gap: 10px; padding: 16px 14px; border-bottom: 1px solid var(--line); min-height: 28px; }
+  .sidebar.colapsado .sidebar-top { justify-content: center; padding: 16px 10px; }
+  .sidebar-logo { height: 26px; width: auto; flex-shrink: 0; border-radius: 4px; }
+  .sidebar-brand { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-toggle { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 6px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0; }
+  .sidebar.colapsado .sidebar-toggle { margin-left: 0; }
+  .sidebar-toggle:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-toggle svg { width: 18px; height: 18px; }
+  .sidebar-nav { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-link { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; text-decoration: none; color: var(--ink-soft); font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; }
+  .sidebar-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-link span { overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-link:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-link.activo { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .sidebar.colapsado .sidebar-link { justify-content: center; padding: 9px; }
+  .sidebar.colapsado .sidebar-link span { display: none; }
+  .sidebar-footer { border-top: 1px solid var(--line); padding: 10px 10px; }
+  .sidebar.colapsado .sidebar-footer { padding: 10px 6px; }
+  .sidebar-footer .sesion-box { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; justify-content: flex-start !important; margin-top: 0 !important; }
+  .sidebar.colapsado .sidebar-footer .sesion-usuario { display: none; }
+  .sidebar-footer .sesion-usuario { white-space: normal; line-height: 1.4; }
+  .sidebar.colapsado .sidebar-footer .sesion-salir { width: 100%; padding: 8px 0; }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(20, 24, 15, 0.45); z-index: 40; }
+  .sidebar-backdrop.visible { display: block; }
+  .menu-toggle-movil { display: none; position: fixed; top: 14px; left: 14px; z-index: 30; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer; color: var(--ink-soft); padding: 8px; align-items: center; justify-content: center; box-shadow: var(--shadow); }
+  .menu-toggle-movil:hover { border-color: var(--accent); color: var(--accent); }
+  .menu-toggle-movil svg { width: 20px; height: 20px; }
+  .page-content { flex: 1; min-width: 0; display: flex; justify-content: center; }
 
-  .masthead { display: flex; flex-direction: column; align-items: center; gap: 6px; border-bottom: 2px solid var(--ink); padding-bottom: 16px; text-align: center; }
-  .masthead h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(26px, 4vw, 36px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; text-wrap: balance; }
-  .masthead .sub { font-size: 13px; color: var(--ink-soft); }
-  .masthead a { color: var(--accent); text-decoration: none; }
-  .masthead a:hover { text-decoration: underline; }
+  .wrap { width: 100%; max-width: 1200px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 22px; }
+
+  .page-header { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+  .page-header .page-logo { height: 36px; width: auto; }
+  .page-header .page-brand { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+  .page-header h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(24px, 3.4vw, 32px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; }
+
+  @media (max-width: 880px) {
+    body { display: block; }
+    .sidebar { position: fixed; left: 0; top: 0; width: 270px !important; height: 100vh; transform: translateX(-100%); transition: transform 0.2s ease; z-index: 50; }
+    .sidebar.abierto-movil { transform: translateX(0); }
+    .sidebar.colapsado .sidebar-link span, .sidebar.colapsado .sidebar-brand, .sidebar.colapsado .sesion-usuario { display: initial; }
+    .sidebar.colapsado .sidebar-top { justify-content: flex-start; padding: 16px 14px; }
+    .sidebar.colapsado .sidebar-link { justify-content: flex-start; padding: 9px 10px; }
+    .sidebar-toggle { display: none; }
+    .menu-toggle-movil { display: flex; }
+    .page-content { display: block; }
+    .wrap { max-width: none; padding-top: 64px; }
+  }
+  @media (max-width: 520px) {
+    .page-header h1 { font-size: 21px; }
+  }
 
   section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
@@ -135,11 +181,62 @@
 </head>
 <body>
 
-<div class="wrap">
-  <div class="masthead">
-    <h1>Usuarios</h1>
-    <div class="sub"><img src="logo-sayonara.png" alt="Cultivos Sayonara" style="height:18px;width:auto;vertical-align:middle;margin-right:4px"> &middot; <a href="index.html">Inicio</a> &middot; <a href="empleados.html">Empleados</a> &middot; <a href="registro-biometrico.html">Registro Biométrico</a> &middot; <a href="novedades.html">Novedades</a> &middot; <a href="ausentismo.html">Ausentismo</a> &middot; <a href="configuraciones.html">Configuraciones</a></div>
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+<button type="button" class="menu-toggle-movil" id="menu-toggle-movil" aria-label="Abrir menú">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+</button>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="sidebar-logo">
+    <span class="sidebar-brand">Cultivos Sayonara</span>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Colapsar menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+  </div>
+  <div class="sidebar-nav" id="sidebar-nav">
+    <a class="sidebar-link" href="index.html" data-roles="admin,nomina,jefe_area,supervisor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-6h6v6"></path></svg>
+      <span>Inicio</span>
+    </a>
+    <a class="sidebar-link" href="empleados.html" data-roles="admin,nomina,jefe_area,supervisor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Empleados</span>
+    </a>
+    <a class="sidebar-link" href="registro-biometrico.html" data-roles="admin,nomina,jefe_area,supervisor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+      <span>Registro Biométrico</span>
+    </a>
+    <a class="sidebar-link" href="novedades.html" data-roles="admin,nomina,jefe_area,supervisor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
+      <span>Novedades</span>
+    </a>
+    <a class="sidebar-link" href="ausentismo.html" data-roles="admin,nomina,jefe_area,supervisor">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.17 9.17a3 3 0 1 1 4.24 4.24M12 8v1M15 15l6 6"></path></svg>
+      <span>Ausentismo</span>
+    </a>
+    <a class="sidebar-link" href="nomina.html" data-roles="admin,nomina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg>
+      <span>Nómina</span>
+    </a>
+    <a class="sidebar-link" href="configuraciones.html" data-roles="admin,nomina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span>Configuraciones</span>
+    </a>
+    <a class="sidebar-link activo" href="usuarios.html" data-roles="admin">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="5"></circle></svg>
+      <span>Usuarios</span>
+    </a>
+  </div>
+  <div class="sidebar-footer">
     <div class="sesion-box" id="sesion-box"></div>
+  </div>
+</nav>
+<div class="page-content">
+<div class="wrap">
+  <div class="page-header">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="page-logo">
+    <span class="page-brand">Cultivos Sayonara</span>
+    <h1>Usuarios</h1>
   </div>
 
   <section class="card">
@@ -220,6 +317,7 @@
 
   <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
 </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
@@ -227,6 +325,29 @@
 AUTH_READY.then(async function () {
   if (!requireRole(["admin"])) return;
   pintarSesion("sesion-box");
+
+  document.querySelectorAll("#sidebar-nav .sidebar-link").forEach((enlace) => {
+    const roles = (enlace.dataset.roles || "").split(",");
+    if (!roles.includes(window.SESION.rol)) enlace.remove();
+  });
+  const sidebar = document.getElementById("sidebar");
+  const btnColapsar = document.getElementById("sidebar-toggle");
+  function aplicarColapso(colapsado) {
+    sidebar.classList.toggle("colapsado", colapsado);
+    try { localStorage.setItem("sidebar-colapsado", colapsado ? "1" : "0"); } catch {}
+  }
+  let colapsadoGuardado = null;
+  try { colapsadoGuardado = localStorage.getItem("sidebar-colapsado"); } catch {}
+  aplicarColapso(colapsadoGuardado === "1");
+  btnColapsar.addEventListener("click", () => aplicarColapso(!sidebar.classList.contains("colapsado")));
+  const backdrop = document.getElementById("sidebar-backdrop");
+  const btnMenuMovil = document.getElementById("menu-toggle-movil");
+  function abrirMenuMovil(abrir) {
+    sidebar.classList.toggle("abierto-movil", abrir);
+    backdrop.classList.toggle("visible", abrir);
+  }
+  btnMenuMovil.addEventListener("click", () => abrirMenuMovil(!sidebar.classList.contains("abierto-movil")));
+  backdrop.addEventListener("click", () => abrirMenuMovil(false));
 
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
   const ROL_ETIQUETA = { admin: "Administrador", nomina: "Nómina / RRHH", jefe_area: "Jefe de área", supervisor: "Supervisor" };
