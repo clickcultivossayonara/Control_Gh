@@ -740,15 +740,17 @@ AUTH_READY.then(async function () {
   const btnNovedad = document.getElementById("btn-novedad");
   const msgNovedad = document.getElementById("msg-novedad");
 
-  function generarRangoFechas(desde, hasta) {
+  function generarRangoFechas(desde, hasta, soloHabiles) {
     const fechas = [];
     let [y, m, d] = desde.split("-").map(Number);
     let cursor = new Date(y, m - 1, d);
     const [yh, mh, dh] = hasta.split("-").map(Number);
     const fin = new Date(yh, mh - 1, dh);
     while (cursor <= fin) {
-      const yy = cursor.getFullYear(), mm = String(cursor.getMonth() + 1).padStart(2, "0"), dd = String(cursor.getDate()).padStart(2, "0");
-      fechas.push(`${yy}-${mm}-${dd}`);
+      if (!soloHabiles || cursor.getDay() !== 0) {  // getDay()===0 => domingo
+        const yy = cursor.getFullYear(), mm = String(cursor.getMonth() + 1).padStart(2, "0"), dd = String(cursor.getDate()).padStart(2, "0");
+        fechas.push(`${yy}-${mm}-${dd}`);
+      }
       cursor.setDate(cursor.getDate() + 1);
     }
     return fechas;
@@ -907,7 +909,8 @@ AUTH_READY.then(async function () {
     if (usaRango) {
       if (!inFechaInicio.value || !inFechaFinal.value) { msgNovedad.textContent = "La fecha inicio y fecha final son obligatorias."; msgNovedad.className = "form-msg error"; return; }
       if (inFechaInicio.value > inFechaFinal.value) { msgNovedad.textContent = "La fecha inicio no puede ser posterior a la fecha final."; msgNovedad.className = "form-msg error"; return; }
-      fechas = generarRangoFechas(inFechaInicio.value, inFechaFinal.value);
+      fechas = generarRangoFechas(inFechaInicio.value, inFechaFinal.value, cod.conteo_dias === "habil");
+      if (fechas.length === 0) { msgNovedad.textContent = "La fecha inicio y fecha final seleccionadas no generan ningún día hábil."; msgNovedad.className = "form-msg error"; return; }
     } else {
       if (!inFecha.value) { msgNovedad.textContent = "La fecha es obligatoria."; msgNovedad.className = "form-msg error"; return; }
       fechas = [inFecha.value];

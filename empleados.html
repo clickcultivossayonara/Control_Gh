@@ -316,6 +316,14 @@
           </select>
         </div>
         <div class="field">
+          <label for="f-turno">Turno</label>
+          <select id="f-turno">
+            <option value="">—</option>
+            <option value="1">Turno 1</option>
+            <option value="2">Turno 2</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="f-fecha-ingreso">Fecha Ingreso</label>
           <input type="date" id="f-fecha-ingreso">
         </div>
@@ -388,6 +396,14 @@
             <option value="">—</option>
             <option value="Cuenta">Cuenta</option>
             <option value="No Cuenta">No Cuenta</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-turno">Turno</label>
+          <select id="e-turno">
+            <option value="">—</option>
+            <option value="1">Turno 1</option>
+            <option value="2">Turno 2</option>
           </select>
         </div>
         <div class="field">
@@ -663,6 +679,7 @@ AUTH_READY.then(async function () {
       sede: val("f-sede"),
       labor: val("f-labor"),
       eficiencia: val("f-eficiencia"),
+      turno: val("f-turno") ? Number(val("f-turno")) : null,
       fecha_ingreso: val("f-fecha-ingreso"),
       activo: document.getElementById("f-activo").checked,
       administrativo: document.getElementById("f-administrativo").checked,
@@ -735,6 +752,7 @@ AUTH_READY.then(async function () {
     document.getElementById("e-labor").value = emp.labor || "";
     document.getElementById("e-sede").value = emp.sede || "Unión";
     document.getElementById("e-eficiencia").value = emp.eficiencia || "";
+    document.getElementById("e-turno").value = emp.turno || "";
     document.getElementById("e-fecha-ingreso").value = emp.fecha_ingreso ? emp.fecha_ingreso.slice(0, 10) : "";
     document.getElementById("e-fecha-cambio-area").value = emp.fecha_ultimo_cambio_area ? emp.fecha_ultimo_cambio_area.slice(0, 10) : "";
     document.getElementById("e-activo").checked = !!emp.activo;
@@ -751,7 +769,7 @@ AUTH_READY.then(async function () {
     editarBuscarMsg.className = "form-msg";
     try {
       const params = new URLSearchParams();
-      params.set("select", "cedula,nombre,area,sede,labor,eficiencia,fecha_ingreso,fecha_ultimo_cambio_area,activo,administrativo");
+      params.set("select", "cedula,nombre,area,sede,labor,eficiencia,turno,fecha_ingreso,fecha_ultimo_cambio_area,activo,administrativo");
       if (/^\d+$/.test(termino)) params.set("cedula_texto", "ilike.*" + termino + "*");
       else params.set("nombre", "ilike.*" + termino.replace(/[,()]/g, "") + "*");
       params.set("order", "nombre.asc");
@@ -836,6 +854,7 @@ AUTH_READY.then(async function () {
       sede: val("e-sede"),
       labor: val("e-labor"),
       eficiencia: val("e-eficiencia"),
+      turno: val("e-turno") ? Number(val("e-turno")) : null,
       fecha_ingreso: val("e-fecha-ingreso"),
       fecha_ultimo_cambio_area: val("e-fecha-cambio-area"),
       activo: document.getElementById("e-activo").checked,

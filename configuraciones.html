@@ -147,13 +147,14 @@
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; min-width: 520px; font-size: 13px; }
-  table.tabla-codigos { min-width: 900px; table-layout: fixed; }
-  table.tabla-codigos th:nth-child(1), table.tabla-codigos td:nth-child(1) { width: 8%; }
-  table.tabla-codigos th:nth-child(2), table.tabla-codigos td:nth-child(2) { width: 28%; }
-  table.tabla-codigos th:nth-child(3), table.tabla-codigos td:nth-child(3) { width: 14%; }
-  table.tabla-codigos th:nth-child(4), table.tabla-codigos td:nth-child(4) { width: 10%; }
-  table.tabla-codigos th:nth-child(5), table.tabla-codigos td:nth-child(5) { width: 12%; }
-  table.tabla-codigos th:nth-child(6), table.tabla-codigos td:nth-child(6) { width: 28%; }
+  table.tabla-codigos { min-width: 1020px; table-layout: fixed; }
+  table.tabla-codigos th:nth-child(1), table.tabla-codigos td:nth-child(1) { width: 7%; }
+  table.tabla-codigos th:nth-child(2), table.tabla-codigos td:nth-child(2) { width: 24%; }
+  table.tabla-codigos th:nth-child(3), table.tabla-codigos td:nth-child(3) { width: 12%; }
+  table.tabla-codigos th:nth-child(4), table.tabla-codigos td:nth-child(4) { width: 9%; }
+  table.tabla-codigos th:nth-child(5), table.tabla-codigos td:nth-child(5) { width: 10%; }
+  table.tabla-codigos th:nth-child(6), table.tabla-codigos td:nth-child(6) { width: 11%; }
+  table.tabla-codigos th:nth-child(7), table.tabla-codigos td:nth-child(7) { width: 27%; }
   table.tabla-codigos td:not(:last-child) { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   table.tabla-codigos tbody input[type=text] { min-width: 0; }
   thead th {
@@ -247,6 +248,7 @@
     <button class="tab-btn" id="tab-labores" type="button">Labor</button>
     <button class="tab-btn" id="tab-codigos" type="button">Código - Descripción</button>
     <button class="tab-btn" id="tab-horas" type="button">Horas por día</button>
+    <button class="tab-btn" id="tab-turnos" type="button">Turnos</button>
   </div>
 
   <section class="card" id="card-area">
@@ -346,6 +348,14 @@
           <span class="field-hint">"Ausencia" y "Vacaciones" activan el rango de fechas en Novedades.</span>
         </div>
         <div class="field">
+          <label for="codigo-conteo-dias">Conteo de días</label>
+          <select id="codigo-conteo-dias">
+            <option value="corrido" selected>Corridos</option>
+            <option value="habil">Hábiles</option>
+          </select>
+          <span class="field-hint">Solo aplica cuando el rango de fechas está activo (Ausencia/Vacaciones). Hábil salta el domingo.</span>
+        </div>
+        <div class="field">
           <label for="codigo-codigo-descripcion">Código - Descripción <span class="req">*</span></label>
           <input type="text" id="codigo-codigo-descripcion" required autocomplete="off" placeholder="Ej. VAC-VACACIONES">
         </div>
@@ -381,6 +391,7 @@
             <th data-key="descripcion">Descripción <span class="arrow">↕</span></th>
             <th data-key="tipo">Tipo <span class="arrow">↕</span></th>
             <th>Préstamos</th>
+            <th>Conteo días</th>
             <th data-key="habilitado">Estado <span class="arrow">↕</span></th>
             <th>Acciones</th>
           </tr>
@@ -403,6 +414,56 @@
           </tr>
         </thead>
         <tbody id="horas-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="card-turnos" hidden>
+    <h2>Agregar turno de área</h2>
+    <p class="card-hint">Para áreas con horario fijo distinto al general de la empresa (ej. Caldera, Aspersión), que trabajan las mismas horas todos los días incluido domingo. Se usan para calcular horas esperadas y Ausentismo de los empleados que tengan este turno asignado en Empleados.</p>
+    <form id="form-turno">
+      <div class="form-grid">
+        <div class="field">
+          <label for="turno-area">Área <span class="req">*</span></label>
+          <select id="turno-area" required></select>
+        </div>
+        <div class="field">
+          <label for="turno-numero">Turno <span class="req">*</span></label>
+          <input type="number" id="turno-numero" min="1" step="1" required placeholder="Ej. 1">
+        </div>
+        <div class="field">
+          <label for="turno-hora-inicio">Hora inicio <span class="req">*</span></label>
+          <input type="time" id="turno-hora-inicio" required>
+        </div>
+        <div class="field">
+          <label for="turno-hora-fin">Hora fin <span class="req">*</span></label>
+          <input type="time" id="turno-hora-fin" required>
+        </div>
+        <div class="field">
+          <label for="turno-horas">Horas esperadas <span class="req">*</span></label>
+          <input type="number" id="turno-horas" step="0.01" min="0" required placeholder="Ej. 7.5">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-turno">Guardar turno</button>
+        <span class="form-msg" id="msg-turno"></span>
+      </div>
+    </form>
+
+    <p class="card-hint" style="margin-top:24px">Turnos registrados</p>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Área</th>
+            <th>Turno</th>
+            <th>Horario</th>
+            <th>Horas esperadas</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="turno-tbody"></tbody>
       </table>
     </div>
   </section>
@@ -449,6 +510,7 @@ AUTH_READY.then(async function () {
     { btn: "tab-labores", card: "card-labor" },
     { btn: "tab-codigos", card: "card-codigo" },
     { btn: "tab-horas", card: "card-horas" },
+    { btn: "tab-turnos", card: "card-turnos" },
   ];
   tabs.forEach(({ btn, card }) => {
     document.getElementById(btn).addEventListener("click", () => {
@@ -655,6 +717,7 @@ AUTH_READY.then(async function () {
   const inCodigoCodigo = document.getElementById("codigo-codigo");
   const inCodigoDescripcion = document.getElementById("codigo-descripcion");
   const inCodigoTipo = document.getElementById("codigo-tipo");
+  const inCodigoConteoDias = document.getElementById("codigo-conteo-dias");
   const inCodigoCodigoDescripcion = document.getElementById("codigo-codigo-descripcion");
   const inCodigoCodigoNomina = document.getElementById("codigo-codigo-nomina");
   const inCodigoPrestamos = document.getElementById("codigo-prestamos");
@@ -683,6 +746,7 @@ AUTH_READY.then(async function () {
       <td>${f.descripcion || "—"}</td>
       <td>${f.tipo || "—"}</td>
       <td>${f.prestamos ? "Sí" : "No"}</td>
+      <td>${f.conteo_dias === "habil" ? "Hábiles" : "Corridos"}</td>
       <td>${f.habilitado ? '<span class="chip ok">Habilitado</span>' : '<span class="chip off">Deshabilitado</span>'}</td>
       <td><div class="fila-acciones">
         <button type="button" class="btn-small fila-editar">Editar</button>
@@ -697,6 +761,10 @@ AUTH_READY.then(async function () {
       <td><input type="text" class="fila-descripcion" value="${f.descripcion || ""}"></td>
       <td><input type="text" class="fila-tipo" value="${f.tipo || ""}"></td>
       <td><input type="checkbox" class="fila-prestamos" ${f.prestamos ? "checked" : ""}></td>
+      <td><select class="fila-conteo-dias">
+        <option value="corrido" ${f.conteo_dias !== "habil" ? "selected" : ""}>Corridos</option>
+        <option value="habil" ${f.conteo_dias === "habil" ? "selected" : ""}>Hábiles</option>
+      </select></td>
       <td>${f.habilitado ? '<span class="chip ok">Habilitado</span>' : '<span class="chip off">Deshabilitado</span>'}</td>
       <td><div class="fila-acciones">
         <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
@@ -707,7 +775,7 @@ AUTH_READY.then(async function () {
 
   async function cargarCodigos() {
     const params = new URLSearchParams();
-    params.set("select", "codigo,descripcion,tipo,codigo_descripcion,codigo_nomina,prestamos,habilitado");
+    params.set("select", "codigo,descripcion,tipo,codigo_descripcion,codigo_nomina,prestamos,conteo_dias,habilitado");
     params.set("order", `${codigoSortKey}.${codigoSortDir === 1 ? "asc" : "desc"}`);
     const q = codigoBuscar.value.trim();
     if (q) params.set("descripcion", "ilike.*" + q.replace(/[,()]/g, "") + "*");
@@ -723,11 +791,11 @@ AUTH_READY.then(async function () {
 
       codigosCache = Array.isArray(filas) ? filas : [];
       codigoTbody.innerHTML = codigosCache.length === 0
-        ? `<tr><td colspan="6"><div class="empty-state">Sin códigos para estos filtros.</div></td></tr>`
+        ? `<tr><td colspan="7"><div class="empty-state">Sin códigos para estos filtros.</div></td></tr>`
         : codigosCache.map(filaVistaCodigo).join("");
       codigoCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
     } catch (err) {
-      codigoTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      codigoTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       codigoCount.textContent = "";
     }
 
@@ -769,6 +837,7 @@ AUTH_READY.then(async function () {
           codigo,
           descripcion,
           tipo: inCodigoTipo.value.trim() || null,
+          conteo_dias: inCodigoConteoDias.value,
           codigo_descripcion: codigoDescripcion,
           codigo_nomina: inCodigoCodigoNomina.value.trim() || null,
           prestamos: inCodigoPrestamos.checked,
@@ -813,6 +882,7 @@ AUTH_READY.then(async function () {
             descripcion,
             tipo: fila.querySelector(".fila-tipo").value.trim() || null,
             prestamos: fila.querySelector(".fila-prestamos").checked,
+            conteo_dias: fila.querySelector(".fila-conteo-dias").value,
           }),
         });
         if (!resp.ok) throw new Error(await resp.text());
@@ -932,10 +1002,175 @@ AUTH_READY.then(async function () {
     }
   });
 
+  // ---------------- seccion: turnos por area ----------------
+  const formTurno = document.getElementById("form-turno");
+  const selTurnoArea = document.getElementById("turno-area");
+  const inTurnoNumero = document.getElementById("turno-numero");
+  const inTurnoHoraInicio = document.getElementById("turno-hora-inicio");
+  const inTurnoHoraFin = document.getElementById("turno-hora-fin");
+  const inTurnoHoras = document.getElementById("turno-horas");
+  const btnTurno = document.getElementById("btn-turno");
+  const msgTurno = document.getElementById("msg-turno");
+  const turnoTbody = document.getElementById("turno-tbody");
+
+  let turnosCache = [];
+
+  async function cargarAreasParaTurno() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/areas?select=nombre&activo=eq.true&order=nombre`, { headers: authHeaders() });
+      const filas = await resp.json();
+      if (resp.ok && Array.isArray(filas)) {
+        selTurnoArea.innerHTML = '<option value="">Selecciona un área…</option>' +
+          filas.map(f => `<option value="${f.nombre}">${f.nombre}</option>`).join("");
+      }
+    } catch {}
+  }
+
+  function claveTurno(f) { return `${f.area}__${f.turno}`; }
+
+  function filaVistaTurno(f) {
+    return `<tr data-clave="${claveTurno(f)}">
+      <td class="nombre">${f.area}</td>
+      <td class="num">${f.turno}</td>
+      <td class="num">${f.hora_inicio} – ${f.hora_fin}</td>
+      <td class="num">${f.horas}</td>
+      <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+      <td><div class="fila-acciones">
+        <button type="button" class="btn-small fila-editar">Editar</button>
+        <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
+      </div></td>
+    </tr>`;
+  }
+  function filaEdicionTurno(f) {
+    return `<tr data-clave="${claveTurno(f)}">
+      <td class="nombre">${f.area}</td>
+      <td class="num">${f.turno}</td>
+      <td>
+        <input type="time" class="fila-hora-inicio" value="${f.hora_inicio}" style="margin-bottom:4px">
+        <input type="time" class="fila-hora-fin" value="${f.hora_fin}">
+      </td>
+      <td><input type="number" step="0.01" min="0" class="fila-horas" value="${f.horas}"></td>
+      <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+      <td><div class="fila-acciones">
+        <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
+        <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
+      </div></td>
+    </tr>`;
+  }
+
+  async function cargarTurnos() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/turnos_area?select=area,turno,hora_inicio,hora_fin,horas,activo&order=area.asc,turno.asc`, {
+        headers: authHeaders(),
+      });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      turnosCache = Array.isArray(filas) ? filas.map(f => ({ ...f, hora_inicio: f.hora_inicio.slice(0, 5), hora_fin: f.hora_fin.slice(0, 5) })) : [];
+      turnoTbody.innerHTML = turnosCache.length === 0
+        ? `<tr><td colspan="6"><div class="empty-state">Sin turnos registrados.</div></td></tr>`
+        : turnosCache.map(filaVistaTurno).join("");
+    } catch (err) {
+      turnoTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+    }
+  }
+
+  formTurno.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const area = selTurnoArea.value;
+    const turno = Number(inTurnoNumero.value);
+    if (!area) { msgTurno.textContent = "Selecciona un área."; msgTurno.className = "form-msg error"; return; }
+    if (!Number.isInteger(turno) || turno <= 0) { msgTurno.textContent = "El turno debe ser un número entero mayor a 0."; msgTurno.className = "form-msg error"; return; }
+
+    btnTurno.disabled = true;
+    msgTurno.textContent = "Guardando...";
+    msgTurno.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/turnos_area`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify([{
+          area, turno,
+          hora_inicio: inTurnoHoraInicio.value,
+          hora_fin: inTurnoHoraFin.value,
+          horas: Number(inTurnoHoras.value),
+        }]),
+      });
+      if (!resp.ok) {
+        const texto = await resp.text();
+        if (resp.status === 409 || texto.includes("duplicate key")) throw new Error(`Ya existe el turno ${turno} para "${area}".`);
+        throw new Error(texto);
+      }
+      msgTurno.textContent = `Turno ${turno} de "${area}" guardado correctamente.`;
+      msgTurno.className = "form-msg ok";
+      formTurno.reset();
+      cargarTurnos();
+    } catch (err) {
+      msgTurno.textContent = "No se pudo guardar: " + (err.message || err);
+      msgTurno.className = "form-msg error";
+    } finally {
+      btnTurno.disabled = false;
+    }
+  });
+
+  turnoTbody.addEventListener("click", async (e) => {
+    const fila = e.target.closest("tr");
+    if (!fila) return;
+    const clave = fila.dataset.clave;
+    const datos = turnosCache.find(x => claveTurno(x) === clave);
+    if (!datos) return;
+
+    if (e.target.classList.contains("fila-editar")) { fila.outerHTML = filaEdicionTurno(datos); return; }
+    if (e.target.classList.contains("fila-cancelar-edicion")) { fila.outerHTML = filaVistaTurno(datos); return; }
+
+    const filtro = `area=eq.${encodeURIComponent(datos.area)}&turno=eq.${datos.turno}`;
+
+    if (e.target.classList.contains("fila-guardar-edicion")) {
+      const horaInicio = fila.querySelector(".fila-hora-inicio").value;
+      const horaFin = fila.querySelector(".fila-hora-fin").value;
+      const horas = Number(fila.querySelector(".fila-horas").value);
+      if (!horaInicio || !horaFin) { alert("La hora inicio y hora fin son obligatorias."); return; }
+      if (!Number.isFinite(horas) || horas < 0) { alert("Las horas deben ser un número válido."); return; }
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/turnos_area?${filtro}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ hora_inicio: horaInicio, hora_fin: horaFin, horas }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarTurnos();
+      } catch (err) {
+        alert("No se pudo guardar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+      return;
+    }
+
+    if (e.target.classList.contains("fila-toggle")) {
+      const activarA = e.target.textContent.trim() === "Activar";
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/turnos_area?${filtro}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ activo: activarA }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarTurnos();
+      } catch (err) {
+        alert("No se pudo actualizar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+  });
+
   seccionAreas.cargar();
   seccionLabores.cargar();
   cargarCodigos();
   cargarHoras();
+  cargarAreasParaTurno();
+  cargarTurnos();
 });
 </script>
 </body>
