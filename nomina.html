@@ -90,8 +90,20 @@
     .page-header h1 { font-size: 21px; }
   }
 
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+  .tab-btn {
+    font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .tab-btn.activo { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
   section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
+  section.card[hidden] { display: none; }
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
+  .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 16px; }
+  .cargador-botones { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .cargador-botones .form-msg { font-size: 13.5px; font-weight: 500; }
+  .cargador-botones .form-msg.error { color: var(--critical); }
 
   .filters-stack { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
   .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
@@ -254,7 +266,12 @@
     <h1>Nómina</h1>
   </div>
 
-  <section class="card">
+  <div class="tabs">
+    <button class="tab-btn activo" id="tab-consulta" type="button">Consulta</button>
+    <button class="tab-btn" id="tab-cargadores" type="button">Cargadores</button>
+  </div>
+
+  <section class="card" id="card-consulta">
     <h2>Consulta de nómina</h2>
     <div class="filters-stack">
       <div class="filters">
@@ -318,6 +335,26 @@
         </thead>
         <tbody id="tbody"></tbody>
       </table>
+    </div>
+  </section>
+
+  <section class="card" id="card-cargadores" hidden>
+    <h2>Cargadores para Softland</h2>
+    <p class="card-hint">Genera los archivos de carga a nómina a partir de las novedades ya registradas. El rango de fechas aplica sobre la fecha en que termina cada novedad — una ausencia de varios días se reporta completa (con su fecha de inicio real) en el cargador del periodo donde termina.</p>
+    <div class="filters">
+      <div class="field">
+        <label for="cg-desde">Desde</label>
+        <input type="date" id="cg-desde">
+      </div>
+      <div class="field">
+        <label for="cg-hasta">Hasta</label>
+        <input type="date" id="cg-hasta">
+      </div>
+    </div>
+    <div class="cargador-botones">
+      <button class="excel-btn" id="btn-cargador-horas">Descargar Cargador Horas</button>
+      <button class="excel-btn" id="btn-cargador-ausentismo">Descargar Cargador Ausentismo</button>
+      <span class="form-msg" id="msg-cargadores"></span>
     </div>
   </section>
 
@@ -664,6 +701,167 @@ AUTH_READY.then(async function () {
 
   fechasPorDefecto();
   reset();
+
+  // ---------------- pestañas ----------------
+  const tabsNomina = [
+    { btn: "tab-consulta", card: "card-consulta" },
+    { btn: "tab-cargadores", card: "card-cargadores" },
+  ];
+  tabsNomina.forEach(({ btn, card }) => {
+    document.getElementById(btn).addEventListener("click", () => {
+      tabsNomina.forEach(({ btn: b2, card: c2 }) => {
+        document.getElementById(b2).classList.toggle("activo", b2 === btn);
+        document.getElementById(c2).hidden = c2 !== card;
+      });
+    });
+  });
+
+  // ---------------- cargadores para Softland ----------------
+  const TIPOS_RANGO_FECHA_CARGADOR = ["Ausencia", "Vacaciones"];
+  const TIPO_AUSENCIA_ERP = { IEG: "INC", IAT: "INC" };
+  const cgDesde = document.getElementById("cg-desde");
+  const cgHasta = document.getElementById("cg-hasta");
+  const msgCargadores = document.getElementById("msg-cargadores");
+  cgDesde.value = fechaISO(new Date(new Date().setDate(new Date().getDate() - 15)));
+  cgHasta.value = fechaISO(new Date());
+
+  async function obtenerMapaCodigos() {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,codigo_nomina,tipo`, { headers: authHeaders() });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const filas = await resp.json();
+    const mapa = {};
+    filas.forEach(f => { mapa[f.codigo] = { codigo_nomina: f.codigo_nomina, tipo: f.tipo }; });
+    return mapa;
+  }
+
+  async function traerNovedadesPaginado(paresParametros) {
+    const filas = [];
+    let offset = 0;
+    const tamanoPagina = 1000;
+    while (true) {
+      const p = new URLSearchParams(paresParametros);
+      p.set("limit", String(tamanoPagina));
+      p.set("offset", String(offset));
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina?${p.toString()}`, { headers: authHeaders() });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const lote = await resp.json();
+      filas.push(...lote);
+      if (lote.length < tamanoPagina) break;
+      offset += tamanoPagina;
+    }
+    return filas;
+  }
+
+  function descargarLibro(filasExcel, hoja, nombreArchivo, anchos) {
+    const ws = XLSX.utils.json_to_sheet(filasExcel);
+    if (anchos) ws["!cols"] = anchos.map(wch => ({ wch }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, hoja);
+    XLSX.writeFile(wb, nombreArchivo);
+  }
+
+  async function conBotonOcupado(btn, fn) {
+    const textoOriginal = btn.textContent;
+    btn.disabled = true;
+    msgCargadores.textContent = "Generando...";
+    msgCargadores.className = "form-msg";
+    try {
+      await fn();
+      msgCargadores.textContent = "";
+    } catch (err) {
+      msgCargadores.textContent = "No se pudo generar: " + (err.message || err);
+      msgCargadores.className = "form-msg error";
+    } finally {
+      btn.disabled = false;
+      btn.textContent = textoOriginal;
+    }
+  }
+
+  document.getElementById("btn-cargador-horas").addEventListener("click", (e) => conBotonOcupado(e.target, async () => {
+    if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
+    const mapa = await obtenerMapaCodigos();
+    const filas = await traerNovedadesPaginado([
+      ["select", "cedula,hora,codigo_novedad"],
+      ["fecha_novedad", `gte.${cgDesde.value}T00:00:00`],
+      ["fecha_novedad", `lte.${cgHasta.value}T23:59:59`],
+      ["order", "cedula"],
+    ]);
+
+    const totales = {}; // "cedula|codigo_nomina" -> suma
+    filas.filter(f => f.codigo_novedad && f.hora != null).forEach(f => {
+      const info = mapa[f.codigo_novedad];
+      if (!info || !info.codigo_nomina) return; // no se lleva a nomina
+      if (TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo)) return; // esos van en el cargador de ausentismo
+      const clave = `${f.cedula}|${info.codigo_nomina}`;
+      totales[clave] = (totales[clave] || 0) + Number(f.hora);
+    });
+
+    const filasExcel = Object.entries(totales).map(([clave, cantidad]) => {
+      const [cedula, concepto] = clave.split("|");
+      return { EMPLEADO: Number(cedula), CONCEPTO: concepto, CANTIDAD: Math.round(cantidad * 100) / 100, NOMINA: "QUIN" };
+    });
+    if (filasExcel.length === 0) throw new Error("No hay novedades de horas en ese rango.");
+
+    descargarLibro(filasExcel, "Cargador Horas", `cargador_horas_${fechaISO(new Date())}.xlsx`, [12, 12, 10, 8]);
+  }));
+
+  document.getElementById("btn-cargador-ausentismo").addEventListener("click", (e) => conBotonOcupado(e.target, async () => {
+    if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
+    const mapa = await obtenerMapaCodigos();
+    // Se trae TODO el historico (sin acotar fecha) porque una ausencia larga
+    // puede haber empezado antes del rango elegido -- hace falta ver el
+    // episodio completo para calcular bien su fecha de inicio real.
+    const filas = await traerNovedadesPaginado({
+      select: "cedula,fecha_novedad,codigo_novedad",
+      order: "cedula,fecha_novedad",
+    });
+
+    const relevantes = filas.filter(f => {
+      const info = mapa[f.codigo_novedad];
+      return info && info.codigo_nomina && TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo);
+    });
+
+    // Agrupa por (cedula, codigo_novedad) y colapsa dias consecutivos en episodios.
+    const grupos = {};
+    relevantes.forEach(f => {
+      const clave = `${f.cedula}|${f.codigo_novedad}`;
+      (grupos[clave] = grupos[clave] || []).push(f.fecha_novedad.slice(0, 10));
+    });
+
+    const episodios = [];
+    Object.entries(grupos).forEach(([clave, fechasStr]) => {
+      const [cedula, codigo] = clave.split("|");
+      const fechas = [...new Set(fechasStr)].sort();
+      let inicio = null, anterior = null;
+      const cerrar = (fin) => {
+        const dias = Math.round((new Date(fin) - new Date(inicio)) / 86400000) + 1;
+        episodios.push({ cedula: Number(cedula), codigo, inicio, fin, dias });
+      };
+      fechas.forEach(f => {
+        if (inicio === null) { inicio = f; anterior = f; return; }
+        const gap = Math.round((new Date(f) - new Date(anterior)) / 86400000);
+        if (gap > 1) { cerrar(anterior); inicio = f; }
+        anterior = f;
+      });
+      if (inicio !== null) cerrar(anterior);
+    });
+
+    const enRango = episodios.filter(ep => ep.fin >= cgDesde.value && ep.fin <= cgHasta.value);
+    if (enRango.length === 0) throw new Error("No hay ausencias que terminen en ese rango.");
+
+    const filasExcel = enRango.map(ep => ({
+      "Empleado (c.c)": ep.cedula,
+      "FechaNovedad": ep.inicio,
+      "Fecha Inicial": ep.inicio,
+      "Fecha Final": ep.fin,
+      "Dias Accion": ep.dias,
+      "Dias Saldo": ep.dias,
+      "Tipo Accion": ep.codigo,
+      "Tipo Ausencia": TIPO_AUSENCIA_ERP[ep.codigo] || "Ausencia",
+    }));
+
+    descargarLibro(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13]);
+  }));
 });
 </script>
 </body>
