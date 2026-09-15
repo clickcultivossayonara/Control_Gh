@@ -479,10 +479,6 @@
           <input type="text" id="rel-concepto" required autocomplete="off" placeholder="Ej. HE-HORAS EXTRAS">
         </div>
         <div class="field">
-          <label for="rel-nuevo">Nuevo Concepto</label>
-          <input type="text" id="rel-nuevo" autocomplete="off">
-        </div>
-        <div class="field">
           <label for="rel-codigo-erp">Código ERP</label>
           <input type="text" id="rel-codigo-erp" autocomplete="off" placeholder="Ej. B004">
         </div>
@@ -511,7 +507,6 @@
         <thead>
           <tr>
             <th data-key="concepto_supervisor">Concepto Supervisor <span class="arrow">↕</span></th>
-            <th>Nuevo Concepto</th>
             <th data-key="codigo_erp">Código ERP <span class="arrow">↕</span></th>
             <th>Descripción ERP</th>
             <th>Acciones</th>
@@ -1223,7 +1218,6 @@ AUTH_READY.then(async function () {
   // ---------------- seccion: relacion conceptos nomina ----------------
   const formRelacion = document.getElementById("form-relacion");
   const inRelConcepto = document.getElementById("rel-concepto");
-  const inRelNuevo = document.getElementById("rel-nuevo");
   const inRelCodigoErp = document.getElementById("rel-codigo-erp");
   const inRelDescripcionErp = document.getElementById("rel-descripcion-erp");
   const btnRelacion = document.getElementById("btn-relacion");
@@ -1240,7 +1234,6 @@ AUTH_READY.then(async function () {
   function filaVistaRelacion(f) {
     return `<tr data-id="${f.id}">
       <td>${f.concepto_supervisor}</td>
-      <td>${f.nuevo_concepto || "—"}</td>
       <td class="cedula">${f.codigo_erp || "—"}</td>
       <td>${f.descripcion_erp || "—"}</td>
       <td><div class="fila-acciones">
@@ -1252,7 +1245,6 @@ AUTH_READY.then(async function () {
   function filaEdicionRelacion(f) {
     return `<tr data-id="${f.id}">
       <td><input type="text" class="fila-concepto" value="${f.concepto_supervisor}"></td>
-      <td><input type="text" class="fila-nuevo" value="${f.nuevo_concepto || ""}"></td>
       <td><input type="text" class="fila-codigo-erp" value="${f.codigo_erp || ""}"></td>
       <td><input type="text" class="fila-descripcion-erp" value="${f.descripcion_erp || ""}"></td>
       <td><div class="fila-acciones">
@@ -1264,7 +1256,7 @@ AUTH_READY.then(async function () {
 
   async function cargarRelacion() {
     const params = new URLSearchParams();
-    params.set("select", "id,concepto_supervisor,nuevo_concepto,codigo_erp,descripcion_erp");
+    params.set("select", "id,concepto_supervisor,codigo_erp,descripcion_erp");
     params.set("order", `${relacionSortKey}.${relacionSortDir === 1 ? "asc" : "desc"}`);
     const q = relacionBuscar.value.trim();
     if (q) params.set("concepto_supervisor", "ilike.*" + q.replace(/[,()]/g, "") + "*");
@@ -1280,11 +1272,11 @@ AUTH_READY.then(async function () {
 
       relacionCache = Array.isArray(filas) ? filas : [];
       relacionTbody.innerHTML = relacionCache.length === 0
-        ? `<tr><td colspan="5"><div class="empty-state">Sin conceptos para estos filtros.</div></td></tr>`
+        ? `<tr><td colspan="4"><div class="empty-state">Sin conceptos para estos filtros.</div></td></tr>`
         : relacionCache.map(filaVistaRelacion).join("");
       relacionCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
     } catch (err) {
-      relacionTbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      relacionTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       relacionCount.textContent = "";
     }
 
@@ -1318,7 +1310,6 @@ AUTH_READY.then(async function () {
         headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify([{
           concepto_supervisor: concepto,
-          nuevo_concepto: inRelNuevo.value.trim() || null,
           codigo_erp: inRelCodigoErp.value.trim() || null,
           descripcion_erp: inRelDescripcionErp.value.trim() || null,
         }]),
@@ -1356,7 +1347,6 @@ AUTH_READY.then(async function () {
           headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({
             concepto_supervisor: concepto,
-            nuevo_concepto: fila.querySelector(".fila-nuevo").value.trim() || null,
             codigo_erp: fila.querySelector(".fila-codigo-erp").value.trim() || null,
             descripcion_erp: fila.querySelector(".fila-descripcion-erp").value.trim() || null,
           }),
