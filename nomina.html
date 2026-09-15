@@ -731,6 +731,21 @@ AUTH_READY.then(async function () {
     const filas = await resp.json();
     const mapa = {};
     filas.forEach(f => { mapa[f.codigo] = { codigo_nomina: f.codigo_nomina, tipo: f.tipo }; });
+
+    // relacion_conceptos_nomina es la fuente autoritativa del codigo ERP para
+    // los cargadores -- si un concepto esta ahi, su codigo_erp manda sobre lo
+    // que haya quedado en codigos_novedad.codigo_nomina (por si no se guardo
+    // desde Configuraciones, o se edito codigos_novedad directo por SQL).
+    const respRel = await fetch(`${SUPABASE_URL}/rest/v1/relacion_conceptos_nomina?select=concepto_supervisor,codigo_erp`, { headers: authHeaders() });
+    if (respRel.ok) {
+      const filasRel = await respRel.json();
+      filasRel.forEach(r => {
+        if (!r.codigo_erp) return;
+        const codigo = r.concepto_supervisor.split("-")[0].trim().toUpperCase();
+        if (mapa[codigo]) mapa[codigo].codigo_nomina = r.codigo_erp;
+      });
+    }
+
     return mapa;
   }
 
