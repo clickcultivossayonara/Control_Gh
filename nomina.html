@@ -742,7 +742,7 @@ AUTH_READY.then(async function () {
       const p = new URLSearchParams(paresParametros);
       p.set("limit", String(tamanoPagina));
       p.set("offset", String(offset));
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina?${p.toString()}`, { headers: authHeaders() });
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?${p.toString()}`, { headers: authHeaders() });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const lote = await resp.json();
       filas.push(...lote);
@@ -781,10 +781,10 @@ AUTH_READY.then(async function () {
     if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
     const mapa = await obtenerMapaCodigos();
     const filas = await traerNovedadesPaginado([
-      ["select", "cedula,hora,codigo_novedad"],
+      ["select", "id_nomina,cedula,hora,codigo_novedad"],
       ["fecha_novedad", `gte.${cgDesde.value}T00:00:00`],
       ["fecha_novedad", `lte.${cgHasta.value}T23:59:59`],
-      ["order", "cedula"],
+      ["order", "id_nomina"],
     ]);
 
     const totales = {}; // "cedula|codigo_nomina" -> suma
@@ -812,8 +812,8 @@ AUTH_READY.then(async function () {
     // puede haber empezado antes del rango elegido -- hace falta ver el
     // episodio completo para calcular bien su fecha de inicio real.
     const filas = await traerNovedadesPaginado({
-      select: "cedula,fecha_novedad,codigo_novedad",
-      order: "cedula,fecha_novedad",
+      select: "id_nomina,cedula,fecha_novedad,codigo_novedad",
+      order: "cedula,fecha_novedad,id_nomina",
     });
 
     const relevantes = filas.filter(f => {
