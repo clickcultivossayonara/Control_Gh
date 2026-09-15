@@ -177,9 +177,6 @@
   .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .chip.ok { background: var(--accent-soft); color: var(--accent); }
   .chip.off { background: var(--critical-soft); color: var(--critical); }
-  .chip.warn { background: var(--warn-soft); color: var(--warn); }
-  .relacion-textarea { width: 100%; min-height: 140px; font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12.5px; padding: 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--paper); color: var(--ink); resize: vertical; }
-  .relacion-textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
   .fila-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
 
@@ -252,7 +249,6 @@
     <button class="tab-btn" id="tab-codigos" type="button">Código - Descripción</button>
     <button class="tab-btn" id="tab-horas" type="button">Horas por día</button>
     <button class="tab-btn" id="tab-turnos" type="button">Turnos</button>
-    <button class="tab-btn" id="tab-relacion-erp" type="button">Relación Conceptos ERP</button>
   </div>
 
   <section class="card" id="card-area">
@@ -472,37 +468,6 @@
     </div>
   </section>
 
-  <section class="card" id="card-relacion-erp" hidden>
-    <h2>Relación Conceptos ERP</h2>
-    <p class="card-hint">Pega directo desde el Excel de Softland (columnas "Concepto Supervisor" y "Código ERP" — puedes pegar las 4 columnas del Excel completo o solo esas 2) para actualizar el código de nómina de varios conceptos a la vez, sin necesidad de un script SQL.</p>
-    <textarea class="relacion-textarea" id="relacion-pegar" placeholder="Pega aquí las filas copiadas del Excel..."></textarea>
-    <div class="form-actions">
-      <button type="button" class="btn-primary" id="btn-relacion-previsualizar">Previsualizar</button>
-      <span class="form-msg" id="msg-relacion"></span>
-    </div>
-
-    <div id="relacion-resultado" hidden>
-      <p class="card-hint" style="margin-top:20px">Vista previa — solo se aplican las filas en estado "Cambia" o "Se marca sin nómina"</p>
-      <div class="table-scroll">
-        <table>
-          <thead>
-            <tr>
-              <th>Código</th>
-              <th>Código ERP actual</th>
-              <th>Código ERP nuevo</th>
-              <th>Estado</th>
-            </tr>
-          </thead>
-          <tbody id="relacion-tbody"></tbody>
-        </table>
-      </div>
-      <div class="form-actions">
-        <button type="button" class="btn-primary" id="btn-relacion-aplicar">Aplicar cambios</button>
-        <span class="form-msg" id="msg-relacion-aplicar"></span>
-      </div>
-    </div>
-  </section>
-
   <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
 </div>
 </div>
@@ -546,7 +511,6 @@ AUTH_READY.then(async function () {
     { btn: "tab-codigos", card: "card-codigo" },
     { btn: "tab-horas", card: "card-horas" },
     { btn: "tab-turnos", card: "card-turnos" },
-    { btn: "tab-relacion-erp", card: "card-relacion-erp" },
   ];
   tabs.forEach(({ btn, card }) => {
     document.getElementById(btn).addEventListener("click", () => {
@@ -1198,99 +1162,6 @@ AUTH_READY.then(async function () {
         alert("No se pudo actualizar: " + (err.message || err));
         e.target.disabled = false;
       }
-    }
-  });
-
-  // ---------------- seccion: relacion conceptos ERP (pegar desde Excel) ----------------
-  const relacionPegar = document.getElementById("relacion-pegar");
-  const btnRelacionPrevisualizar = document.getElementById("btn-relacion-previsualizar");
-  const msgRelacion = document.getElementById("msg-relacion");
-  const relacionResultado = document.getElementById("relacion-resultado");
-  const relacionTbody = document.getElementById("relacion-tbody");
-  const btnRelacionAplicar = document.getElementById("btn-relacion-aplicar");
-  const msgRelacionAplicar = document.getElementById("msg-relacion-aplicar");
-
-  let relacionFilas = [];
-
-  function parsearRelacionConceptos(texto) {
-    const lineas = texto.trim().split(/\r?\n/).filter(l => l.trim());
-    return lineas
-      .map(l => l.split("\t").map(c => c.trim()))
-      .filter(cols => cols[0] && cols[0].toUpperCase() !== "CONCEPTO SUPERVISOR")
-      .map(cols => {
-        const codigo = cols[0].split("-")[0].trim().toUpperCase();
-        // 4 columnas pegadas (layout del Excel completo) -> Codigo ERP es la 3a; 2 columnas -> es la 2a.
-        const crudo = (cols.length >= 3 ? cols[2] : (cols[1] || "")).trim();
-        const sinNomina = /elimin|no se lleva/i.test(crudo);
-        const sinDato = crudo === "";
-        return { codigo, codigoErpNuevo: sinNomina ? null : (sinDato ? undefined : crudo), sinDato };
-      });
-  }
-
-  function filaVistaRelacion(f) {
-    let estado, claseChip;
-    if (f.sinDato) { estado = "Sin dato, se omite"; claseChip = "off"; }
-    else if (!f.encontrado) { estado = "No encontrado en el catálogo"; claseChip = "warn"; }
-    else if (f.codigoErpNuevo === f.codigoErpActual) { estado = "Sin cambios"; claseChip = "off"; }
-    else if (f.codigoErpNuevo === null) { estado = "Se marca sin nómina"; claseChip = "warn"; }
-    else { estado = "Cambia"; claseChip = "ok"; }
-    return `<tr>
-      <td class="cedula">${f.codigo}</td>
-      <td>${f.codigoErpActual || "—"}</td>
-      <td>${f.codigoErpNuevo === null ? "—" : (f.codigoErpNuevo ?? f.codigoErpActual ?? "—")}</td>
-      <td><span class="chip ${claseChip}">${estado}</span></td>
-    </tr>`;
-  }
-
-  btnRelacionPrevisualizar.addEventListener("click", () => {
-    const parseadas = parsearRelacionConceptos(relacionPegar.value);
-    if (parseadas.length === 0) {
-      msgRelacion.textContent = "Pega al menos una fila.";
-      msgRelacion.className = "form-msg error";
-      relacionResultado.hidden = true;
-      return;
-    }
-    msgRelacion.textContent = "";
-    relacionFilas = parseadas.map(f => {
-      const actual = codigosCache.find(c => c.codigo === f.codigo);
-      return { ...f, encontrado: !!actual, codigoErpActual: actual ? actual.codigo_nomina : null };
-    });
-    relacionTbody.innerHTML = relacionFilas.map(filaVistaRelacion).join("");
-    relacionResultado.hidden = false;
-    msgRelacionAplicar.textContent = "";
-  });
-
-  btnRelacionAplicar.addEventListener("click", async () => {
-    const aplicables = relacionFilas.filter(f =>
-      f.encontrado && !f.sinDato && f.codigoErpNuevo !== f.codigoErpActual
-    );
-    if (aplicables.length === 0) {
-      msgRelacionAplicar.textContent = "No hay cambios para aplicar.";
-      msgRelacionAplicar.className = "form-msg error";
-      return;
-    }
-    btnRelacionAplicar.disabled = true;
-    msgRelacionAplicar.textContent = `Aplicando ${aplicables.length} cambio(s)...`;
-    msgRelacionAplicar.className = "form-msg";
-    try {
-      for (const f of aplicables) {
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?codigo=eq.${encodeURIComponent(f.codigo)}`, {
-          method: "PATCH",
-          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
-          body: JSON.stringify({ codigo_nomina: f.codigoErpNuevo }),
-        });
-        if (!resp.ok) throw new Error(await resp.text());
-      }
-      msgRelacionAplicar.textContent = `${aplicables.length} código(s) actualizado(s) correctamente.`;
-      msgRelacionAplicar.className = "form-msg ok";
-      await cargarCodigos();
-      relacionResultado.hidden = true;
-      relacionPegar.value = "";
-    } catch (err) {
-      msgRelacionAplicar.textContent = "No se pudo aplicar: " + (err.message || err);
-      msgRelacionAplicar.className = "form-msg error";
-    } finally {
-      btnRelacionAplicar.disabled = false;
     }
   });
 
