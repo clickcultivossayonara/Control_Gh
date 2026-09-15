@@ -471,7 +471,7 @@
 
   <section class="card" id="card-relacion-nomina" hidden>
     <h2>Agregar concepto</h2>
-    <p class="card-hint">Relación de conceptos hacia el ERP de nómina (Softland), tal como llega en el Excel de RRHH. Es de referencia — todavía no cambia automáticamente el código de nómina en Código-Descripción.</p>
+    <p class="card-hint">Relación de conceptos hacia el ERP de nómina (Softland), tal como llega en el Excel de RRHH. Al guardar o editar una fila, el "Código ERP" se enlaza de inmediato con el código de nómina de ese concepto en Código-Descripción.</p>
     <form id="form-relacion">
       <div class="form-grid">
         <div class="field">
@@ -1254,6 +1254,19 @@ AUTH_READY.then(async function () {
     </tr>`;
   }
 
+  async function sincronizarCodigoNomina(conceptoSupervisor, codigoErp) {
+    if (!codigoErp) return { intentado: false };
+    const codigo = conceptoSupervisor.split("-")[0].trim().toUpperCase();
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?codigo=eq.${encodeURIComponent(codigo)}`, {
+      method: "PATCH",
+      headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+      body: JSON.stringify({ codigo_nomina: codigoErp }),
+    });
+    if (!resp.ok) throw new Error(await resp.text());
+    const filas = await resp.json();
+    return { intentado: true, codigo, enlazado: filas.length > 0 };
+  }
+
   async function cargarRelacion() {
     const params = new URLSearchParams();
     params.set("select", "id,concepto_supervisor,codigo_erp,descripcion_erp");
@@ -1305,17 +1318,24 @@ AUTH_READY.then(async function () {
     msgRelacion.className = "form-msg";
 
     try {
+      const codigoErp = inRelCodigoErp.value.trim() || null;
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_conceptos_nomina`, {
         method: "POST",
         headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
         body: JSON.stringify([{
           concepto_supervisor: concepto,
-          codigo_erp: inRelCodigoErp.value.trim() || null,
+          codigo_erp: codigoErp,
           descripcion_erp: inRelDescripcionErp.value.trim() || null,
         }]),
       });
       if (!resp.ok) throw new Error(await resp.text());
-      msgRelacion.textContent = `"${concepto}" guardado correctamente.`;
+
+      const sync = await sincronizarCodigoNomina(concepto, codigoErp);
+      msgRelacion.textContent = !sync.intentado
+        ? `"${concepto}" guardado correctamente.`
+        : sync.enlazado
+          ? `"${concepto}" guardado y enlazado con el código "${sync.codigo}" en Código-Descripción.`
+          : `"${concepto}" guardado, pero el código "${sync.codigo}" no existe todavía en Código-Descripción — no se enlazó.`;
       msgRelacion.className = "form-msg ok";
       formRelacion.reset();
       cargarRelacion();
@@ -1340,6 +1360,7 @@ AUTH_READY.then(async function () {
     if (e.target.classList.contains("fila-guardar-edicion")) {
       const concepto = fila.querySelector(".fila-concepto").value.trim();
       if (!concepto) { alert("El concepto supervisor es obligatorio."); return; }
+      const codigoErp = fila.querySelector(".fila-codigo-erp").value.trim() || null;
       e.target.disabled = true;
       try {
         const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_conceptos_nomina?id=eq.${id}`, {
@@ -1347,11 +1368,16 @@ AUTH_READY.then(async function () {
           headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
           body: JSON.stringify({
             concepto_supervisor: concepto,
-            codigo_erp: fila.querySelector(".fila-codigo-erp").value.trim() || null,
+            codigo_erp: codigoErp,
             descripcion_erp: fila.querySelector(".fila-descripcion-erp").value.trim() || null,
           }),
         });
         if (!resp.ok) throw new Error(await resp.text());
+
+        const sync = await sincronizarCodigoNomina(concepto, codigoErp);
+        if (sync.intentado && !sync.enlazado) {
+          alert(`Guardado, pero el código "${sync.codigo}" no existe todavía en Código-Descripción — no se enlazó.`);
+        }
         cargarRelacion();
       } catch (err) {
         alert("No se pudo guardar: " + (err.message || err));
