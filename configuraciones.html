@@ -249,6 +249,7 @@
     <button class="tab-btn" id="tab-codigos" type="button">Código - Descripción</button>
     <button class="tab-btn" id="tab-horas" type="button">Horas por día</button>
     <button class="tab-btn" id="tab-turnos" type="button">Turnos</button>
+    <button class="tab-btn" id="tab-relacion-nomina" type="button">Relación Conceptos Nómina</button>
   </div>
 
   <section class="card" id="card-area">
@@ -468,6 +469,59 @@
     </div>
   </section>
 
+  <section class="card" id="card-relacion-nomina" hidden>
+    <h2>Agregar concepto</h2>
+    <p class="card-hint">Relación de conceptos hacia el ERP de nómina (Softland), tal como llega en el Excel de RRHH. Es de referencia — todavía no cambia automáticamente el código de nómina en Código-Descripción.</p>
+    <form id="form-relacion">
+      <div class="form-grid">
+        <div class="field">
+          <label for="rel-concepto">Concepto Supervisor <span class="req">*</span></label>
+          <input type="text" id="rel-concepto" required autocomplete="off" placeholder="Ej. HE-HORAS EXTRAS">
+        </div>
+        <div class="field">
+          <label for="rel-nuevo">Nuevo Concepto</label>
+          <input type="text" id="rel-nuevo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="rel-codigo-erp">Código ERP</label>
+          <input type="text" id="rel-codigo-erp" autocomplete="off" placeholder="Ej. B004">
+        </div>
+        <div class="field">
+          <label for="rel-descripcion-erp">Descripción ERP</label>
+          <input type="text" id="rel-descripcion-erp" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-relacion">Guardar concepto</button>
+        <span class="form-msg" id="msg-relacion"></span>
+      </div>
+    </form>
+
+    <p class="card-hint" style="margin-top:24px">Conceptos registrados</p>
+    <div class="filters">
+      <div class="field">
+        <label for="relacion-buscar">Buscar</label>
+        <input type="text" id="relacion-buscar" placeholder="Ej. HORAS EXTRAS…" autocomplete="off">
+      </div>
+      <button class="clear-btn" id="relacion-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="relacion-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="concepto_supervisor">Concepto Supervisor <span class="arrow">↕</span></th>
+            <th>Nuevo Concepto</th>
+            <th data-key="codigo_erp">Código ERP <span class="arrow">↕</span></th>
+            <th>Descripción ERP</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="relacion-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
   <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
 </div>
 </div>
@@ -511,6 +565,7 @@ AUTH_READY.then(async function () {
     { btn: "tab-codigos", card: "card-codigo" },
     { btn: "tab-horas", card: "card-horas" },
     { btn: "tab-turnos", card: "card-turnos" },
+    { btn: "tab-relacion-nomina", card: "card-relacion-nomina" },
   ];
   tabs.forEach(({ btn, card }) => {
     document.getElementById(btn).addEventListener("click", () => {
@@ -1165,12 +1220,184 @@ AUTH_READY.then(async function () {
     }
   });
 
+  // ---------------- seccion: relacion conceptos nomina ----------------
+  const formRelacion = document.getElementById("form-relacion");
+  const inRelConcepto = document.getElementById("rel-concepto");
+  const inRelNuevo = document.getElementById("rel-nuevo");
+  const inRelCodigoErp = document.getElementById("rel-codigo-erp");
+  const inRelDescripcionErp = document.getElementById("rel-descripcion-erp");
+  const btnRelacion = document.getElementById("btn-relacion");
+  const msgRelacion = document.getElementById("msg-relacion");
+  const relacionBuscar = document.getElementById("relacion-buscar");
+  const relacionLimpiar = document.getElementById("relacion-limpiar");
+  const relacionTbody = document.getElementById("relacion-tbody");
+  const relacionCount = document.getElementById("relacion-count");
+  const relacionTabla = relacionTbody.closest("table");
+
+  let relacionCache = [];
+  let relacionSortKey = "concepto_supervisor", relacionSortDir = 1;
+
+  function filaVistaRelacion(f) {
+    return `<tr data-id="${f.id}">
+      <td>${f.concepto_supervisor}</td>
+      <td>${f.nuevo_concepto || "—"}</td>
+      <td class="cedula">${f.codigo_erp || "—"}</td>
+      <td>${f.descripcion_erp || "—"}</td>
+      <td><div class="fila-acciones">
+        <button type="button" class="btn-small fila-editar">Editar</button>
+        <button type="button" class="btn-small critical fila-eliminar">Eliminar</button>
+      </div></td>
+    </tr>`;
+  }
+  function filaEdicionRelacion(f) {
+    return `<tr data-id="${f.id}">
+      <td><input type="text" class="fila-concepto" value="${f.concepto_supervisor}"></td>
+      <td><input type="text" class="fila-nuevo" value="${f.nuevo_concepto || ""}"></td>
+      <td><input type="text" class="fila-codigo-erp" value="${f.codigo_erp || ""}"></td>
+      <td><input type="text" class="fila-descripcion-erp" value="${f.descripcion_erp || ""}"></td>
+      <td><div class="fila-acciones">
+        <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
+        <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
+      </div></td>
+    </tr>`;
+  }
+
+  async function cargarRelacion() {
+    const params = new URLSearchParams();
+    params.set("select", "id,concepto_supervisor,nuevo_concepto,codigo_erp,descripcion_erp");
+    params.set("order", `${relacionSortKey}.${relacionSortDir === 1 ? "asc" : "desc"}`);
+    const q = relacionBuscar.value.trim();
+    if (q) params.set("concepto_supervisor", "ilike.*" + q.replace(/[,()]/g, "") + "*");
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_conceptos_nomina?${params.toString()}`, {
+        headers: { ...authHeaders(), Prefer: "count=exact" },
+      });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+      relacionCache = Array.isArray(filas) ? filas : [];
+      relacionTbody.innerHTML = relacionCache.length === 0
+        ? `<tr><td colspan="5"><div class="empty-state">Sin conceptos para estos filtros.</div></td></tr>`
+        : relacionCache.map(filaVistaRelacion).join("");
+      relacionCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
+    } catch (err) {
+      relacionTbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      relacionCount.textContent = "";
+    }
+
+    relacionTabla.querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.classList.toggle("sorted", th.dataset.key === relacionSortKey);
+      const arrow = th.querySelector(".arrow");
+      if (arrow) arrow.textContent = th.dataset.key === relacionSortKey ? (relacionSortDir === 1 ? "↑" : "↓") : "↕";
+    });
+  }
+
+  relacionTabla.querySelectorAll("thead th[data-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (relacionSortKey === key) relacionSortDir *= -1; else { relacionSortKey = key; relacionSortDir = -1; }
+      cargarRelacion();
+    });
+  });
+
+  formRelacion.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const concepto = inRelConcepto.value.trim();
+    if (!concepto) { msgRelacion.textContent = "El concepto supervisor es obligatorio."; msgRelacion.className = "form-msg error"; return; }
+
+    btnRelacion.disabled = true;
+    msgRelacion.textContent = "Guardando...";
+    msgRelacion.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_conceptos_nomina`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify([{
+          concepto_supervisor: concepto,
+          nuevo_concepto: inRelNuevo.value.trim() || null,
+          codigo_erp: inRelCodigoErp.value.trim() || null,
+          descripcion_erp: inRelDescripcionErp.value.trim() || null,
+        }]),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      msgRelacion.textContent = `"${concepto}" guardado correctamente.`;
+      msgRelacion.className = "form-msg ok";
+      formRelacion.reset();
+      cargarRelacion();
+    } catch (err) {
+      msgRelacion.textContent = "No se pudo guardar: " + (err.message || err);
+      msgRelacion.className = "form-msg error";
+    } finally {
+      btnRelacion.disabled = false;
+    }
+  });
+
+  relacionTbody.addEventListener("click", async (e) => {
+    const fila = e.target.closest("tr");
+    if (!fila) return;
+    const id = fila.dataset.id;
+    const datos = relacionCache.find(x => String(x.id) === id);
+    if (!datos) return;
+
+    if (e.target.classList.contains("fila-editar")) { fila.outerHTML = filaEdicionRelacion(datos); return; }
+    if (e.target.classList.contains("fila-cancelar-edicion")) { fila.outerHTML = filaVistaRelacion(datos); return; }
+
+    if (e.target.classList.contains("fila-guardar-edicion")) {
+      const concepto = fila.querySelector(".fila-concepto").value.trim();
+      if (!concepto) { alert("El concepto supervisor es obligatorio."); return; }
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_conceptos_nomina?id=eq.${id}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({
+            concepto_supervisor: concepto,
+            nuevo_concepto: fila.querySelector(".fila-nuevo").value.trim() || null,
+            codigo_erp: fila.querySelector(".fila-codigo-erp").value.trim() || null,
+            descripcion_erp: fila.querySelector(".fila-descripcion-erp").value.trim() || null,
+          }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarRelacion();
+      } catch (err) {
+        alert("No se pudo guardar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+      return;
+    }
+
+    if (e.target.classList.contains("fila-eliminar")) {
+      if (!confirm(`¿Eliminar "${datos.concepto_supervisor}" definitivamente? Esta acción no se puede deshacer.`)) return;
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_conceptos_nomina?id=eq.${id}`, {
+          method: "DELETE",
+          headers: { ...authHeaders(), Prefer: "return=minimal" },
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarRelacion();
+      } catch (err) {
+        alert("No se pudo eliminar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+  });
+
+  let relacionBuscarTimeout;
+  relacionBuscar.addEventListener("input", () => { clearTimeout(relacionBuscarTimeout); relacionBuscarTimeout = setTimeout(cargarRelacion, 300); });
+  relacionLimpiar.addEventListener("click", () => { relacionBuscar.value = ""; cargarRelacion(); });
+
   seccionAreas.cargar();
   seccionLabores.cargar();
   cargarCodigos();
   cargarHoras();
   cargarAreasParaTurno();
   cargarTurnos();
+  cargarRelacion();
 });
 </script>
 </body>
