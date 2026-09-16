@@ -368,6 +368,7 @@
           <input type="number" id="n-hora" step="0.01" min="0" required>
         </div>
       </div>
+      <p class="card-hint" id="hint-hora-extra" hidden style="margin: -6px 0 14px;"></p>
       <div class="form-actions">
         <button type="submit" class="btn-primary" id="btn-novedad">Guardar novedad</button>
         <span class="form-msg" id="msg-novedad"></span>
@@ -736,6 +737,21 @@ AUTH_READY.then(async function () {
   // Se omite HEC (tiempo compensado, no genera costo de horas extra).
   const CODIGOS_PRESUPUESTO_EXTRA = ["HE", "HEF", "HEFN", "HEN"];
 
+  // Todos los tipos de hora extra (incluye HEC, a diferencia del presupuesto
+  // de arriba). Se limitan a los ultimos 3 dias (hoy, ayer, antier) y a
+  // maximo 2 horas por colaborador, sin excepcion de rol.
+  const CODIGOS_HORA_EXTRA = ["HE", "HEC", "HEF", "HEFN", "HEN"];
+  const DIAS_ATRAS_HORA_EXTRA = 2;
+  const MAX_HORAS_HORA_EXTRA = 2;
+
+  function restarDias(fechaISO, dias) {
+    const [y, m, d] = fechaISO.split("-").map(Number);
+    const dt = new Date(Date.UTC(y, m - 1, d));
+    dt.setUTCDate(dt.getUTCDate() - dias);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${dt.getUTCFullYear()}-${pad(dt.getUTCMonth() + 1)}-${pad(dt.getUTCDate())}`;
+  }
+
   const selArea = document.getElementById("n-area");
   const msColaborador = crearMultiselect("n-colaborador", "Primero selecciona el área…");
   const selCodigo = document.getElementById("n-codigo");
@@ -748,9 +764,39 @@ AUTH_READY.then(async function () {
   const campoFechaFinal = document.getElementById("n-fecha-final-campo");
   const inFechaFinal = document.getElementById("n-fecha-final");
   const inHora = document.getElementById("n-hora");
+  const hintHoraExtra = document.getElementById("hint-hora-extra");
   const formNovedad = document.getElementById("form-novedad");
   const btnNovedad = document.getElementById("btn-novedad");
   const msgNovedad = document.getElementById("msg-novedad");
+
+  // Ventana de fechas permitida hoy para cargar una novedad de hora extra:
+  // hoy, ayer y antier (DIAS_ATRAS_HORA_EXTRA dias hacia atras).
+  function limiteFechaHoraExtra() {
+    const hoy = fechaHoy();
+    return { minima: restarDias(hoy, DIAS_ATRAS_HORA_EXTRA), maxima: hoy };
+  }
+
+  // Restringe fecha y horas cuando el codigo seleccionado es de hora extra
+  // (HE/HEC/HEF/HEFN/HEN): solo se puede cargar hoy/ayer/antier y maximo
+  // MAX_HORAS_HORA_EXTRA horas por colaborador. Aplica a todos los roles.
+  function actualizarLimitesHoraExtra() {
+    const cod = codigosPorValor[selCodigo.value];
+    const esHoraExtra = cod && CODIGOS_HORA_EXTRA.includes(cod.codigo);
+
+    if (esHoraExtra) {
+      const { minima, maxima } = limiteFechaHoraExtra();
+      inFecha.min = minima;
+      inFecha.max = maxima;
+      inHora.max = String(MAX_HORAS_HORA_EXTRA);
+      hintHoraExtra.textContent = `"${cod.codigo_descripcion}" solo se puede cargar para hoy, ayer o antier (${minima} a ${maxima}), máximo ${MAX_HORAS_HORA_EXTRA} horas por colaborador.`;
+      hintHoraExtra.hidden = false;
+    } else {
+      inFecha.min = "";
+      inFecha.max = "";
+      inHora.max = "";
+      hintHoraExtra.hidden = true;
+    }
+  }
 
   function generarRangoFechas(desde, hasta, soloHabiles) {
     const fechas = [];
@@ -800,6 +846,7 @@ AUTH_READY.then(async function () {
   let codigosPorValor = {};
   let empleadosPorCedula = {};
   actualizarCamposFechaRango();
+  actualizarLimitesHoraExtra();
 
   const comboArea = crearCombobox("n-area-combo", "n-area-buscar", "n-area-panel", selArea,
     () => AREAS_CONOCIDAS.map(a => [a, a]));
@@ -898,6 +945,7 @@ AUTH_READY.then(async function () {
     inCodigoNovedad.value = c ? c.codigo : "";
     inDescripcion.value = c ? c.descripcion : "";
     actualizarCamposFechaRango();
+    actualizarLimitesHoraExtra();
     await verificarGatePresupuesto();
   });
 
@@ -929,6 +977,20 @@ AUTH_READY.then(async function () {
     } else {
       if (!inFecha.value) { msgNovedad.textContent = "La fecha es obligatoria."; msgNovedad.className = "form-msg error"; return; }
       fechas = [inFecha.value];
+    }
+
+    if (CODIGOS_HORA_EXTRA.includes(cod.codigo)) {
+      const { minima, maxima } = limiteFechaHoraExtra();
+      if (inFecha.value < minima || inFecha.value > maxima) {
+        msgNovedad.textContent = `"${cod.codigo_descripcion}" solo se puede cargar para hoy, ayer o antier (entre ${minima} y ${maxima}).`;
+        msgNovedad.className = "form-msg error";
+        return;
+      }
+      if (Number(inHora.value) > MAX_HORAS_HORA_EXTRA) {
+        msgNovedad.textContent = `"${cod.codigo_descripcion}" no puede superar ${MAX_HORAS_HORA_EXTRA} horas por colaborador.`;
+        msgNovedad.className = "form-msg error";
+        return;
+      }
     }
 
     if (ROL_AREA_LIMITADA.includes(window.SESION.rol) && CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo)) {
@@ -1015,6 +1077,7 @@ AUTH_READY.then(async function () {
       inFechaInicio.value = "";
       inFechaFinal.value = "";
       actualizarCamposFechaRango();
+      actualizarLimitesHoraExtra();
       msColaborador.seleccion.clear();
       await cargarColaboradores();
       await verificarGatePresupuesto();
