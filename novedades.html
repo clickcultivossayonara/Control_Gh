@@ -899,7 +899,7 @@ AUTH_READY.then(async function () {
   async function verificarGatePresupuesto() {
     const cod = codigosPorValor[selCodigo.value];
     const esPresupuestable = cod && CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo);
-    const aplica = esPresupuestable && ROL_AREA_LIMITADA.includes(window.SESION.rol) && selArea.value && inFecha.value;
+    const aplica = esPresupuestable && selArea.value && inFecha.value;
 
     if (!aplica) {
       presupuestoOK = true;
@@ -993,7 +993,7 @@ AUTH_READY.then(async function () {
       }
     }
 
-    if (ROL_AREA_LIMITADA.includes(window.SESION.rol) && CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo)) {
+    if (CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo)) {
       if (!presupuestoOK) {
         mostrarAlertaPresupuesto(
           `Sin presupuesto de ${cod.codigo_descripcion}`,
