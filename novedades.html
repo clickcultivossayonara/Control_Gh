@@ -450,6 +450,12 @@
           </select>
         </div>
         <div class="field">
+          <label for="e-codigo">Concepto <span class="req">*</span></label>
+          <select id="e-codigo" required>
+            <option value="">Selecciona un concepto…</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="e-horas">Horas asignadas <span class="req">*</span></label>
           <input type="number" id="e-horas" step="0.01" min="0" required>
         </div>
@@ -479,6 +485,7 @@
           <tr>
             <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
             <th data-key="area">Área <span class="arrow">↕</span></th>
+            <th data-key="codigo_novedad">Concepto <span class="arrow">↕</span></th>
             <th data-key="horas_asignadas">Horas Asignadas <span class="arrow">↕</span></th>
             <th data-key="semana">Semana <span class="arrow">↕</span></th>
           </tr>
@@ -564,13 +571,14 @@ AUTH_READY.then(async function () {
     return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
   }
 
-  // Horas de "HE" todavia disponibles para una fecha+area, segun el
-  // presupuesto cargado en Presupuesto Horas Extra. null = sin presupuesto.
-  async function consultarHorasExtraDisponibles(fecha, area) {
+  // Horas de un concepto (HE/HEF/HEFN/HEN) todavia disponibles para una
+  // fecha+area, segun el presupuesto cargado en Presupuesto Horas Extra.
+  // null = sin presupuesto.
+  async function consultarHorasExtraDisponibles(fecha, area, codigo) {
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/horas_extra_disponibles`, {
       method: "POST",
       headers: { ...authHeaders(), "Content-Type": "application/json" },
-      body: JSON.stringify({ p_fecha: fecha, p_area: area }),
+      body: JSON.stringify({ p_fecha: fecha, p_area: area, p_codigo: codigo }),
     });
     if (!resp.ok) return null;
     const valor = await resp.json();
@@ -724,6 +732,10 @@ AUTH_READY.then(async function () {
   // ---------------- formulario: novedad por colaborador ----------------
   const TIPOS_RANGO_FECHA = ["Ausencia", "Vacaciones"];
 
+  // Conceptos que se pueden presupuestar en "Presupuesto Horas extra".
+  // Se omite HEC (tiempo compensado, no genera costo de horas extra).
+  const CODIGOS_PRESUPUESTO_EXTRA = ["HE", "HEF", "HEFN", "HEN"];
+
   const selArea = document.getElementById("n-area");
   const msColaborador = crearMultiselect("n-colaborador", "Primero selecciona el área…");
   const selCodigo = document.getElementById("n-codigo");
@@ -801,6 +813,9 @@ AUTH_READY.then(async function () {
       codigosPorValor[f.codigo] = f;
       selCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
       lnCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo_descripcion}">${f.codigo_descripcion}</option>`);
+      if (CODIGOS_PRESUPUESTO_EXTRA.includes(f.codigo)) {
+        selCodigoExtra.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
+      }
     });
   }
   cargarCodigos();
@@ -828,24 +843,24 @@ AUTH_READY.then(async function () {
 
   // Gate de presupuesto de horas extra: en vez de esperar a "Guardar novedad"
   // para avisar que falta presupuesto, se valida apenas quedan completos
-  // area + codigo HE + fecha, y mientras no haya presupuesto se bloquea la
-  // seleccion de colaboradores y horas (para no hacer diligenciar el resto
-  // del formulario en vano).
+  // area + codigo presupuestable (HE/HEF/HEFN/HEN) + fecha, y mientras no
+  // haya presupuesto se bloquea la seleccion de colaboradores y horas (para
+  // no hacer diligenciar el resto del formulario en vano).
   let presupuestoOK = true;
   let colaboradorBloqueadoPorPresupuesto = false;
 
   async function verificarGatePresupuesto() {
     const cod = codigosPorValor[selCodigo.value];
-    const esHE = cod && cod.codigo === "HE";
-    const aplica = esHE && ROL_AREA_LIMITADA.includes(window.SESION.rol) && selArea.value && inFecha.value;
+    const esPresupuestable = cod && CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo);
+    const aplica = esPresupuestable && ROL_AREA_LIMITADA.includes(window.SESION.rol) && selArea.value && inFecha.value;
 
     if (!aplica) {
       presupuestoOK = true;
       inHora.disabled = false;
       alertaPresupuesto.hidden = true;
       // Si el colaborador quedo bloqueado por falta de presupuesto en un
-      // codigo HE anterior, hay que recargarlo al salir de ese estado
-      // (ej. el usuario cambio a otro codigo o quito el area).
+      // codigo presupuestable anterior, hay que recargarlo al salir de ese
+      // estado (ej. el usuario cambio a otro codigo o quito el area).
       if (colaboradorBloqueadoPorPresupuesto) {
         colaboradorBloqueadoPorPresupuesto = false;
         await cargarColaboradores();
@@ -855,16 +870,16 @@ AUTH_READY.then(async function () {
 
     msgNovedad.textContent = "Verificando presupuesto de horas extra...";
     msgNovedad.className = "form-msg";
-    const disponibles = await consultarHorasExtraDisponibles(inFecha.value, selArea.value);
+    const disponibles = await consultarHorasExtraDisponibles(inFecha.value, selArea.value, cod.codigo);
     msgNovedad.textContent = "";
 
     if (disponibles === null) {
       presupuestoOK = false;
       mostrarAlertaPresupuesto(
-        "Sin presupuesto de horas extra",
-        `No tiene horas asignadas para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
+        `Sin presupuesto de ${cod.codigo_descripcion}`,
+        `No tiene horas asignadas de "${cod.codigo_descripcion}" para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
       );
-      msColaborador.deshabilitar("Sin presupuesto de horas extra para esta fecha/área");
+      msColaborador.deshabilitar(`Sin presupuesto de ${cod.codigo_descripcion} para esta fecha/área`);
       colaboradorBloqueadoPorPresupuesto = true;
       inHora.disabled = true;
     } else {
@@ -916,11 +931,11 @@ AUTH_READY.then(async function () {
       fechas = [inFecha.value];
     }
 
-    if (ROL_AREA_LIMITADA.includes(window.SESION.rol) && cod.codigo === "HE") {
+    if (ROL_AREA_LIMITADA.includes(window.SESION.rol) && CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo)) {
       if (!presupuestoOK) {
         mostrarAlertaPresupuesto(
-          "Sin presupuesto de horas extra",
-          `No tiene horas asignadas para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
+          `Sin presupuesto de ${cod.codigo_descripcion}`,
+          `No tiene horas asignadas de "${cod.codigo_descripcion}" para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
         );
         return;
       }
@@ -928,21 +943,21 @@ AUTH_READY.then(async function () {
       msgNovedad.textContent = "Verificando presupuesto de horas extra...";
       msgNovedad.className = "form-msg";
       const horasSolicitadas = Number(inHora.value) * cedulasSeleccionadas.length;
-      const disponibles = await consultarHorasExtraDisponibles(inFecha.value, selArea.value);
+      const disponibles = await consultarHorasExtraDisponibles(inFecha.value, selArea.value, cod.codigo);
       msgNovedad.textContent = "";
       btnNovedad.disabled = false;
 
       if (disponibles === null) {
         mostrarAlertaPresupuesto(
-          "Sin presupuesto de horas extra",
-          `No tiene horas asignadas para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
+          `Sin presupuesto de ${cod.codigo_descripcion}`,
+          `No tiene horas asignadas de "${cod.codigo_descripcion}" para el área "${selArea.value}" en la fecha ${inFecha.value}. Solicita el presupuesto a Nómina/RRHH antes de registrar esta novedad.`
         );
         return;
       }
       if (horasSolicitadas > disponibles) {
         mostrarAlertaPresupuesto(
-          "Presupuesto de horas extra excedido",
-          `No es posible cargar esta novedad: solicitas ${horasSolicitadas} hora(s) pero solo quedan ${disponibles} disponible(s) para "${selArea.value}" el ${inFecha.value}.`
+          `Presupuesto de ${cod.codigo_descripcion} excedido`,
+          `No es posible cargar esta novedad: solicitas ${horasSolicitadas} hora(s) pero solo quedan ${disponibles} disponible(s) de "${cod.codigo_descripcion}" para "${selArea.value}" el ${inFecha.value}.`
         );
         return;
       }
@@ -1015,6 +1030,7 @@ AUTH_READY.then(async function () {
   // ---------------- formulario: horas extra por area ----------------
   const inFechaExtra = document.getElementById("e-fecha");
   const selAreaExtra = document.getElementById("e-area");
+  const selCodigoExtra = document.getElementById("e-codigo");
   const inHorasExtra = document.getElementById("e-horas");
   const inEmailExtra = document.getElementById("e-email");
   const formExtra = document.getElementById("form-extra");
@@ -1026,7 +1042,7 @@ AUTH_READY.then(async function () {
   formExtra.addEventListener("submit", async (e) => {
     e.preventDefault();
 
-    if (!selAreaExtra.value || !inHorasExtra.value) {
+    if (!selAreaExtra.value || !selCodigoExtra.value || !inHorasExtra.value) {
       msgExtra.textContent = "Completa todos los campos.";
       msgExtra.className = "form-msg error";
       return;
@@ -1038,6 +1054,7 @@ AUTH_READY.then(async function () {
       fecha: inFechaExtra.value,
       semana: isoWeekNum(inFechaExtra.value),
       area: selAreaExtra.value,
+      codigo_novedad: selCodigoExtra.value,
       horas_asignadas: Number(inHorasExtra.value),
       email: inEmailExtra.value.trim() || null,
     };
@@ -1179,7 +1196,7 @@ AUTH_READY.then(async function () {
 
   async function cargarListaExtras() {
     const params = new URLSearchParams();
-    params.set("select", "fecha,area,horas_asignadas,semana");
+    params.set("select", "fecha,area,codigo_novedad,horas_asignadas,semana");
     params.set("order", `${leSortKey}.${leSortDir === 1 ? "asc" : "desc"}.nullslast`);
     params.set("limit", "300");
     const buscar = leBuscar.value.trim();
@@ -1192,11 +1209,12 @@ AUTH_READY.then(async function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       if (filas.length === 0) {
-        leTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Sin asignaciones para estos filtros.</div></td></tr>`;
+        leTbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Sin asignaciones para estos filtros.</div></td></tr>`;
       } else {
         leTbody.innerHTML = filas.map(f => `<tr>
           <td class="num">${f.fecha || "—"}</td>
           <td>${f.area || "—"}</td>
+          <td>${codigosPorValor[f.codigo_novedad]?.codigo_descripcion || f.codigo_novedad || "—"}</td>
           <td class="num">${f.horas_asignadas ?? "—"}</td>
           <td class="num">${f.semana ?? "—"}</td>
         </tr>`).join("");
@@ -1204,7 +1222,7 @@ AUTH_READY.then(async function () {
       leCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      leTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      leTbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       leCount.textContent = "";
     }
 
