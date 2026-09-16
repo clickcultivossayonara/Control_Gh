@@ -250,6 +250,7 @@
     <button class="tab-btn" id="tab-horas" type="button">Horas por día</button>
     <button class="tab-btn" id="tab-turnos" type="button">Turnos</button>
     <button class="tab-btn" id="tab-relacion-nomina" type="button">Relación Conceptos Nómina</button>
+    <button class="tab-btn" id="tab-tipo-ausencia" type="button">Relación Tipo Ausencia</button>
   </div>
 
   <section class="card" id="card-area">
@@ -517,6 +518,52 @@
     </div>
   </section>
 
+  <section class="card" id="card-tipo-ausencia" hidden>
+    <h2>Agregar relación</h2>
+    <p class="card-hint">Relaciona el código interno con el "Tipo Ausencia" que exige el ERP de Softland en el Cargador Ausentismo de Nómina (ej. IEG → INC). El Cargador Ausentismo lee esta tabla en vivo; los códigos sin relación aquí salen como "Ausencia" por defecto.</p>
+    <form id="form-tipo-ausencia">
+      <div class="form-grid">
+        <div class="field">
+          <label for="ta-codigo">Código <span class="req">*</span></label>
+          <select id="ta-codigo" required>
+            <option value="">Selecciona un código…</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ta-tipo-erp">Tipo Ausencia ERP <span class="req">*</span></label>
+          <input type="text" id="ta-tipo-erp" required autocomplete="off" placeholder="Ej. INC" style="text-transform:uppercase">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-tipo-ausencia">Guardar relación</button>
+        <span class="form-msg" id="msg-tipo-ausencia"></span>
+      </div>
+    </form>
+
+    <p class="card-hint" style="margin-top:24px">Relaciones registradas</p>
+    <div class="filters">
+      <div class="field">
+        <label for="ta-buscar">Buscar</label>
+        <input type="text" id="ta-buscar" placeholder="Ej. INC…" autocomplete="off">
+      </div>
+      <button class="clear-btn" id="ta-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="ta-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="codigo">Código <span class="arrow">↕</span></th>
+            <th>Descripción</th>
+            <th data-key="tipo_ausencia_erp">Tipo Ausencia ERP <span class="arrow">↕</span></th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="ta-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
   <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
 </div>
 </div>
@@ -561,6 +608,7 @@ AUTH_READY.then(async function () {
     { btn: "tab-horas", card: "card-horas" },
     { btn: "tab-turnos", card: "card-turnos" },
     { btn: "tab-relacion-nomina", card: "card-relacion-nomina" },
+    { btn: "tab-tipo-ausencia", card: "card-tipo-ausencia" },
   ];
   tabs.forEach(({ btn, card }) => {
     document.getElementById(btn).addEventListener("click", () => {
@@ -1407,6 +1455,180 @@ AUTH_READY.then(async function () {
   relacionBuscar.addEventListener("input", () => { clearTimeout(relacionBuscarTimeout); relacionBuscarTimeout = setTimeout(cargarRelacion, 300); });
   relacionLimpiar.addEventListener("click", () => { relacionBuscar.value = ""; cargarRelacion(); });
 
+  // ---------------- seccion: relacion tipo ausencia ----------------
+  const formTipoAusencia = document.getElementById("form-tipo-ausencia");
+  const selTaCodigo = document.getElementById("ta-codigo");
+  const inTaTipoErp = document.getElementById("ta-tipo-erp");
+  const btnTipoAusencia = document.getElementById("btn-tipo-ausencia");
+  const msgTipoAusencia = document.getElementById("msg-tipo-ausencia");
+  const taBuscar = document.getElementById("ta-buscar");
+  const taLimpiar = document.getElementById("ta-limpiar");
+  const taTbody = document.getElementById("ta-tbody");
+  const taCount = document.getElementById("ta-count");
+  const taTabla = taTbody.closest("table");
+
+  let taCache = [];
+  let taSortKey = "codigo", taSortDir = 1;
+  let codigosPorValorTa = {};
+
+  inTaTipoErp.addEventListener("input", forzarMayusculas);
+
+  async function poblarSelectTipoAusencia() {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,codigo_descripcion&habilitado=eq.true&order=codigo_descripcion.asc`, { headers: authHeaders() });
+    const filas = await resp.json();
+    filas.forEach(f => {
+      codigosPorValorTa[f.codigo] = f;
+      selTaCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
+    });
+  }
+
+  function filaVistaTa(f) {
+    const cod = codigosPorValorTa[f.codigo];
+    return `<tr data-codigo="${f.codigo}">
+      <td class="cedula">${f.codigo}</td>
+      <td>${cod ? cod.codigo_descripcion : "—"}</td>
+      <td>${f.tipo_ausencia_erp}</td>
+      <td><div class="fila-acciones">
+        <button type="button" class="btn-small fila-editar">Editar</button>
+        <button type="button" class="btn-small critical fila-eliminar">Eliminar</button>
+      </div></td>
+    </tr>`;
+  }
+  function filaEdicionTa(f) {
+    const cod = codigosPorValorTa[f.codigo];
+    return `<tr data-codigo="${f.codigo}">
+      <td class="cedula">${f.codigo}</td>
+      <td>${cod ? cod.codigo_descripcion : "—"}</td>
+      <td><input type="text" class="fila-tipo-erp" value="${f.tipo_ausencia_erp}" style="text-transform:uppercase"></td>
+      <td><div class="fila-acciones">
+        <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
+        <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
+      </div></td>
+    </tr>`;
+  }
+
+  async function cargarTipoAusencia() {
+    const params = new URLSearchParams();
+    params.set("select", "codigo,tipo_ausencia_erp");
+    params.set("order", `${taSortKey}.${taSortDir === 1 ? "asc" : "desc"}`);
+    const q = taBuscar.value.trim();
+    if (q) params.set("or", `(codigo.ilike.*${q}*,tipo_ausencia_erp.ilike.*${q}*)`);
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_tipo_ausencia?${params.toString()}`, {
+        headers: { ...authHeaders(), Prefer: "count=exact" },
+      });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+
+      taCache = Array.isArray(filas) ? filas : [];
+      taTbody.innerHTML = taCache.length === 0
+        ? `<tr><td colspan="4"><div class="empty-state">Sin relaciones para estos filtros.</div></td></tr>`
+        : taCache.map(filaVistaTa).join("");
+      taCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s");
+    } catch (err) {
+      taTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      taCount.textContent = "";
+    }
+
+    taTabla.querySelectorAll("thead th[data-key]").forEach((th) => {
+      th.classList.toggle("sorted", th.dataset.key === taSortKey);
+      const arrow = th.querySelector(".arrow");
+      if (arrow) arrow.textContent = th.dataset.key === taSortKey ? (taSortDir === 1 ? "↑" : "↓") : "↕";
+    });
+  }
+
+  taTabla.querySelectorAll("thead th[data-key]").forEach((th) => {
+    th.addEventListener("click", () => {
+      const key = th.dataset.key;
+      if (taSortKey === key) taSortDir *= -1; else { taSortKey = key; taSortDir = -1; }
+      cargarTipoAusencia();
+    });
+  });
+
+  formTipoAusencia.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const codigo = selTaCodigo.value;
+    const tipoErp = inTaTipoErp.value.trim();
+    if (!codigo) { msgTipoAusencia.textContent = "Selecciona un código."; msgTipoAusencia.className = "form-msg error"; return; }
+    if (!tipoErp) { msgTipoAusencia.textContent = "El Tipo Ausencia ERP es obligatorio."; msgTipoAusencia.className = "form-msg error"; return; }
+
+    btnTipoAusencia.disabled = true;
+    msgTipoAusencia.textContent = "Guardando...";
+    msgTipoAusencia.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_tipo_ausencia`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify([{ codigo, tipo_ausencia_erp: tipoErp }]),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+
+      msgTipoAusencia.textContent = `"${codigo}" relacionado con "${tipoErp}".`;
+      msgTipoAusencia.className = "form-msg ok";
+      formTipoAusencia.reset();
+      cargarTipoAusencia();
+    } catch (err) {
+      msgTipoAusencia.textContent = "No se pudo guardar: " + (err.message || err);
+      msgTipoAusencia.className = "form-msg error";
+    } finally {
+      btnTipoAusencia.disabled = false;
+    }
+  });
+
+  taTbody.addEventListener("click", async (e) => {
+    const fila = e.target.closest("tr");
+    if (!fila) return;
+    const codigo = fila.dataset.codigo;
+    const datos = taCache.find(x => x.codigo === codigo);
+    if (!datos) return;
+
+    if (e.target.classList.contains("fila-editar")) { fila.outerHTML = filaEdicionTa(datos); return; }
+    if (e.target.classList.contains("fila-cancelar-edicion")) { fila.outerHTML = filaVistaTa(datos); return; }
+
+    if (e.target.classList.contains("fila-guardar-edicion")) {
+      const tipoErp = fila.querySelector(".fila-tipo-erp").value.trim();
+      if (!tipoErp) { alert("El Tipo Ausencia ERP es obligatorio."); return; }
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_tipo_ausencia?codigo=eq.${encodeURIComponent(codigo)}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ tipo_ausencia_erp: tipoErp }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarTipoAusencia();
+      } catch (err) {
+        alert("No se pudo guardar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+      return;
+    }
+
+    if (e.target.classList.contains("fila-eliminar")) {
+      if (!confirm(`¿Eliminar la relación de "${codigo}" definitivamente? Esta acción no se puede deshacer.`)) return;
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/relacion_tipo_ausencia?codigo=eq.${encodeURIComponent(codigo)}`, {
+          method: "DELETE",
+          headers: { ...authHeaders(), Prefer: "return=minimal" },
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        cargarTipoAusencia();
+      } catch (err) {
+        alert("No se pudo eliminar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+  });
+
+  let taBuscarTimeout;
+  taBuscar.addEventListener("input", () => { clearTimeout(taBuscarTimeout); taBuscarTimeout = setTimeout(cargarTipoAusencia, 300); });
+  taLimpiar.addEventListener("click", () => { taBuscar.value = ""; cargarTipoAusencia(); });
+
   seccionAreas.cargar();
   seccionLabores.cargar();
   cargarCodigos();
@@ -1414,6 +1636,7 @@ AUTH_READY.then(async function () {
   cargarAreasParaTurno();
   cargarTurnos();
   cargarRelacion();
+  poblarSelectTipoAusencia().then(cargarTipoAusencia);
 });
 </script>
 </body>
