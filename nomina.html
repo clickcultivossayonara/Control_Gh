@@ -916,6 +916,45 @@ AUTH_READY.then(async function () {
     mostrarPreviewCargador(filasExcel, "Cargador Horas", `cargador_horas_${fechaISO(new Date())}.xlsx`, [12, 12, 10, 8]);
   }));
 
+  // Se guarda lo ya calculado (episodios en el rango, sin filtrar por
+  // codigo, mas los mapas usados para armar el Excel) para que cambiar el
+  // filtro de codigo solo re-renderice la vista previa, sin volver a pedir
+  // los datos a Supabase ni a recalcular los episodios.
+  let cacheAusentismo = null;
+
+  function renderizarPreviewAusentismo() {
+    if (!cacheAusentismo) return;
+    const { enRango, mapa, mapaTipoAusencia } = cacheAusentismo;
+    const codigoFiltro = cgCodigo.value;
+    const filtrados = codigoFiltro ? enRango.filter(ep => ep.codigo === codigoFiltro) : enRango;
+    if (filtrados.length === 0) {
+      msgCargadores.textContent = "No hay ausencias que terminen en ese rango" + (codigoFiltro ? ` para "${mapa[codigoFiltro]?.codigo_descripcion || codigoFiltro}"` : "") + ".";
+      msgCargadores.className = "form-msg error";
+      cgPreview.hidden = true;
+      return;
+    }
+    msgCargadores.textContent = "";
+
+    const filasExcel = filtrados.map(ep => ({
+      "Empleado (c.c)": ep.cedula,
+      "FechaNovedad": ep.inicio,
+      "Fecha Inicial": ep.inicio,
+      "Fecha Final": ep.fin,
+      "Dias Accion": ep.dias,
+      "Dias Saldo": ep.dias,
+      "Tipo Accion": ep.codigo,
+      "Tipo Ausencia": mapaTipoAusencia[ep.codigo] || "Ausencia",
+    }));
+
+    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13]);
+  }
+
+  cgCodigo.addEventListener("change", renderizarPreviewAusentismo);
+  // Cambiar el rango de fechas invalida el cache -- hay que volver a
+  // previsualizar para traer los datos de ese nuevo rango.
+  cgDesde.addEventListener("change", () => { cacheAusentismo = null; });
+  cgHasta.addEventListener("change", () => { cacheAusentismo = null; });
+
   document.getElementById("btn-cargador-ausentismo").addEventListener("click", (e) => conBotonOcupado(e.target, async () => {
     if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
     const mapa = await obtenerMapaCodigos();
@@ -928,12 +967,9 @@ AUTH_READY.then(async function () {
       order: "cedula,fecha_novedad,id_nomina",
     });
 
-    const codigoFiltro = cgCodigo.value;
     const relevantes = filas.filter(f => {
       const info = mapa[f.codigo_novedad];
-      if (!info || !info.codigo_nomina || !TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo)) return false;
-      if (codigoFiltro && f.codigo_novedad !== codigoFiltro) return false;
-      return true;
+      return info && info.codigo_nomina && TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo);
     });
 
     // Agrupa por (cedula, codigo_novedad) y colapsa dias consecutivos en
@@ -967,20 +1003,10 @@ AUTH_READY.then(async function () {
     });
 
     const enRango = episodios.filter(ep => ep.fin >= cgDesde.value && ep.fin <= cgHasta.value);
-    if (enRango.length === 0) throw new Error("No hay ausencias que terminen en ese rango" + (codigoFiltro ? ` para "${mapa[codigoFiltro]?.codigo_descripcion || codigoFiltro}"` : "") + ".");
+    if (enRango.length === 0) throw new Error("No hay ausencias que terminen en ese rango.");
 
-    const filasExcel = enRango.map(ep => ({
-      "Empleado (c.c)": ep.cedula,
-      "FechaNovedad": ep.inicio,
-      "Fecha Inicial": ep.inicio,
-      "Fecha Final": ep.fin,
-      "Dias Accion": ep.dias,
-      "Dias Saldo": ep.dias,
-      "Tipo Accion": ep.codigo,
-      "Tipo Ausencia": mapaTipoAusencia[ep.codigo] || "Ausencia",
-    }));
-
-    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13]);
+    cacheAusentismo = { enRango, mapa, mapaTipoAusencia };
+    renderizarPreviewAusentismo();
   }));
 
   poblarSelectCodigoAusentismo();
