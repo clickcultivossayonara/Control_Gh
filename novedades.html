@@ -798,6 +798,18 @@ AUTH_READY.then(async function () {
     }
   }
 
+  // Festivos de Colombia (editable por año desde Configuraciones), para que
+  // "dias habiles" omita tambien festivos y no solo domingos.
+  let FESTIVOS = new Set();
+  async function cargarFestivos() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/festivos_colombia?select=fecha`, { headers: authHeaders() });
+      if (!resp.ok) return;
+      const filas = await resp.json();
+      FESTIVOS = new Set(filas.map(f => f.fecha));
+    } catch {}
+  }
+
   function generarRangoFechas(desde, hasta, soloHabiles) {
     const fechas = [];
     let [y, m, d] = desde.split("-").map(Number);
@@ -805,9 +817,11 @@ AUTH_READY.then(async function () {
     const [yh, mh, dh] = hasta.split("-").map(Number);
     const fin = new Date(yh, mh - 1, dh);
     while (cursor <= fin) {
-      if (!soloHabiles || cursor.getDay() !== 0) {  // getDay()===0 => domingo
-        const yy = cursor.getFullYear(), mm = String(cursor.getMonth() + 1).padStart(2, "0"), dd = String(cursor.getDate()).padStart(2, "0");
-        fechas.push(`${yy}-${mm}-${dd}`);
+      const yy = cursor.getFullYear(), mm = String(cursor.getMonth() + 1).padStart(2, "0"), dd = String(cursor.getDate()).padStart(2, "0");
+      const fechaStr = `${yy}-${mm}-${dd}`;
+      const esDomingo = cursor.getDay() === 0;
+      if (!soloHabiles || (!esDomingo && !FESTIVOS.has(fechaStr))) {
+        fechas.push(fechaStr);
       }
       cursor.setDate(cursor.getDate() + 1);
     }
@@ -866,6 +880,7 @@ AUTH_READY.then(async function () {
     });
   }
   cargarCodigos();
+  cargarFestivos();
 
   async function cargarColaboradores() {
     empleadosPorCedula = {};

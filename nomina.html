@@ -350,11 +350,30 @@
         <label for="cg-hasta">Hasta</label>
         <input type="date" id="cg-hasta">
       </div>
+      <div class="field">
+        <label for="cg-codigo">Código (solo Ausentismo)</label>
+        <select id="cg-codigo">
+          <option value="">Todos los códigos</option>
+        </select>
+      </div>
     </div>
     <div class="cargador-botones">
-      <button class="excel-btn" id="btn-cargador-horas">Descargar Cargador Horas</button>
-      <button class="excel-btn" id="btn-cargador-ausentismo">Descargar Cargador Ausentismo</button>
+      <button class="excel-btn" id="btn-cargador-horas">Previsualizar Cargador Horas</button>
+      <button class="excel-btn" id="btn-cargador-ausentismo">Previsualizar Cargador Ausentismo</button>
       <span class="form-msg" id="msg-cargadores"></span>
+    </div>
+
+    <div id="cg-preview" hidden>
+      <p class="card-hint" id="cg-preview-titulo" style="margin-top:20px">Vista previa</p>
+      <div class="table-scroll">
+        <table>
+          <thead id="cg-preview-thead"></thead>
+          <tbody id="cg-preview-tbody"></tbody>
+        </table>
+      </div>
+      <div class="cargador-botones">
+        <button type="button" class="excel-btn" id="btn-cg-descargar">Descargar Excel</button>
+      </div>
     </div>
   </section>
 
@@ -720,16 +739,82 @@ AUTH_READY.then(async function () {
   const TIPOS_RANGO_FECHA_CARGADOR = ["Ausencia", "Vacaciones"];
   const cgDesde = document.getElementById("cg-desde");
   const cgHasta = document.getElementById("cg-hasta");
+  const cgCodigo = document.getElementById("cg-codigo");
   const msgCargadores = document.getElementById("msg-cargadores");
   cgDesde.value = fechaISO(new Date(new Date().setDate(new Date().getDate() - 15)));
   cgHasta.value = fechaISO(new Date());
 
+  async function poblarSelectCodigoAusentismo() {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,codigo_descripcion,tipo&habilitado=eq.true&order=codigo_descripcion.asc`, { headers: authHeaders() });
+    if (!resp.ok) return;
+    const filas = await resp.json();
+    filas.filter(f => TIPOS_RANGO_FECHA_CARGADOR.includes(f.tipo)).forEach(f => {
+      cgCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
+    });
+  }
+
+  // Festivos de Colombia (editable por año desde Configuraciones), para que
+  // los episodios de codigos "habil" (VAC/LPL) no se corten en un domingo o
+  // festivo -- una vacacion de 15 dias que cruza un domingo debe reportarse
+  // como un solo episodio, no partido en dos.
+  let FESTIVOS_CARGADOR = new Set();
+  async function cargarFestivosCargador() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/festivos_colombia?select=fecha`, { headers: authHeaders() });
+      if (!resp.ok) return;
+      const filas = await resp.json();
+      FESTIVOS_CARGADOR = new Set(filas.map(f => f.fecha));
+    } catch {}
+  }
+  function esDiaNoHabil(fechaStr) {
+    const [y, m, d] = fechaStr.split("-").map(Number);
+    return new Date(y, m - 1, d).getDay() === 0 || FESTIVOS_CARGADOR.has(fechaStr);
+  }
+  // true si TODOS los dias estrictamente entre desde y hasta (exclusive) son
+  // domingo o festivo -- en ese caso el hueco no debe cortar el episodio.
+  function soloDiasNoHabilesEntre(desde, hasta) {
+    const [y, m, d] = desde.split("-").map(Number);
+    let cursor = new Date(y, m - 1, d);
+    cursor.setDate(cursor.getDate() + 1);
+    const [yh, mh, dh] = hasta.split("-").map(Number);
+    const fin = new Date(yh, mh - 1, dh);
+    while (cursor < fin) {
+      const yy = cursor.getFullYear(), mm = String(cursor.getMonth() + 1).padStart(2, "0"), dd = String(cursor.getDate()).padStart(2, "0");
+      if (!esDiaNoHabil(`${yy}-${mm}-${dd}`)) return false;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return true;
+  }
+
+  // ---------------- previsualizacion de cargadores ----------------
+  let ultimoCargador = null;
+  const cgPreview = document.getElementById("cg-preview");
+  const cgPreviewTitulo = document.getElementById("cg-preview-titulo");
+  const cgPreviewThead = document.getElementById("cg-preview-thead");
+  const cgPreviewTbody = document.getElementById("cg-preview-tbody");
+  const btnCgDescargar = document.getElementById("btn-cg-descargar");
+
+  function mostrarPreviewCargador(filasExcel, hoja, nombreArchivo, anchos) {
+    ultimoCargador = { filasExcel, hoja, nombreArchivo, anchos };
+    const columnas = Object.keys(filasExcel[0]);
+    cgPreviewTitulo.textContent = `Vista previa: ${hoja} (${filasExcel.length} fila${filasExcel.length === 1 ? "" : "s"})`;
+    cgPreviewThead.innerHTML = `<tr>${columnas.map(c => `<th>${c}</th>`).join("")}</tr>`;
+    cgPreviewTbody.innerHTML = filasExcel.map(f => `<tr>${columnas.map(c => `<td>${f[c] ?? "—"}</td>`).join("")}</tr>`).join("");
+    cgPreview.hidden = false;
+    cgPreview.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }
+
+  btnCgDescargar.addEventListener("click", () => {
+    if (!ultimoCargador) return;
+    descargarLibro(ultimoCargador.filasExcel, ultimoCargador.hoja, ultimoCargador.nombreArchivo, ultimoCargador.anchos);
+  });
+
   async function obtenerMapaCodigos() {
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,codigo_nomina,tipo`, { headers: authHeaders() });
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,codigo_descripcion,codigo_nomina,tipo,conteo_dias`, { headers: authHeaders() });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const filas = await resp.json();
     const mapa = {};
-    filas.forEach(f => { mapa[f.codigo] = { codigo_nomina: f.codigo_nomina, tipo: f.tipo }; });
+    filas.forEach(f => { mapa[f.codigo] = { codigo_descripcion: f.codigo_descripcion, codigo_nomina: f.codigo_nomina, tipo: f.tipo, conteo_dias: f.conteo_dias }; });
 
     // relacion_conceptos_nomina es la fuente autoritativa del codigo ERP para
     // los cargadores -- si un concepto esta ahi, su codigo_erp manda sobre lo
@@ -828,7 +913,7 @@ AUTH_READY.then(async function () {
     });
     if (filasExcel.length === 0) throw new Error("No hay novedades de horas en ese rango.");
 
-    descargarLibro(filasExcel, "Cargador Horas", `cargador_horas_${fechaISO(new Date())}.xlsx`, [12, 12, 10, 8]);
+    mostrarPreviewCargador(filasExcel, "Cargador Horas", `cargador_horas_${fechaISO(new Date())}.xlsx`, [12, 12, 10, 8]);
   }));
 
   document.getElementById("btn-cargador-ausentismo").addEventListener("click", (e) => conBotonOcupado(e.target, async () => {
@@ -843,12 +928,18 @@ AUTH_READY.then(async function () {
       order: "cedula,fecha_novedad,id_nomina",
     });
 
+    const codigoFiltro = cgCodigo.value;
     const relevantes = filas.filter(f => {
       const info = mapa[f.codigo_novedad];
-      return info && info.codigo_nomina && TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo);
+      if (!info || !info.codigo_nomina || !TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo)) return false;
+      if (codigoFiltro && f.codigo_novedad !== codigoFiltro) return false;
+      return true;
     });
 
-    // Agrupa por (cedula, codigo_novedad) y colapsa dias consecutivos en episodios.
+    // Agrupa por (cedula, codigo_novedad) y colapsa dias consecutivos en
+    // episodios. Para codigos con conteo_dias "habil" (VAC, LPL) un hueco de
+    // solo domingos/festivos no cierra el episodio -- esos dias se omitieron
+    // al registrar la novedad, pero la ausencia sigue siendo una sola.
     const grupos = {};
     relevantes.forEach(f => {
       const clave = `${f.cedula}|${f.codigo_novedad}`;
@@ -858,6 +949,7 @@ AUTH_READY.then(async function () {
     const episodios = [];
     Object.entries(grupos).forEach(([clave, fechasStr]) => {
       const [cedula, codigo] = clave.split("|");
+      const esHabil = mapa[codigo]?.conteo_dias === "habil";
       const fechas = [...new Set(fechasStr)].sort();
       let inicio = null, anterior = null;
       const cerrar = (fin) => {
@@ -867,14 +959,15 @@ AUTH_READY.then(async function () {
       fechas.forEach(f => {
         if (inicio === null) { inicio = f; anterior = f; return; }
         const gap = Math.round((new Date(f) - new Date(anterior)) / 86400000);
-        if (gap > 1) { cerrar(anterior); inicio = f; }
+        const puentea = esHabil && gap > 1 && soloDiasNoHabilesEntre(anterior, f);
+        if (gap > 1 && !puentea) { cerrar(anterior); inicio = f; }
         anterior = f;
       });
       if (inicio !== null) cerrar(anterior);
     });
 
     const enRango = episodios.filter(ep => ep.fin >= cgDesde.value && ep.fin <= cgHasta.value);
-    if (enRango.length === 0) throw new Error("No hay ausencias que terminen en ese rango.");
+    if (enRango.length === 0) throw new Error("No hay ausencias que terminen en ese rango" + (codigoFiltro ? ` para "${mapa[codigoFiltro]?.codigo_descripcion || codigoFiltro}"` : "") + ".");
 
     const filasExcel = enRango.map(ep => ({
       "Empleado (c.c)": ep.cedula,
@@ -887,8 +980,11 @@ AUTH_READY.then(async function () {
       "Tipo Ausencia": mapaTipoAusencia[ep.codigo] || "Ausencia",
     }));
 
-    descargarLibro(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13]);
+    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13]);
   }));
+
+  poblarSelectCodigoAusentismo();
+  cargarFestivosCargador();
 });
 </script>
 </body>

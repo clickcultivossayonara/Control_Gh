@@ -251,6 +251,7 @@
     <button class="tab-btn" id="tab-turnos" type="button">Turnos</button>
     <button class="tab-btn" id="tab-relacion-nomina" type="button">Relación Conceptos Nómina</button>
     <button class="tab-btn" id="tab-tipo-ausencia" type="button">Relación Tipo Ausencia</button>
+    <button class="tab-btn" id="tab-festivos" type="button">Festivos</button>
   </div>
 
   <section class="card" id="card-area">
@@ -564,6 +565,49 @@
     </div>
   </section>
 
+  <section class="card" id="card-festivos" hidden>
+    <h2>Agregar festivo</h2>
+    <p class="card-hint">Calendario de festivos de Colombia. Se usa para que el conteo de "días hábiles" (columna Conteo de días en Código-Descripción) omita domingos y festivos al registrar novedades de varios días. Ya viene cargado 2026; agrega aquí los festivos de años siguientes cuando los necesites.</p>
+    <form id="form-festivo">
+      <div class="form-grid">
+        <div class="field">
+          <label for="fest-fecha">Fecha <span class="req">*</span></label>
+          <input type="date" id="fest-fecha" required>
+        </div>
+        <div class="field">
+          <label for="fest-descripcion">Descripción <span class="req">*</span></label>
+          <input type="text" id="fest-descripcion" required autocomplete="off" placeholder="Ej. Día de la Independencia">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-festivo">Guardar festivo</button>
+        <span class="form-msg" id="msg-festivo"></span>
+      </div>
+    </form>
+
+    <p class="card-hint" style="margin-top:24px">Festivos registrados</p>
+    <div class="filters">
+      <div class="field">
+        <label for="fest-anio">Año</label>
+        <select id="fest-anio"></select>
+      </div>
+      <span class="result-count" id="fest-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
+            <th>Día</th>
+            <th>Descripción</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="fest-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
   <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
 </div>
 </div>
@@ -609,6 +653,7 @@ AUTH_READY.then(async function () {
     { btn: "tab-turnos", card: "card-turnos" },
     { btn: "tab-relacion-nomina", card: "card-relacion-nomina" },
     { btn: "tab-tipo-ausencia", card: "card-tipo-ausencia" },
+    { btn: "tab-festivos", card: "card-festivos" },
   ];
   tabs.forEach(({ btn, card }) => {
     document.getElementById(btn).addEventListener("click", () => {
@@ -1629,6 +1674,166 @@ AUTH_READY.then(async function () {
   taBuscar.addEventListener("input", () => { clearTimeout(taBuscarTimeout); taBuscarTimeout = setTimeout(cargarTipoAusencia, 300); });
   taLimpiar.addEventListener("click", () => { taBuscar.value = ""; cargarTipoAusencia(); });
 
+  // ---------------- seccion: festivos ----------------
+  const formFestivo = document.getElementById("form-festivo");
+  const inFestFecha = document.getElementById("fest-fecha");
+  const inFestDescripcion = document.getElementById("fest-descripcion");
+  const btnFestivo = document.getElementById("btn-festivo");
+  const msgFestivo = document.getElementById("msg-festivo");
+  const selFestAnio = document.getElementById("fest-anio");
+  const festTbody = document.getElementById("fest-tbody");
+  const festCount = document.getElementById("fest-count");
+
+  const DIAS_SEMANA_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+  function diaSemanaFestivo(fechaStr) {
+    const [y, m, d] = fechaStr.split("-").map(Number);
+    return DIAS_SEMANA_ES[new Date(y, m - 1, d).getDay()];
+  }
+
+  let festivosCache = [];
+  let festAnioSeleccionado = new Date().getFullYear();
+
+  function filaVistaFestivo(f) {
+    return `<tr data-fecha="${f.fecha}">
+      <td class="cedula">${f.fecha}</td>
+      <td style="text-transform:capitalize">${diaSemanaFestivo(f.fecha)}</td>
+      <td>${f.descripcion}</td>
+      <td><div class="fila-acciones">
+        <button type="button" class="btn-small fila-editar">Editar</button>
+        <button type="button" class="btn-small critical fila-eliminar">Eliminar</button>
+      </div></td>
+    </tr>`;
+  }
+  function filaEdicionFestivo(f) {
+    return `<tr data-fecha="${f.fecha}">
+      <td class="cedula">${f.fecha}</td>
+      <td style="text-transform:capitalize">${diaSemanaFestivo(f.fecha)}</td>
+      <td><input type="text" class="fila-descripcion" value="${f.descripcion}"></td>
+      <td><div class="fila-acciones">
+        <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
+        <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
+      </div></td>
+    </tr>`;
+  }
+
+  function actualizarSelectAnios() {
+    const anioActual = new Date().getFullYear();
+    const anios = new Set(festivosCache.map(f => Number(f.fecha.slice(0, 4))));
+    anios.add(anioActual);
+    anios.add(anioActual + 1);
+    const anioPrevio = festAnioSeleccionado;
+    const ordenados = [...anios].sort((a, b) => a - b);
+    selFestAnio.innerHTML = ordenados.map(a => `<option value="${a}">${a}</option>`).join("");
+    festAnioSeleccionado = anios.has(anioPrevio) ? anioPrevio : anioActual;
+    selFestAnio.value = String(festAnioSeleccionado);
+  }
+
+  function renderizarFestivos() {
+    const filas = festivosCache.filter(f => Number(f.fecha.slice(0, 4)) === festAnioSeleccionado);
+    festTbody.innerHTML = filas.length === 0
+      ? `<tr><td colspan="4"><div class="empty-state">Sin festivos registrados para ${festAnioSeleccionado}.</div></td></tr>`
+      : filas.map(filaVistaFestivo).join("");
+    festCount.textContent = filas.length.toLocaleString("es-CO") + " festivo" + (filas.length === 1 ? "" : "s");
+  }
+
+  async function cargarFestivos() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/festivos_colombia?select=fecha,descripcion&order=fecha.asc`, { headers: authHeaders() });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      festivosCache = Array.isArray(filas) ? filas : [];
+    } catch (err) {
+      festTbody.innerHTML = `<tr><td colspan="4"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      festCount.textContent = "";
+      return;
+    }
+    actualizarSelectAnios();
+    renderizarFestivos();
+  }
+
+  selFestAnio.addEventListener("change", () => {
+    festAnioSeleccionado = Number(selFestAnio.value);
+    renderizarFestivos();
+  });
+
+  formFestivo.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const fecha = inFestFecha.value;
+    const descripcion = inFestDescripcion.value.trim();
+    if (!fecha) { msgFestivo.textContent = "La fecha es obligatoria."; msgFestivo.className = "form-msg error"; return; }
+    if (!descripcion) { msgFestivo.textContent = "La descripción es obligatoria."; msgFestivo.className = "form-msg error"; return; }
+
+    btnFestivo.disabled = true;
+    msgFestivo.textContent = "Guardando...";
+    msgFestivo.className = "form-msg";
+
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/festivos_colombia`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify([{ fecha, descripcion }]),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+
+      msgFestivo.textContent = `Festivo del ${fecha} guardado.`;
+      msgFestivo.className = "form-msg ok";
+      formFestivo.reset();
+      festAnioSeleccionado = Number(fecha.slice(0, 4));
+      await cargarFestivos();
+    } catch (err) {
+      msgFestivo.textContent = "No se pudo guardar: " + (err.message || err);
+      msgFestivo.className = "form-msg error";
+    } finally {
+      btnFestivo.disabled = false;
+    }
+  });
+
+  festTbody.addEventListener("click", async (e) => {
+    const fila = e.target.closest("tr");
+    if (!fila) return;
+    const fecha = fila.dataset.fecha;
+    const datos = festivosCache.find(x => x.fecha === fecha);
+    if (!datos) return;
+
+    if (e.target.classList.contains("fila-editar")) { fila.outerHTML = filaEdicionFestivo(datos); return; }
+    if (e.target.classList.contains("fila-cancelar-edicion")) { fila.outerHTML = filaVistaFestivo(datos); return; }
+
+    if (e.target.classList.contains("fila-guardar-edicion")) {
+      const descripcion = fila.querySelector(".fila-descripcion").value.trim();
+      if (!descripcion) { alert("La descripción es obligatoria."); return; }
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/festivos_colombia?fecha=eq.${fecha}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ descripcion }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        await cargarFestivos();
+      } catch (err) {
+        alert("No se pudo guardar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+      return;
+    }
+
+    if (e.target.classList.contains("fila-eliminar")) {
+      if (!confirm(`¿Eliminar el festivo del "${fecha}" definitivamente? Esta acción no se puede deshacer.`)) return;
+      e.target.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/festivos_colombia?fecha=eq.${fecha}`, {
+          method: "DELETE",
+          headers: { ...authHeaders(), Prefer: "return=minimal" },
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        await cargarFestivos();
+      } catch (err) {
+        alert("No se pudo eliminar: " + (err.message || err));
+        e.target.disabled = false;
+      }
+    }
+  });
+
   seccionAreas.cargar();
   seccionLabores.cargar();
   cargarCodigos();
@@ -1637,6 +1842,7 @@ AUTH_READY.then(async function () {
   cargarTurnos();
   cargarRelacion();
   poblarSelectTipoAusencia().then(cargarTipoAusencia);
+  cargarFestivos();
 });
 </script>
 </body>
