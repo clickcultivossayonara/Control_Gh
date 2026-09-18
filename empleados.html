@@ -91,6 +91,11 @@
 
   section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
+  .seccion-rrhh {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent);
+    margin: 22px 0 12px; padding-top: 14px; border-top: 1px solid var(--line);
+  }
+  .seccion-rrhh:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
 
   .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
   @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -338,6 +343,414 @@
           </div>
         </div>
       </div>
+      <h3 class="seccion-rrhh">Identificación</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-tipo-documento">Tipo Documento</label>
+          <input type="text" id="f-tipo-documento" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-lugar-expedicion">Lugar de Expedición</label>
+          <input type="text" id="f-lugar-expedicion" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-fecha-expedicion">Fecha Expedición</label>
+          <input type="date" id="f-fecha-expedicion">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Contrato</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-cargo">Cargo</label>
+          <select id="f-cargo">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-inicio-credito-feser">Inicio Crédito Feser</label>
+          <input type="date" id="f-inicio-credito-feser">
+        </div>
+        <div class="field">
+          <label for="f-fin-credito-feser">Finalización Crédito Feser</label>
+          <input type="date" id="f-fin-credito-feser">
+        </div>
+        <div class="field">
+          <label for="f-tipo-contrato">Tipo de Contrato</label>
+          <input type="text" id="f-tipo-contrato" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-tiempo-contrato">Tiempo de Contrato</label>
+          <input type="text" id="f-tiempo-contrato" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-prorroga-1">Prórroga 1</label>
+          <input type="text" id="f-prorroga-1" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-prorroga-2">Prórroga 2</label>
+          <input type="text" id="f-prorroga-2" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-prorroga-3">Prórroga 3</label>
+          <input type="text" id="f-prorroga-3" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-prorroga-4">Prórroga 4</label>
+          <input type="text" id="f-prorroga-4" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-motivo-retiro">Motivo de Retiro</label>
+          <select id="f-motivo-retiro">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-detalle-retiro">Detalle Retiro</label>
+          <input type="text" id="f-detalle-retiro" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-fecha-retiro">Fecha de Retiro</label>
+          <input type="date" id="f-fecha-retiro">
+        </div>
+        <div class="field">
+          <label for="f-salario-letras">Salario (letras)</label>
+          <input type="text" id="f-salario-letras" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-salario-cifras">Salario (cifras)</label>
+          <input type="text" id="f-salario-cifras" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Datos personales</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-lugar-nacimiento">Lugar de Nacimiento</label>
+          <input type="text" id="f-lugar-nacimiento" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-fecha-nacimiento">Fecha de Nacimiento</label>
+          <input type="date" id="f-fecha-nacimiento">
+        </div>
+        <div class="field">
+          <label for="f-direccion">Dirección</label>
+          <input type="text" id="f-direccion" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-barrio">Barrio</label>
+          <input type="text" id="f-barrio" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-ciudad">Ciudad</label>
+          <input type="text" id="f-ciudad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-ciudad-trabajo">Ciudad de Trabajo</label>
+          <input type="text" id="f-ciudad-trabajo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-medio-transporte">Medio de Transporte</label>
+          <input type="text" id="f-medio-transporte" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-telefono-1">Teléfono / Celular 1</label>
+          <input type="text" id="f-telefono-1" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-telefono-2">Teléfono / Celular 2</label>
+          <input type="text" id="f-telefono-2" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-sexo">Sexo</label>
+          <input type="text" id="f-sexo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-email-personal">E-mail</label>
+          <input type="email" id="f-email-personal" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-escolaridad">Escolaridad</label>
+          <input type="text" id="f-escolaridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-descripcion-escolaridad">Descripción Escolaridad</label>
+          <input type="text" id="f-descripcion-escolaridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-rh">RH</label>
+          <input type="text" id="f-rh" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-discapacidad">Discapacidad</label>
+          <input type="text" id="f-discapacidad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-estado-civil">Estado Civil</label>
+          <input type="text" id="f-estado-civil" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-tipo-vivienda">Tipo de Vivienda</label>
+          <input type="text" id="f-tipo-vivienda" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Afiliaciones</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-fondo-cesantias">Fondo de Cesantías</label>
+          <input type="text" id="f-fondo-cesantias" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-eps">EPS (Salud)</label>
+          <input type="text" id="f-eps" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-fondo-pension">Fondo de Pensión</label>
+          <input type="text" id="f-fondo-pension" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-caja-compensacion">Caja de Compensación</label>
+          <input type="text" id="f-caja-compensacion" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-arl">ARL</label>
+          <input type="text" id="f-arl" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-banco">Banco</label>
+          <input type="text" id="f-banco" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-numero-cuenta">Número de Cuenta</label>
+          <input type="text" id="f-numero-cuenta" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Checklist de ingreso</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-carnet-arl">Carnet ARL</label>
+          <input type="text" id="f-carnet-arl" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-exm-ingreso">Exm. Ingreso</label>
+          <input type="text" id="f-exm-ingreso" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-doc-contrato">Contrato (doc.)</label>
+          <input type="text" id="f-doc-contrato" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-claus-mod">Claus-Mod</label>
+          <input type="text" id="f-claus-mod" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-doc-cc">CC (doc.)</label>
+          <input type="text" id="f-doc-cc" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hv-formato-sayonara">HV Formato Sayonara</label>
+          <input type="text" id="f-hv-formato-sayonara" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-cert-est">Cert. Est.</label>
+          <input type="text" id="f-cert-est" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-entrevista">Entrevista</label>
+          <input type="text" id="f-entrevista" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-visita-domiciliaria">Visita Domiciliaria</label>
+          <input type="text" id="f-visita-domiciliaria" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-estudio-seguridad">Estudio de Seguridad</label>
+          <input type="text" id="f-estudio-seguridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-antecedentes">Antecedentes</label>
+          <input type="text" id="f-antecedentes" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-doc-beneficiarios">Doc. Beneficiarios</label>
+          <input type="text" id="f-doc-beneficiarios" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-afi-eps">Afiliación EPS</label>
+          <input type="text" id="f-afi-eps" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-afi-afp">Afiliación AFP</label>
+          <input type="text" id="f-afi-afp" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-afi-arl">Afiliación ARL</label>
+          <input type="text" id="f-afi-arl" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-afi-comfama">Afiliación Comfama</label>
+          <input type="text" id="f-afi-comfama" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-induccion">Inducción</label>
+          <input type="text" id="f-induccion" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Familia</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-numero-hijos">N° de Hijos</label>
+          <input type="text" id="f-numero-hijos" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-1-nombre">Nombre Hijo(a) 1</label>
+          <input type="text" id="f-hijo-1-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-1-edad">Edad Hijo(a) 1</label>
+          <input type="text" id="f-hijo-1-edad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-2-nombre">Nombre Hijo(a) 2</label>
+          <input type="text" id="f-hijo-2-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-2-edad">Edad Hijo(a) 2</label>
+          <input type="text" id="f-hijo-2-edad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-3-nombre">Nombre Hijo(a) 3</label>
+          <input type="text" id="f-hijo-3-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-3-edad">Edad Hijo(a) 3</label>
+          <input type="text" id="f-hijo-3-edad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-4-nombre">Nombre Hijo(a) 4</label>
+          <input type="text" id="f-hijo-4-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-4-edad">Edad Hijo(a) 4</label>
+          <input type="text" id="f-hijo-4-edad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-5-nombre">Nombre Hijo(a) 5</label>
+          <input type="text" id="f-hijo-5-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-hijo-5-edad">Edad Hijo(a) 5</label>
+          <input type="text" id="f-hijo-5-edad" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Salud</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-peso-kg">Peso (Kg)</label>
+          <input type="number" step="0.01" id="f-peso-kg" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-talla-mts">Talla (Mts)</label>
+          <input type="number" step="0.01" id="f-talla-mts" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-imc">IMC</label>
+          <input type="number" step="0.01" id="f-imc" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-consumo-tabaco">Consumo de Tabaco</label>
+          <input type="text" id="f-consumo-tabaco" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-frecuencia-tabaco">Frecuencia (Tabaco)</label>
+          <input type="text" id="f-frecuencia-tabaco" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-consumo-alcohol">Consumo de Alcohol</label>
+          <input type="text" id="f-consumo-alcohol" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-frecuencia-alcohol">Frecuencia (Alcohol)</label>
+          <input type="text" id="f-frecuencia-alcohol" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-practica-ejercicio">Práctica Ejercicio Físico</label>
+          <input type="text" id="f-practica-ejercicio" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-cual-ejercicio">¿Cuál Ejercicio?</label>
+          <input type="text" id="f-cual-ejercicio" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-dosis">Dosis</label>
+          <input type="text" id="f-dosis" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Dotación</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-camisa-blanca">Camisa Blanca</label>
+          <input type="text" id="f-camisa-blanca" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-camisa-azul">Camisa Azul</label>
+          <input type="text" id="f-camisa-azul" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-camibuso">Camibuso</label>
+          <input type="text" id="f-camibuso" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-sudadera">Sudadera</label>
+          <input type="text" id="f-sudadera" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-jean">Jean</label>
+          <input type="text" id="f-jean" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-antifluido">Antifluido</label>
+          <input type="text" id="f-antifluido" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-zapato-normal">Zapato Normal</label>
+          <input type="text" id="f-zapato-normal" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-zapato-punta-acero">Zapato Punta Acero</label>
+          <input type="text" id="f-zapato-punta-acero" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-zapato-dielectrico">Zapato Dieléctrico</label>
+          <input type="text" id="f-zapato-dielectrico" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-jumbo">Jumbo</label>
+          <input type="text" id="f-jumbo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-croydon">Croydon</label>
+          <input type="text" id="f-croydon" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-bota">Bota</label>
+          <input type="text" id="f-bota" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-bota-royal">Bota Royal</label>
+          <input type="text" id="f-bota-royal" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-bota-cana-alta">Bota Caña Alta</label>
+          <input type="text" id="f-bota-cana-alta" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-bota-pvc-puntera">Bota PVC Puntera</label>
+          <input type="text" id="f-bota-pvc-puntera" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-overol">Overol</label>
+          <input type="text" id="f-overol" autocomplete="off">
+        </div>
+      </div>
       <div class="form-actions">
         <button type="submit" class="btn-primary" id="btn-guardar">Guardar empleado</button>
         <span class="form-msg" id="form-msg"></span>
@@ -423,6 +836,414 @@
             <input type="checkbox" id="e-administrativo">
             <label for="e-administrativo">Administrativo</label>
           </div>
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Identificación</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-tipo-documento">Tipo Documento</label>
+          <input type="text" id="e-tipo-documento" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-lugar-expedicion">Lugar de Expedición</label>
+          <input type="text" id="e-lugar-expedicion" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-fecha-expedicion">Fecha Expedición</label>
+          <input type="date" id="e-fecha-expedicion">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Contrato</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-cargo">Cargo</label>
+          <select id="e-cargo">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-inicio-credito-feser">Inicio Crédito Feser</label>
+          <input type="date" id="e-inicio-credito-feser">
+        </div>
+        <div class="field">
+          <label for="e-fin-credito-feser">Finalización Crédito Feser</label>
+          <input type="date" id="e-fin-credito-feser">
+        </div>
+        <div class="field">
+          <label for="e-tipo-contrato">Tipo de Contrato</label>
+          <input type="text" id="e-tipo-contrato" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-tiempo-contrato">Tiempo de Contrato</label>
+          <input type="text" id="e-tiempo-contrato" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-prorroga-1">Prórroga 1</label>
+          <input type="text" id="e-prorroga-1" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-prorroga-2">Prórroga 2</label>
+          <input type="text" id="e-prorroga-2" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-prorroga-3">Prórroga 3</label>
+          <input type="text" id="e-prorroga-3" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-prorroga-4">Prórroga 4</label>
+          <input type="text" id="e-prorroga-4" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-motivo-retiro">Motivo de Retiro</label>
+          <select id="e-motivo-retiro">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="e-detalle-retiro">Detalle Retiro</label>
+          <input type="text" id="e-detalle-retiro" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-fecha-retiro">Fecha de Retiro</label>
+          <input type="date" id="e-fecha-retiro">
+        </div>
+        <div class="field">
+          <label for="e-salario-letras">Salario (letras)</label>
+          <input type="text" id="e-salario-letras" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-salario-cifras">Salario (cifras)</label>
+          <input type="text" id="e-salario-cifras" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Datos personales</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-lugar-nacimiento">Lugar de Nacimiento</label>
+          <input type="text" id="e-lugar-nacimiento" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-fecha-nacimiento">Fecha de Nacimiento</label>
+          <input type="date" id="e-fecha-nacimiento">
+        </div>
+        <div class="field">
+          <label for="e-direccion">Dirección</label>
+          <input type="text" id="e-direccion" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-barrio">Barrio</label>
+          <input type="text" id="e-barrio" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-ciudad">Ciudad</label>
+          <input type="text" id="e-ciudad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-ciudad-trabajo">Ciudad de Trabajo</label>
+          <input type="text" id="e-ciudad-trabajo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-medio-transporte">Medio de Transporte</label>
+          <input type="text" id="e-medio-transporte" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-telefono-1">Teléfono / Celular 1</label>
+          <input type="text" id="e-telefono-1" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-telefono-2">Teléfono / Celular 2</label>
+          <input type="text" id="e-telefono-2" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-sexo">Sexo</label>
+          <input type="text" id="e-sexo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-email-personal">E-mail</label>
+          <input type="email" id="e-email-personal" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-escolaridad">Escolaridad</label>
+          <input type="text" id="e-escolaridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-descripcion-escolaridad">Descripción Escolaridad</label>
+          <input type="text" id="e-descripcion-escolaridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-rh">RH</label>
+          <input type="text" id="e-rh" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-discapacidad">Discapacidad</label>
+          <input type="text" id="e-discapacidad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-estado-civil">Estado Civil</label>
+          <input type="text" id="e-estado-civil" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-tipo-vivienda">Tipo de Vivienda</label>
+          <input type="text" id="e-tipo-vivienda" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Afiliaciones</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-fondo-cesantias">Fondo de Cesantías</label>
+          <input type="text" id="e-fondo-cesantias" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-eps">EPS (Salud)</label>
+          <input type="text" id="e-eps" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-fondo-pension">Fondo de Pensión</label>
+          <input type="text" id="e-fondo-pension" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-caja-compensacion">Caja de Compensación</label>
+          <input type="text" id="e-caja-compensacion" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-arl">ARL</label>
+          <input type="text" id="e-arl" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-banco">Banco</label>
+          <input type="text" id="e-banco" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-numero-cuenta">Número de Cuenta</label>
+          <input type="text" id="e-numero-cuenta" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Checklist de ingreso</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-carnet-arl">Carnet ARL</label>
+          <input type="text" id="e-carnet-arl" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-exm-ingreso">Exm. Ingreso</label>
+          <input type="text" id="e-exm-ingreso" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-doc-contrato">Contrato (doc.)</label>
+          <input type="text" id="e-doc-contrato" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-claus-mod">Claus-Mod</label>
+          <input type="text" id="e-claus-mod" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-doc-cc">CC (doc.)</label>
+          <input type="text" id="e-doc-cc" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hv-formato-sayonara">HV Formato Sayonara</label>
+          <input type="text" id="e-hv-formato-sayonara" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-cert-est">Cert. Est.</label>
+          <input type="text" id="e-cert-est" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-entrevista">Entrevista</label>
+          <input type="text" id="e-entrevista" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-visita-domiciliaria">Visita Domiciliaria</label>
+          <input type="text" id="e-visita-domiciliaria" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-estudio-seguridad">Estudio de Seguridad</label>
+          <input type="text" id="e-estudio-seguridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-antecedentes">Antecedentes</label>
+          <input type="text" id="e-antecedentes" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-doc-beneficiarios">Doc. Beneficiarios</label>
+          <input type="text" id="e-doc-beneficiarios" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-afi-eps">Afiliación EPS</label>
+          <input type="text" id="e-afi-eps" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-afi-afp">Afiliación AFP</label>
+          <input type="text" id="e-afi-afp" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-afi-arl">Afiliación ARL</label>
+          <input type="text" id="e-afi-arl" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-afi-comfama">Afiliación Comfama</label>
+          <input type="text" id="e-afi-comfama" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-induccion">Inducción</label>
+          <input type="text" id="e-induccion" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Familia</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-numero-hijos">N° de Hijos</label>
+          <input type="text" id="e-numero-hijos" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-1-nombre">Nombre Hijo(a) 1</label>
+          <input type="text" id="e-hijo-1-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-1-edad">Edad Hijo(a) 1</label>
+          <input type="text" id="e-hijo-1-edad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-2-nombre">Nombre Hijo(a) 2</label>
+          <input type="text" id="e-hijo-2-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-2-edad">Edad Hijo(a) 2</label>
+          <input type="text" id="e-hijo-2-edad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-3-nombre">Nombre Hijo(a) 3</label>
+          <input type="text" id="e-hijo-3-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-3-edad">Edad Hijo(a) 3</label>
+          <input type="text" id="e-hijo-3-edad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-4-nombre">Nombre Hijo(a) 4</label>
+          <input type="text" id="e-hijo-4-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-4-edad">Edad Hijo(a) 4</label>
+          <input type="text" id="e-hijo-4-edad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-5-nombre">Nombre Hijo(a) 5</label>
+          <input type="text" id="e-hijo-5-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-hijo-5-edad">Edad Hijo(a) 5</label>
+          <input type="text" id="e-hijo-5-edad" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Salud</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-peso-kg">Peso (Kg)</label>
+          <input type="number" step="0.01" id="e-peso-kg" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-talla-mts">Talla (Mts)</label>
+          <input type="number" step="0.01" id="e-talla-mts" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-imc">IMC</label>
+          <input type="number" step="0.01" id="e-imc" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-consumo-tabaco">Consumo de Tabaco</label>
+          <input type="text" id="e-consumo-tabaco" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-frecuencia-tabaco">Frecuencia (Tabaco)</label>
+          <input type="text" id="e-frecuencia-tabaco" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-consumo-alcohol">Consumo de Alcohol</label>
+          <input type="text" id="e-consumo-alcohol" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-frecuencia-alcohol">Frecuencia (Alcohol)</label>
+          <input type="text" id="e-frecuencia-alcohol" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-practica-ejercicio">Práctica Ejercicio Físico</label>
+          <input type="text" id="e-practica-ejercicio" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-cual-ejercicio">¿Cuál Ejercicio?</label>
+          <input type="text" id="e-cual-ejercicio" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-dosis">Dosis</label>
+          <input type="text" id="e-dosis" autocomplete="off">
+        </div>
+      </div>
+      <h3 class="seccion-rrhh">Dotación</h3>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-camisa-blanca">Camisa Blanca</label>
+          <input type="text" id="e-camisa-blanca" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-camisa-azul">Camisa Azul</label>
+          <input type="text" id="e-camisa-azul" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-camibuso">Camibuso</label>
+          <input type="text" id="e-camibuso" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-sudadera">Sudadera</label>
+          <input type="text" id="e-sudadera" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-jean">Jean</label>
+          <input type="text" id="e-jean" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-antifluido">Antifluido</label>
+          <input type="text" id="e-antifluido" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-zapato-normal">Zapato Normal</label>
+          <input type="text" id="e-zapato-normal" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-zapato-punta-acero">Zapato Punta Acero</label>
+          <input type="text" id="e-zapato-punta-acero" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-zapato-dielectrico">Zapato Dieléctrico</label>
+          <input type="text" id="e-zapato-dielectrico" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-jumbo">Jumbo</label>
+          <input type="text" id="e-jumbo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-croydon">Croydon</label>
+          <input type="text" id="e-croydon" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-bota">Bota</label>
+          <input type="text" id="e-bota" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-bota-royal">Bota Royal</label>
+          <input type="text" id="e-bota-royal" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-bota-cana-alta">Bota Caña Alta</label>
+          <input type="text" id="e-bota-cana-alta" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-bota-pvc-puntera">Bota PVC Puntera</label>
+          <input type="text" id="e-bota-pvc-puntera" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-overol">Overol</label>
+          <input type="text" id="e-overol" autocomplete="off">
         </div>
       </div>
       <div class="form-actions">
@@ -632,6 +1453,46 @@ AUTH_READY.then(async function () {
   const selLaborEditar = document.getElementById("e-labor");
   LABORES_CONOCIDAS.forEach(l => selLaborEditar.insertAdjacentHTML("beforeend", `<option value="${l}">${l}</option>`));
 
+  const CARGOS_CONOCIDOS = await cargarNombresActivos("cargos");
+  const selCargo = document.getElementById("f-cargo");
+  CARGOS_CONOCIDOS.forEach(c => selCargo.insertAdjacentHTML("beforeend", `<option value="${c}">${c}</option>`));
+  const selCargoEditar = document.getElementById("e-cargo");
+  CARGOS_CONOCIDOS.forEach(c => selCargoEditar.insertAdjacentHTML("beforeend", `<option value="${c}">${c}</option>`));
+
+  const MOTIVOS_RETIRO_CONOCIDOS = await cargarNombresActivos("motivos_retiro");
+  const selMotivoRetiro = document.getElementById("f-motivo-retiro");
+  MOTIVOS_RETIRO_CONOCIDOS.forEach(m => selMotivoRetiro.insertAdjacentHTML("beforeend", `<option value="${m}">${m}</option>`));
+  const selMotivoRetiroEditar = document.getElementById("e-motivo-retiro");
+  MOTIVOS_RETIRO_CONOCIDOS.forEach(m => selMotivoRetiroEditar.insertAdjacentHTML("beforeend", `<option value="${m}">${m}</option>`));
+
+  // Campos RRHH (Excel de RRHH unificado con employees): lista de nombres de
+  // columna, usada para armar/leer el payload de los formularios de forma
+  // generica en vez de escribir 95 lineas repetidas. Los ids en el HTML son
+  // el mismo nombre con "_" cambiado por "-" (ej. hijo_1_nombre -> f-hijo-1-nombre).
+  const CAMPOS_RRHH = [
+    "tipo_documento", "lugar_expedicion", "fecha_expedicion",
+    "cargo", "inicio_credito_feser", "fin_credito_feser", "tipo_contrato", "tiempo_contrato",
+    "prorroga_1", "prorroga_2", "prorroga_3", "prorroga_4", "motivo_retiro", "detalle_retiro",
+    "fecha_retiro", "salario_letras", "salario_cifras",
+    "lugar_nacimiento", "fecha_nacimiento", "direccion", "barrio", "ciudad", "ciudad_trabajo",
+    "medio_transporte", "telefono_1", "telefono_2", "sexo", "email_personal", "escolaridad",
+    "descripcion_escolaridad", "rh", "discapacidad", "estado_civil", "tipo_vivienda",
+    "fondo_cesantias", "eps", "fondo_pension", "caja_compensacion", "arl", "banco", "numero_cuenta",
+    "carnet_arl", "exm_ingreso", "doc_contrato", "claus_mod", "doc_cc", "hv_formato_sayonara",
+    "cert_est", "entrevista", "visita_domiciliaria", "estudio_seguridad", "antecedentes",
+    "doc_beneficiarios", "afi_eps", "afi_afp", "afi_arl", "afi_comfama", "induccion",
+    "numero_hijos",
+    "hijo_1_nombre", "hijo_1_edad", "hijo_2_nombre", "hijo_2_edad", "hijo_3_nombre", "hijo_3_edad",
+    "hijo_4_nombre", "hijo_4_edad", "hijo_5_nombre", "hijo_5_edad",
+    "peso_kg", "talla_mts", "imc", "consumo_tabaco", "frecuencia_tabaco", "consumo_alcohol",
+    "frecuencia_alcohol", "practica_ejercicio", "cual_ejercicio", "dosis",
+    "camisa_blanca", "camisa_azul", "camibuso", "sudadera", "jean", "antifluido", "zapato_normal",
+    "zapato_punta_acero", "zapato_dielectrico", "jumbo", "croydon", "bota", "bota_royal",
+    "bota_cana_alta", "bota_pvc_puntera", "overol",
+  ];
+  const CAMPOS_RRHH_NUMERICOS = ["peso_kg", "talla_mts", "imc"];
+  const idRrhh = (prefijo, campo) => `${prefijo}-${campo.replace(/_/g, "-")}`;
+
   // Cedula: solo digitos
   document.getElementById("f-cedula").addEventListener("input", (e) => {
     e.target.value = e.target.value.replace(/\D/g, "");
@@ -684,6 +1545,10 @@ AUTH_READY.then(async function () {
       activo: document.getElementById("f-activo").checked,
       administrativo: document.getElementById("f-administrativo").checked,
     };
+    CAMPOS_RRHH.forEach(campo => {
+      const crudo = val(idRrhh("f", campo));
+      registro[campo] = CAMPOS_RRHH_NUMERICOS.includes(campo) && crudo !== null ? Number(crudo) : crudo;
+    });
 
     btnGuardar.disabled = true;
     msg.textContent = "Guardando...";
@@ -757,6 +1622,12 @@ AUTH_READY.then(async function () {
     document.getElementById("e-fecha-cambio-area").value = emp.fecha_ultimo_cambio_area ? emp.fecha_ultimo_cambio_area.slice(0, 10) : "";
     document.getElementById("e-activo").checked = !!emp.activo;
     document.getElementById("e-administrativo").checked = !!emp.administrativo;
+    CAMPOS_RRHH.forEach(campo => {
+      const el = document.getElementById(idRrhh("e", campo));
+      let valor = emp[campo];
+      if (valor != null && el.type === "date") valor = String(valor).slice(0, 10);
+      el.value = valor ?? "";
+    });
     formEditar.hidden = false;
   }
 
@@ -769,7 +1640,7 @@ AUTH_READY.then(async function () {
     editarBuscarMsg.className = "form-msg";
     try {
       const params = new URLSearchParams();
-      params.set("select", "cedula,nombre,area,sede,labor,eficiencia,turno,fecha_ingreso,fecha_ultimo_cambio_area,activo,administrativo");
+      params.set("select", "cedula,nombre,area,sede,labor,eficiencia,turno,fecha_ingreso,fecha_ultimo_cambio_area,activo,administrativo," + CAMPOS_RRHH.join(","));
       if (/^\d+$/.test(termino)) params.set("cedula_texto", "ilike.*" + termino + "*");
       else params.set("nombre", "ilike.*" + termino.replace(/[,()]/g, "") + "*");
       params.set("order", "nombre.asc");
@@ -860,6 +1731,10 @@ AUTH_READY.then(async function () {
       activo: document.getElementById("e-activo").checked,
       administrativo: document.getElementById("e-administrativo").checked,
     };
+    CAMPOS_RRHH.forEach(campo => {
+      const crudo = val(idRrhh("e", campo));
+      cambios[campo] = CAMPOS_RRHH_NUMERICOS.includes(campo) && crudo !== null ? Number(crudo) : crudo;
+    });
 
     const btnGuardarEditar = document.getElementById("btn-guardar-editar");
     btnGuardarEditar.disabled = true;
