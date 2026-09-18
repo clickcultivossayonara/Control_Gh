@@ -352,14 +352,15 @@
       </div>
       <div class="field">
         <label for="cg-codigo">Código (solo Ausentismo)</label>
-        <select id="cg-codigo">
+        <select id="cg-codigo" disabled>
           <option value="">Todos los códigos</option>
         </select>
       </div>
+      <button type="button" class="excel-btn" id="btn-cg-descargar" disabled>Descargar Excel</button>
     </div>
     <div class="cargador-botones">
-      <button class="excel-btn" id="btn-cargador-horas">Previsualizar Cargador Horas</button>
-      <button class="excel-btn" id="btn-cargador-ausentismo">Previsualizar Cargador Ausentismo</button>
+      <button class="excel-btn" id="btn-cargador-horas">Cargador Horas</button>
+      <button class="excel-btn" id="btn-cargador-ausentismo">Cargador Ausentismo</button>
       <span class="form-msg" id="msg-cargadores"></span>
     </div>
 
@@ -370,9 +371,6 @@
           <thead id="cg-preview-thead"></thead>
           <tbody id="cg-preview-tbody"></tbody>
         </table>
-      </div>
-      <div class="cargador-botones">
-        <button type="button" class="excel-btn" id="btn-cg-descargar">Descargar Excel</button>
       </div>
     </div>
   </section>
@@ -801,6 +799,7 @@ AUTH_READY.then(async function () {
     cgPreviewThead.innerHTML = `<tr>${columnas.map(c => `<th>${c}</th>`).join("")}</tr>`;
     cgPreviewTbody.innerHTML = filasExcel.map(f => `<tr>${columnas.map(c => `<td>${f[c] ?? "—"}</td>`).join("")}</tr>`).join("");
     cgPreview.hidden = false;
+    btnCgDescargar.disabled = false;
     cgPreview.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }
 
@@ -889,6 +888,9 @@ AUTH_READY.then(async function () {
   }
 
   document.getElementById("btn-cargador-horas").addEventListener("click", (e) => conBotonOcupado(e.target, async () => {
+    cgCodigo.disabled = true;
+    cgCodigo.value = "";
+    cacheAusentismo = null;
     if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
     const mapa = await obtenerMapaCodigos();
     const filas = await traerNovedadesPaginado([
@@ -956,6 +958,7 @@ AUTH_READY.then(async function () {
   cgHasta.addEventListener("change", () => { cacheAusentismo = null; });
 
   document.getElementById("btn-cargador-ausentismo").addEventListener("click", (e) => conBotonOcupado(e.target, async () => {
+    cgCodigo.disabled = false;
     if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
     const mapa = await obtenerMapaCodigos();
     const mapaTipoAusencia = await obtenerMapaTipoAusencia();
