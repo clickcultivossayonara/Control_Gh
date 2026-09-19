@@ -92,10 +92,16 @@
   section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
   .seccion-rrhh {
-    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--accent);
-    margin: 22px 0 12px; padding-top: 14px; border-top: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+    font: inherit; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+    color: var(--accent); background: none; border: none; border-top: 1px solid var(--line);
+    margin: 22px 0 0; padding: 16px 2px 14px; cursor: pointer; text-align: left;
   }
-  .seccion-rrhh:first-of-type { margin-top: 0; padding-top: 0; border-top: none; }
+  .seccion-rrhh:first-of-type { margin-top: 0; border-top: none; }
+  .seccion-rrhh:hover { color: var(--accent); background: var(--accent-soft); border-radius: 7px; }
+  .seccion-rrhh .flecha { flex-shrink: 0; font-size: 11px; color: var(--ink-faint); transition: transform 0.15s ease; }
+  .seccion-rrhh.expandida .flecha { transform: rotate(90deg); }
+  .seccion-rrhh + .form-grid { margin-top: 12px; }
 
   .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
   @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
@@ -300,6 +306,12 @@
           </select>
         </div>
         <div class="field">
+          <label for="f-cargo">Cargo</label>
+          <select id="f-cargo">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="f-labor">Labor</label>
           <select id="f-labor">
             <option value="">—</option>
@@ -343,7 +355,7 @@
           </div>
         </div>
       </div>
-      <h3 class="seccion-rrhh">Identificación</h3>
+      <button type="button" class="seccion-rrhh">Identificación<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="f-tipo-documento">Tipo Documento</label>
@@ -358,14 +370,8 @@
           <input type="date" id="f-fecha-expedicion">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Contrato</h3>
+      <button type="button" class="seccion-rrhh">Contrato<span class="flecha">▸</span></button>
       <div class="form-grid">
-        <div class="field">
-          <label for="f-cargo">Cargo</label>
-          <select id="f-cargo">
-            <option value="">—</option>
-          </select>
-        </div>
         <div class="field">
           <label for="f-inicio-credito-feser">Inicio Crédito Feser</label>
           <input type="date" id="f-inicio-credito-feser">
@@ -421,7 +427,7 @@
           <input type="text" id="f-salario-cifras" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Datos personales</h3>
+      <button type="button" class="seccion-rrhh">Datos personales<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="f-lugar-nacimiento">Lugar de Nacimiento</label>
@@ -492,7 +498,7 @@
           <input type="text" id="f-tipo-vivienda" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Afiliaciones</h3>
+      <button type="button" class="seccion-rrhh">Afiliaciones<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="f-fondo-cesantias">Fondo de Cesantías</label>
@@ -523,7 +529,7 @@
           <input type="text" id="f-numero-cuenta" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Checklist de ingreso</h3>
+      <button type="button" class="seccion-rrhh">Checklist de ingreso<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="f-carnet-arl">Carnet ARL</label>
@@ -594,7 +600,7 @@
           <input type="text" id="f-induccion" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Familia</h3>
+      <button type="button" class="seccion-rrhh">Familia<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="f-numero-hijos">N° de Hijos</label>
@@ -641,7 +647,7 @@
           <input type="text" id="f-hijo-5-edad" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Salud</h3>
+      <button type="button" class="seccion-rrhh">Salud<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="f-peso-kg">Peso (Kg)</label>
@@ -684,7 +690,7 @@
           <input type="text" id="f-dosis" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Dotación</h3>
+      <button type="button" class="seccion-rrhh">Dotación<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="f-camisa-blanca">Camisa Blanca</label>
@@ -791,6 +797,12 @@
           </select>
         </div>
         <div class="field">
+          <label for="e-cargo">Cargo</label>
+          <select id="e-cargo">
+            <option value="">—</option>
+          </select>
+        </div>
+        <div class="field">
           <label for="e-labor">Labor</label>
           <select id="e-labor">
             <option value="">—</option>
@@ -838,7 +850,7 @@
           </div>
         </div>
       </div>
-      <h3 class="seccion-rrhh">Identificación</h3>
+      <button type="button" class="seccion-rrhh">Identificación<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="e-tipo-documento">Tipo Documento</label>
@@ -853,14 +865,8 @@
           <input type="date" id="e-fecha-expedicion">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Contrato</h3>
+      <button type="button" class="seccion-rrhh">Contrato<span class="flecha">▸</span></button>
       <div class="form-grid">
-        <div class="field">
-          <label for="e-cargo">Cargo</label>
-          <select id="e-cargo">
-            <option value="">—</option>
-          </select>
-        </div>
         <div class="field">
           <label for="e-inicio-credito-feser">Inicio Crédito Feser</label>
           <input type="date" id="e-inicio-credito-feser">
@@ -916,7 +922,7 @@
           <input type="text" id="e-salario-cifras" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Datos personales</h3>
+      <button type="button" class="seccion-rrhh">Datos personales<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="e-lugar-nacimiento">Lugar de Nacimiento</label>
@@ -987,7 +993,7 @@
           <input type="text" id="e-tipo-vivienda" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Afiliaciones</h3>
+      <button type="button" class="seccion-rrhh">Afiliaciones<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="e-fondo-cesantias">Fondo de Cesantías</label>
@@ -1018,7 +1024,7 @@
           <input type="text" id="e-numero-cuenta" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Checklist de ingreso</h3>
+      <button type="button" class="seccion-rrhh">Checklist de ingreso<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="e-carnet-arl">Carnet ARL</label>
@@ -1089,7 +1095,7 @@
           <input type="text" id="e-induccion" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Familia</h3>
+      <button type="button" class="seccion-rrhh">Familia<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="e-numero-hijos">N° de Hijos</label>
@@ -1136,7 +1142,7 @@
           <input type="text" id="e-hijo-5-edad" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Salud</h3>
+      <button type="button" class="seccion-rrhh">Salud<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="e-peso-kg">Peso (Kg)</label>
@@ -1179,7 +1185,7 @@
           <input type="text" id="e-dosis" autocomplete="off">
         </div>
       </div>
-      <h3 class="seccion-rrhh">Dotación</h3>
+      <button type="button" class="seccion-rrhh">Dotación<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
           <label for="e-camisa-blanca">Camisa Blanca</label>
@@ -1493,6 +1499,19 @@ AUTH_READY.then(async function () {
   const CAMPOS_RRHH_NUMERICOS = ["peso_kg", "talla_mts", "imc"];
   const idRrhh = (prefijo, campo) => `${prefijo}-${campo.replace(/_/g, "-")}`;
 
+  // Secciones RRHH desplegables: cada boton .seccion-rrhh colapsa/expande el
+  // .form-grid que le sigue. Empiezan colapsadas para no abrumar con 95
+  // campos de una -- solo los datos basicos (cedula, nombre, area, etc,
+  // arriba de la primera seccion) quedan siempre visibles.
+  document.querySelectorAll(".seccion-rrhh").forEach((boton) => {
+    const grid = boton.nextElementSibling;
+    grid.hidden = true;
+    boton.addEventListener("click", () => {
+      grid.hidden = !grid.hidden;
+      boton.classList.toggle("expandida", !grid.hidden);
+    });
+  });
+
   // Cedula: solo digitos
   document.getElementById("f-cedula").addEventListener("input", (e) => {
     e.target.value = e.target.value.replace(/\D/g, "");
@@ -1611,6 +1630,12 @@ AUTH_READY.then(async function () {
 
   function cargarEmpleadoEnFormulario(emp) {
     elResultados.hidden = true;
+    // Colapsa todo antes de precargar, para que una seccion que quedo
+    // abierta con el empleado anterior no se quede abierta vacia con este.
+    formEditar.querySelectorAll(".seccion-rrhh").forEach((boton) => {
+      boton.nextElementSibling.hidden = true;
+      boton.classList.remove("expandida");
+    });
     document.getElementById("e-cedula").value = emp.cedula;
     document.getElementById("e-nombre").value = emp.nombre || "";
     document.getElementById("e-area").value = emp.area || "";
@@ -1627,6 +1652,17 @@ AUTH_READY.then(async function () {
       let valor = emp[campo];
       if (valor != null && el.type === "date") valor = String(valor).slice(0, 10);
       el.value = valor ?? "";
+    });
+    // Si una seccion colapsada ya tiene algun dato cargado (muy probable,
+    // ya que la base de RRHH se importo completa), se abre sola para que
+    // no parezca vacia -- evita que alguien escriba encima sin verla.
+    formEditar.querySelectorAll(".seccion-rrhh").forEach((boton) => {
+      const grid = boton.nextElementSibling;
+      const tieneDato = [...grid.querySelectorAll("input, select")].some(el => el.value);
+      if (tieneDato) {
+        grid.hidden = false;
+        boton.classList.add("expandida");
+      }
     });
     formEditar.hidden = false;
   }
