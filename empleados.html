@@ -292,14 +292,6 @@
     <form id="form-empleado">
       <div class="form-grid">
         <div class="field">
-          <label for="f-cedula">Cédula <span class="req">*</span></label>
-          <input type="text" id="f-cedula" required inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-nombre">Nombre <span class="req">*</span></label>
-          <input type="text" id="f-nombre" required autocomplete="off" style="text-transform:uppercase">
-        </div>
-        <div class="field">
           <label for="f-area">Área</label>
           <select id="f-area">
             <option value="">—</option>
@@ -355,8 +347,16 @@
           </div>
         </div>
       </div>
-      <button type="button" class="seccion-rrhh">Identificación<span class="flecha">▸</span></button>
+      <button type="button" class="seccion-rrhh expandida">Identificación<span class="flecha">▸</span></button>
       <div class="form-grid">
+        <div class="field">
+          <label for="f-cedula">Cédula <span class="req">*</span></label>
+          <input type="text" id="f-cedula" required inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-nombre">Nombre <span class="req">*</span></label>
+          <input type="text" id="f-nombre" required autocomplete="off" style="text-transform:uppercase">
+        </div>
         <div class="field">
           <label for="f-tipo-documento">Tipo Documento</label>
           <input type="text" id="f-tipo-documento" autocomplete="off">
@@ -368,6 +368,41 @@
         <div class="field">
           <label for="f-fecha-expedicion">Fecha Expedición</label>
           <input type="date" id="f-fecha-expedicion">
+        </div>
+      </div>
+      <button type="button" class="seccion-rrhh">Datos personales<span class="flecha">▸</span></button>
+      <div class="form-grid">
+        <div class="field">
+          <label for="f-sexo">Sexo</label>
+          <input type="text" id="f-sexo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-email-personal">E-mail</label>
+          <input type="email" id="f-email-personal" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-escolaridad">Escolaridad</label>
+          <input type="text" id="f-escolaridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-descripcion-escolaridad">Descripción Escolaridad</label>
+          <input type="text" id="f-descripcion-escolaridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-rh">RH</label>
+          <input type="text" id="f-rh" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-discapacidad">Discapacidad</label>
+          <input type="text" id="f-discapacidad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-estado-civil">Estado Civil</label>
+          <input type="text" id="f-estado-civil" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-tipo-vivienda">Tipo de Vivienda</label>
+          <input type="text" id="f-tipo-vivienda" autocomplete="off">
         </div>
       </div>
       <button type="button" class="seccion-rrhh">Contrato<span class="flecha">▸</span></button>
@@ -497,33 +532,6 @@
           <input type="text" id="f-numero-cuenta" autocomplete="off">
         </div>
       </div>
-      <button type="button" class="seccion-rrhh">Datos personales<span class="flecha">▸</span></button>
-      <div class="form-grid">
-        <div class="field">
-          <label for="f-sexo">Sexo</label>
-          <input type="text" id="f-sexo" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-email-personal">E-mail</label>
-          <input type="email" id="f-email-personal" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-escolaridad">Escolaridad</label>
-          <input type="text" id="f-escolaridad" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-descripcion-escolaridad">Descripción Escolaridad</label>
-          <input type="text" id="f-descripcion-escolaridad" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-rh">RH</label>
-          <input type="text" id="f-rh" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-discapacidad">Discapacidad</label>
-          <input type="text" id="f-discapacidad" autocomplete="off">
-        </div>
-      </div>
       <button type="button" class="seccion-rrhh">Checklist de ingreso<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
@@ -645,14 +653,6 @@
       <button type="button" class="seccion-rrhh">Salud<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
-          <label for="f-estado-civil">Estado Civil</label>
-          <input type="text" id="f-estado-civil" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-tipo-vivienda">Tipo de Vivienda</label>
-          <input type="text" id="f-tipo-vivienda" autocomplete="off">
-        </div>
-        <div class="field">
           <label for="f-peso-kg">Peso (Kg)</label>
           <input type="number" step="0.01" id="f-peso-kg" autocomplete="off">
         </div>
@@ -700,10 +700,6 @@
           <input type="text" id="f-camisa-blanca" autocomplete="off">
         </div>
         <div class="field">
-          <label for="f-camisa-azul">Camisa Azul</label>
-          <input type="text" id="f-camisa-azul" autocomplete="off">
-        </div>
-        <div class="field">
           <label for="f-camibuso">Camibuso</label>
           <input type="text" id="f-camibuso" autocomplete="off">
         </div>
@@ -736,7 +732,7 @@
           <input type="text" id="f-jumbo" autocomplete="off">
         </div>
         <div class="field">
-          <label for="f-croydon">Croydon</label>
+          <label for="f-croydon">Tenis</label>
           <input type="text" id="f-croydon" autocomplete="off">
         </div>
         <div class="field">
@@ -785,14 +781,6 @@
 
     <form id="form-editar-empleado" hidden>
       <div class="form-grid">
-        <div class="field">
-          <label for="e-cedula">Cédula</label>
-          <input type="text" id="e-cedula" disabled>
-        </div>
-        <div class="field">
-          <label for="e-nombre">Nombre <span class="req">*</span></label>
-          <input type="text" id="e-nombre" required autocomplete="off" style="text-transform:uppercase">
-        </div>
         <div class="field">
           <label for="e-area">Área</label>
           <select id="e-area">
@@ -853,8 +841,16 @@
           </div>
         </div>
       </div>
-      <button type="button" class="seccion-rrhh">Identificación<span class="flecha">▸</span></button>
+      <button type="button" class="seccion-rrhh expandida">Identificación<span class="flecha">▸</span></button>
       <div class="form-grid">
+        <div class="field">
+          <label for="e-cedula">Cédula</label>
+          <input type="text" id="e-cedula" disabled>
+        </div>
+        <div class="field">
+          <label for="e-nombre">Nombre <span class="req">*</span></label>
+          <input type="text" id="e-nombre" required autocomplete="off" style="text-transform:uppercase">
+        </div>
         <div class="field">
           <label for="e-tipo-documento">Tipo Documento</label>
           <input type="text" id="e-tipo-documento" autocomplete="off">
@@ -866,6 +862,41 @@
         <div class="field">
           <label for="e-fecha-expedicion">Fecha Expedición</label>
           <input type="date" id="e-fecha-expedicion">
+        </div>
+      </div>
+      <button type="button" class="seccion-rrhh">Datos personales<span class="flecha">▸</span></button>
+      <div class="form-grid">
+        <div class="field">
+          <label for="e-sexo">Sexo</label>
+          <input type="text" id="e-sexo" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-email-personal">E-mail</label>
+          <input type="email" id="e-email-personal" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-escolaridad">Escolaridad</label>
+          <input type="text" id="e-escolaridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-descripcion-escolaridad">Descripción Escolaridad</label>
+          <input type="text" id="e-descripcion-escolaridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-rh">RH</label>
+          <input type="text" id="e-rh" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-discapacidad">Discapacidad</label>
+          <input type="text" id="e-discapacidad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-estado-civil">Estado Civil</label>
+          <input type="text" id="e-estado-civil" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-tipo-vivienda">Tipo de Vivienda</label>
+          <input type="text" id="e-tipo-vivienda" autocomplete="off">
         </div>
       </div>
       <button type="button" class="seccion-rrhh">Contrato<span class="flecha">▸</span></button>
@@ -995,33 +1026,6 @@
           <input type="text" id="e-numero-cuenta" autocomplete="off">
         </div>
       </div>
-      <button type="button" class="seccion-rrhh">Datos personales<span class="flecha">▸</span></button>
-      <div class="form-grid">
-        <div class="field">
-          <label for="e-sexo">Sexo</label>
-          <input type="text" id="e-sexo" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-email-personal">E-mail</label>
-          <input type="email" id="e-email-personal" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-escolaridad">Escolaridad</label>
-          <input type="text" id="e-escolaridad" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-descripcion-escolaridad">Descripción Escolaridad</label>
-          <input type="text" id="e-descripcion-escolaridad" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-rh">RH</label>
-          <input type="text" id="e-rh" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-discapacidad">Discapacidad</label>
-          <input type="text" id="e-discapacidad" autocomplete="off">
-        </div>
-      </div>
       <button type="button" class="seccion-rrhh">Checklist de ingreso<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
@@ -1143,14 +1147,6 @@
       <button type="button" class="seccion-rrhh">Salud<span class="flecha">▸</span></button>
       <div class="form-grid">
         <div class="field">
-          <label for="e-estado-civil">Estado Civil</label>
-          <input type="text" id="e-estado-civil" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-tipo-vivienda">Tipo de Vivienda</label>
-          <input type="text" id="e-tipo-vivienda" autocomplete="off">
-        </div>
-        <div class="field">
           <label for="e-peso-kg">Peso (Kg)</label>
           <input type="number" step="0.01" id="e-peso-kg" autocomplete="off">
         </div>
@@ -1198,10 +1194,6 @@
           <input type="text" id="e-camisa-blanca" autocomplete="off">
         </div>
         <div class="field">
-          <label for="e-camisa-azul">Camisa Azul</label>
-          <input type="text" id="e-camisa-azul" autocomplete="off">
-        </div>
-        <div class="field">
           <label for="e-camibuso">Camibuso</label>
           <input type="text" id="e-camibuso" autocomplete="off">
         </div>
@@ -1234,7 +1226,7 @@
           <input type="text" id="e-jumbo" autocomplete="off">
         </div>
         <div class="field">
-          <label for="e-croydon">Croydon</label>
+          <label for="e-croydon">Tenis</label>
           <input type="text" id="e-croydon" autocomplete="off">
         </div>
         <div class="field">
@@ -1498,7 +1490,7 @@ AUTH_READY.then(async function () {
     "hijo_4_nombre", "hijo_4_edad", "hijo_5_nombre", "hijo_5_edad",
     "peso_kg", "talla_mts", "imc", "consumo_tabaco", "frecuencia_tabaco", "consumo_alcohol",
     "frecuencia_alcohol", "practica_ejercicio", "cual_ejercicio", "dosis",
-    "camisa_blanca", "camisa_azul", "camibuso", "sudadera", "jean", "antifluido", "zapato_normal",
+    "camisa_blanca", "camibuso", "sudadera", "jean", "antifluido", "zapato_normal",
     "zapato_punta_acero", "zapato_dielectrico", "jumbo", "croydon", "bota", "bota_royal",
     "bota_cana_alta", "bota_pvc_puntera", "overol",
   ];
@@ -1511,7 +1503,7 @@ AUTH_READY.then(async function () {
   // arriba de la primera seccion) quedan siempre visibles.
   document.querySelectorAll(".seccion-rrhh").forEach((boton) => {
     const grid = boton.nextElementSibling;
-    grid.hidden = true;
+    grid.hidden = !boton.classList.contains("expandida");
     boton.addEventListener("click", () => {
       grid.hidden = !grid.hidden;
       boton.classList.toggle("expandida", !grid.hidden);
@@ -1528,6 +1520,18 @@ AUTH_READY.then(async function () {
     const pos = e.target.selectionStart;
     e.target.value = e.target.value.toUpperCase();
     e.target.setSelectionRange(pos, pos);
+  });
+
+  // Campos de texto libre RRHH: se digitan en cualquier formato pero siempre
+  // quedan (y se guardan) en mayusculas, igual que nombre.
+  document.querySelectorAll(
+    '#form-empleado input[type="text"]:not(#f-cedula):not(#f-nombre), #form-editar-empleado input[type="text"]:not(#e-cedula):not(#e-nombre)'
+  ).forEach((input) => {
+    input.addEventListener("input", (e) => {
+      const pos = e.target.selectionStart;
+      e.target.value = e.target.value.toUpperCase();
+      e.target.setSelectionRange(pos, pos);
+    });
   });
 
   // Fecha de ingreso: hoy por defecto
