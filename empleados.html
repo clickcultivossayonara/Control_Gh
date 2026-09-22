@@ -107,6 +107,7 @@
   @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 520px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
   .field { display: flex; flex-direction: column; gap: 5px; }
+  .field[hidden] { display: none; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
   .field label .req { color: var(--critical); }
   .field input[type=text], .field input[type=number], .field input[type=email], .field input[type=date], .field select {
@@ -175,6 +176,30 @@
     background: var(--surface); color: var(--ink-soft); cursor: pointer;
   }
   .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .seg-btns { display: flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+  .seg-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 9px 12px; border: none; border-right: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .seg-btn:last-child { border-right: none; }
+  .seg-btn:hover { background: var(--accent-soft); color: var(--accent); }
+  .seg-btn.activo { background: var(--accent); color: var(--accent-ink); }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(20, 24, 15, 0.55); display: flex;
+    align-items: center; justify-content: center; z-index: 100; padding: 16px;
+  }
+  .modal-overlay[hidden] { display: none; }
+  .modal-box { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px; max-width: 380px; width: 100%; }
+  .modal-box h3 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 10px; }
+  .modal-box p { font-size: 14px; color: var(--ink-soft); margin: 0 0 20px; line-height: 1.45; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .btn-critical {
+    font: inherit; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 7px; border: none;
+    background: var(--critical); color: #fff; cursor: pointer;
+  }
+  .btn-critical:hover { opacity: 0.9; }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; min-width: 820px; font-size: 12.5px; table-layout: fixed; }
@@ -285,6 +310,7 @@
   <div class="tabs" id="tabs-empleado">
     <button type="button" class="tab-btn activo" data-tab="agregar">Agregar empleado</button>
     <button type="button" class="tab-btn" data-tab="editar">Editar empleado</button>
+    <button type="button" class="tab-btn" data-tab="inactivar">Inactivar empleado</button>
   </div>
 
   <section class="card" id="card-agregar-empleado">
@@ -689,7 +715,7 @@
           <input type="text" id="f-cual-ejercicio" autocomplete="off">
         </div>
         <div class="field">
-          <label for="f-dosis">Dosis</label>
+          <label for="f-dosis">Frecuencia</label>
           <input type="text" id="f-dosis" autocomplete="off">
         </div>
       </div>
@@ -1183,7 +1209,7 @@
           <input type="text" id="e-cual-ejercicio" autocomplete="off">
         </div>
         <div class="field">
-          <label for="e-dosis">Dosis</label>
+          <label for="e-dosis">Frecuencia</label>
           <input type="text" id="e-dosis" autocomplete="off">
         </div>
       </div>
@@ -1257,6 +1283,32 @@
     </form>
   </section>
 
+  <section class="card" id="card-inactivar-empleado" hidden>
+    <h2>Inactivar empleado</h2>
+    <div class="filters">
+      <div class="field">
+        <label for="inact-buscar">Cédula o nombre</label>
+        <input type="text" id="inact-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+      </div>
+      <span class="result-count" id="inact-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr>
+            <th>Cédula</th>
+            <th>Nombre</th>
+            <th>Área</th>
+            <th>Labor</th>
+            <th>Sede</th>
+            <th>Acción</th>
+          </tr>
+        </thead>
+        <tbody id="inact-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="card">
     <h2>Empleados registrados</h2>
     <div class="filters">
@@ -1269,12 +1321,12 @@
         <div class="multiselect" id="ms-filtro-area"></div>
       </div>
       <div class="field">
-        <label for="f-filtro-estado">Estado</label>
-        <select id="f-filtro-estado">
-          <option value="">Todos</option>
-          <option value="true">Activos</option>
-          <option value="false">Inactivos</option>
-        </select>
+        <label>Estado</label>
+        <div class="seg-btns" id="filtro-estado-btns">
+          <button type="button" class="seg-btn activo" data-valor="">Todos</button>
+          <button type="button" class="seg-btn" data-valor="true">Activos</button>
+          <button type="button" class="seg-btn" data-valor="false">Inactivos</button>
+        </div>
       </div>
       <div class="field">
         <label for="f-filtro-desde">Ingreso desde</label>
@@ -1309,6 +1361,17 @@
 
   <footer>Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
 </div>
+</div>
+
+<div class="modal-overlay" id="modal-confirmar" hidden>
+  <div class="modal-box">
+    <h3 id="modal-titulo">¿Estás seguro?</h3>
+    <p id="modal-mensaje"></p>
+    <div class="modal-actions">
+      <button type="button" class="clear-btn" id="modal-cancelar">Cancelar</button>
+      <button type="button" class="btn-critical" id="modal-confirmar-btn">Confirmar</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -1443,6 +1506,20 @@ AUTH_READY.then(async function () {
   AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
   const selAreaEditar = document.getElementById("e-area");
   AREAS_CONOCIDAS.forEach(a => selAreaEditar.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
+
+  // Turno: solo aplica a las areas que realmente trabajan por turnos.
+  const AREAS_CON_TURNO = ["ESTERILIZACIÓN", "ASPERSIÓN"];
+  function actualizarVisibilidadTurno(prefijo) {
+    const area = document.getElementById(`${prefijo}-area`).value;
+    const selTurno = document.getElementById(`${prefijo}-turno`);
+    const mostrar = AREAS_CON_TURNO.includes(area);
+    selTurno.closest(".field").hidden = !mostrar;
+    if (!mostrar) selTurno.value = "";
+  }
+  selArea.addEventListener("change", () => actualizarVisibilidadTurno("f"));
+  selAreaEditar.addEventListener("change", () => actualizarVisibilidadTurno("e"));
+  actualizarVisibilidadTurno("f");
+  actualizarVisibilidadTurno("e");
 
   const ROL_AREA_LIMITADA = ["jefe_area", "supervisor"];
   const AREAS_FILTRO = ROL_AREA_LIMITADA.includes(window.SESION.rol)
@@ -1603,6 +1680,7 @@ AUTH_READY.then(async function () {
       form.reset();
       document.getElementById("f-activo").checked = true;
       elFechaIngreso.value = fechaHoy();
+      actualizarVisibilidadTurno("f");
       cargarEmpleados();
     } catch (err) {
       msg.textContent = "No se pudo guardar: " + (err.message || err);
@@ -1612,7 +1690,7 @@ AUTH_READY.then(async function () {
     }
   });
 
-  // ---------- pestañas Agregar / Editar ----------
+  // ---------- pestañas Agregar / Editar / Inactivar ----------
   document.querySelectorAll("#tabs-empleado .tab-btn").forEach((btn) => {
     btn.addEventListener("click", () => {
       document.querySelectorAll("#tabs-empleado .tab-btn").forEach((b) => b.classList.remove("activo"));
@@ -1620,6 +1698,8 @@ AUTH_READY.then(async function () {
       const tab = btn.dataset.tab;
       document.getElementById("card-agregar-empleado").hidden = tab !== "agregar";
       document.getElementById("card-editar-empleado").hidden = tab !== "editar";
+      document.getElementById("card-inactivar-empleado").hidden = tab !== "inactivar";
+      if (tab === "inactivar") cargarListaInactivar();
     });
   });
 
@@ -1653,6 +1733,7 @@ AUTH_READY.then(async function () {
     document.getElementById("e-sede").value = emp.sede || "Unión";
     document.getElementById("e-eficiencia").value = emp.eficiencia || "";
     document.getElementById("e-turno").value = emp.turno || "";
+    actualizarVisibilidadTurno("e");
     document.getElementById("e-fecha-ingreso").value = emp.fecha_ingreso ? emp.fecha_ingreso.slice(0, 10) : "";
     document.getElementById("e-fecha-cambio-area").value = emp.fecha_ultimo_cambio_area ? emp.fecha_ultimo_cambio_area.slice(0, 10) : "";
     document.getElementById("e-activo").checked = !!emp.activo;
@@ -1745,6 +1826,7 @@ AUTH_READY.then(async function () {
     elResultados.innerHTML = "";
     formEditar.hidden = true;
     formEditar.reset();
+    actualizarVisibilidadTurno("e");
     editarBuscarMsg.textContent = "";
     editarBuscarMsg.className = "form-msg";
     editarMsg.textContent = "";
@@ -1819,7 +1901,16 @@ AUTH_READY.then(async function () {
 
   // ---------- tabla ----------
   const elBuscar = document.getElementById("f-buscar");
-  const elEstado = document.getElementById("f-filtro-estado");
+  const elEstadoBtns = document.getElementById("filtro-estado-btns");
+  let filtroEstado = "";
+  elEstadoBtns.querySelectorAll(".seg-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      elEstadoBtns.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("activo"));
+      btn.classList.add("activo");
+      filtroEstado = btn.dataset.valor;
+      cargarEmpleados();
+    });
+  });
   const elDesde = document.getElementById("f-filtro-desde");
   const elHasta = document.getElementById("f-filtro-hasta");
   const elBody = document.getElementById("tbody");
@@ -1848,7 +1939,7 @@ AUTH_READY.then(async function () {
     if (msFiltroArea.seleccion.size > 0) {
       params.set("area", "in.(" + [...msFiltroArea.seleccion].map(a => `"${a}"`).join(",") + ")");
     }
-    if (elEstado.value) params.set("activo", "eq." + elEstado.value);
+    if (filtroEstado) params.set("activo", "eq." + filtroEstado);
     if (elDesde.value) params.append("fecha_ingreso", "gte." + elDesde.value);
     if (elHasta.value) params.append("fecha_ingreso", "lte." + elHasta.value);
 
@@ -1901,7 +1992,12 @@ AUTH_READY.then(async function () {
     const activoActual = btn.dataset.toggleActivo === "true";
     const nuevoEstado = !activoActual;
     const accion = nuevoEstado ? "activar" : "desactivar";
-    if (!confirm(`¿Seguro que quieres ${accion} este empleado?`)) return;
+    const ok = await pedirConfirmacion({
+      titulo: nuevoEstado ? "¿Activar empleado?" : "¿Inactivar empleado?",
+      mensaje: `¿Seguro que quieres ${accion} este empleado?`,
+      textoConfirmar: nuevoEstado ? "Sí, activar" : "Sí, inactivar",
+    });
+    if (!ok) return;
 
     btn.disabled = true;
     try {
@@ -1933,16 +2029,120 @@ AUTH_READY.then(async function () {
 
   let buscarTimeout;
   elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargarEmpleados, 300); });
-  elEstado.addEventListener("change", cargarEmpleados);
   elDesde.addEventListener("change", cargarEmpleados);
   elHasta.addEventListener("change", cargarEmpleados);
   document.getElementById("btn-limpiar").addEventListener("click", () => {
     elBuscar.value = "";
     msFiltroArea.limpiar();
-    elEstado.value = "";
+    filtroEstado = "";
+    elEstadoBtns.querySelectorAll(".seg-btn").forEach((b) => b.classList.toggle("activo", b.dataset.valor === ""));
     elDesde.value = "";
     elHasta.value = "";
     cargarEmpleados();
+  });
+
+  // ---------- confirmacion en popup (reemplaza confirm() nativo) ----------
+  const modalOverlay = document.getElementById("modal-confirmar");
+  const modalTitulo = document.getElementById("modal-titulo");
+  const modalMensaje = document.getElementById("modal-mensaje");
+  const modalCancelar = document.getElementById("modal-cancelar");
+  const modalConfirmarBtn = document.getElementById("modal-confirmar-btn");
+  function pedirConfirmacion({ titulo = "¿Estás seguro?", mensaje, textoConfirmar = "Confirmar" }) {
+    return new Promise((resolve) => {
+      modalTitulo.textContent = titulo;
+      modalMensaje.textContent = mensaje;
+      modalConfirmarBtn.textContent = textoConfirmar;
+      modalOverlay.hidden = false;
+      function limpiar(resultado) {
+        modalOverlay.hidden = true;
+        modalConfirmarBtn.removeEventListener("click", onConfirmar);
+        modalCancelar.removeEventListener("click", onCancelar);
+        modalOverlay.removeEventListener("click", onFondo);
+        resolve(resultado);
+      }
+      function onConfirmar() { limpiar(true); }
+      function onCancelar() { limpiar(false); }
+      function onFondo(e) { if (e.target === modalOverlay) limpiar(false); }
+      modalConfirmarBtn.addEventListener("click", onConfirmar);
+      modalCancelar.addEventListener("click", onCancelar);
+      modalOverlay.addEventListener("click", onFondo);
+    });
+  }
+
+  // ---------- inactivar empleado ----------
+  const inactBuscar = document.getElementById("inact-buscar");
+  const inactBody = document.getElementById("inact-tbody");
+  const inactCount = document.getElementById("inact-count");
+
+  async function cargarListaInactivar() {
+    inactBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Cargando…</div></td></tr>`;
+    const params = new URLSearchParams();
+    params.set("select", "cedula,nombre,area,labor,sede");
+    params.set("activo", "eq.true");
+    params.set("order", "nombre.asc");
+    params.set("limit", "500");
+    const termino = inactBuscar.value.trim();
+    if (termino) {
+      if (/^\d+$/.test(termino)) params.set("cedula_texto", "ilike.*" + termino + "*");
+      else params.set("nombre", "ilike.*" + termino.replace(/[,()]/g, "") + "*");
+    }
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, {
+        headers: { ...authHeaders(), Prefer: "count=exact" },
+      });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      const rango = resp.headers.get("content-range");
+      const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
+      inactCount.textContent = total.toLocaleString("es-CO") + " empleado" + (total === 1 ? "" : "s") + " activo" + (total === 1 ? "" : "s");
+      inactBody.innerHTML = filas.length === 0
+        ? `<tr><td colspan="6"><div class="empty-state">No hay empleados activos para este filtro.</div></td></tr>`
+        : filas.map(f => `<tr>
+            <td class="cedula">${f.cedula}</td>
+            <td class="nombre" title="${f.nombre}">${f.nombre}</td>
+            <td title="${f.area || ""}">${f.area || "—"}</td>
+            <td title="${f.labor || ""}">${f.labor || "—"}</td>
+            <td>${f.sede || "—"}</td>
+            <td><button type="button" class="btn-critical" style="padding:6px 14px; font-size:12.5px" data-inactivar-cedula="${f.cedula}" data-inactivar-nombre="${f.nombre}">Inactivar</button></td>
+          </tr>`).join("");
+    } catch (err) {
+      inactBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      inactCount.textContent = "";
+    }
+  }
+
+  let inactBuscarTimeout;
+  inactBuscar.addEventListener("input", () => { clearTimeout(inactBuscarTimeout); inactBuscarTimeout = setTimeout(cargarListaInactivar, 300); });
+
+  inactBody.addEventListener("click", async (e) => {
+    const btn = e.target.closest("button[data-inactivar-cedula]");
+    if (!btn) return;
+    const cedula = btn.dataset.inactivarCedula;
+    const nombre = btn.dataset.inactivarNombre;
+    const ok = await pedirConfirmacion({
+      titulo: "¿Inactivar empleado?",
+      mensaje: `¿Seguro que quieres inactivar a ${nombre} (cédula ${cedula})? Podrás reactivarlo luego desde la lista de empleados.`,
+      textoConfirmar: "Sí, inactivar",
+    });
+    if (!ok) return;
+    btn.disabled = true;
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedula}`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify({ activo: false }),
+      });
+      const resultado = await resp.json();
+      if (!resp.ok) throw new Error(resultado.message || `HTTP ${resp.status}`);
+      if (!Array.isArray(resultado) || resultado.length === 0) {
+        throw new Error("No se encontró el empleado o no tienes permiso para modificarlo.");
+      }
+      cargarListaInactivar();
+      cargarEmpleados();
+    } catch (err) {
+      alert("No se pudo inactivar el empleado: " + (err.message || err));
+      btn.disabled = false;
+    }
   });
 
   cargarEmpleados();
