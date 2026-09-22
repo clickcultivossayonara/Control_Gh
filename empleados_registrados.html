@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Usuarios — Cultivos Sayonara</title>
+<title>Empleados registrados — Cultivos Sayonara</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -92,19 +92,13 @@
   section.card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 20px 22px; }
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 16px; }
 
-  .form-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
-  @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, 1fr); } }
-  @media (max-width: 520px) { .form-grid { grid-template-columns: 1fr; } }
   .field { display: flex; flex-direction: column; gap: 5px; }
   .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
-  .field label .req { color: var(--critical); }
-  .field input[type=text], .field input[type=email], .field input[type=password], .field select {
+  .field input[type=text], .field input[type=date] {
     font: inherit; font-size: 14px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
     background: var(--paper); color: var(--ink);
   }
-  .field input:focus, .field select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
-  .field[hidden] { display: none; }
-  .field-hint { font-size: 11.5px; color: var(--ink-faint); }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
   .multiselect { position: relative; }
   .ms-trigger {
@@ -113,6 +107,7 @@
     background: var(--paper); color: var(--ink); width: 100%; text-align: left; cursor: pointer; position: relative;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
   }
+  .ms-trigger:disabled { opacity: 0.55; cursor: not-allowed; }
   .ms-trigger::after { content: "▾"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 10px; }
   .ms-trigger:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .multiselect.open .ms-trigger { border-color: var(--accent); }
@@ -123,27 +118,18 @@
     box-shadow: var(--shadow); padding: 4px;
   }
   .multiselect.open .ms-panel { display: block; }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 8px;
+    margin-bottom: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink);
+  }
+  .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
   .ms-option:hover { background: var(--accent-soft); }
   .ms-option input { margin: 0; accent-color: var(--accent); }
 
-  .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
-  .btn-primary {
-    font: inherit; font-size: 14px; font-weight: 600; padding: 10px 22px; border-radius: 7px; border: none;
-    background: var(--accent); color: var(--accent-ink); cursor: pointer;
-  }
-  .btn-primary:hover { opacity: 0.92; }
-  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
-  .btn-small {
-    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 6px;
-    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
-  }
-  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
-  .btn-small.critical:hover { border-color: var(--critical); color: var(--critical); }
-  .form-msg { font-size: 13.5px; font-weight: 500; }
-  .form-msg.ok { color: var(--accent); }
-  .form-msg.error { color: var(--critical); }
-
+  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
+  .filters .field { min-width: 160px; }
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
   .clear-btn {
     font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
     border-radius: 7px; border: 1px solid var(--line-strong);
@@ -151,30 +137,64 @@
   }
   .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
 
-  .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-bottom: 14px; }
-  .filters .field { min-width: 160px; }
-  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+  .seg-btns { display: flex; border: 1px solid var(--line-strong); border-radius: 7px; overflow: hidden; }
+  .seg-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 9px 12px; border: none; border-right: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .seg-btn:last-child { border-right: none; }
+  .seg-btn:hover { background: var(--accent-soft); color: var(--accent); }
+  .seg-btn.activo { background: var(--accent); color: var(--accent-ink); }
+
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(20, 24, 15, 0.55); display: flex;
+    align-items: center; justify-content: center; z-index: 100; padding: 16px;
+  }
+  .modal-overlay[hidden] { display: none; }
+  .modal-box { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 24px; max-width: 380px; width: 100%; }
+  .modal-box h3 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 10px; }
+  .modal-box p { font-size: 14px; color: var(--ink-soft); margin: 0 0 20px; line-height: 1.45; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .btn-critical {
+    font: inherit; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 7px; border: none;
+    background: var(--critical); color: #fff; cursor: pointer;
+  }
+  .btn-critical:hover { opacity: 0.9; }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; min-width: 820px; font-size: 12.5px; table-layout: fixed; }
   thead th {
-    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
-    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 8px 8px;
+    font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
+    cursor: pointer; user-select: none;
   }
-  thead th[data-key] { cursor: pointer; user-select: none; }
-  thead th[data-key]:hover { background: var(--accent); }
+  thead th:hover { background: var(--accent); }
   thead th .arrow { opacity: 0.5; font-size: 9px; margin-left: 3px; }
   thead th.sorted .arrow { opacity: 1; }
-  tbody td { padding: 7px 10px; border-bottom: 1px solid var(--line); }
-  tbody input[type=text], tbody input[type=email] { font: inherit; font-size: 12.5px; padding: 5px 7px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink); width: 100%; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  th:nth-child(1), td:nth-child(1) { width: 10%; }
+  th:nth-child(2), td:nth-child(2) { width: 17%; }
+  th:nth-child(3), td:nth-child(3) { width: 14%; }
+  th:nth-child(4), td:nth-child(4) { width: 14%; }
+  th:nth-child(5), td:nth-child(5) { width: 8%; }
+  th:nth-child(6), td:nth-child(6) { width: 9%; }
+  th:nth-child(7), td:nth-child(7) { width: 10%; }
+  th:nth-child(8), td:nth-child(8) { width: 8%; }
+  th:nth-child(9), td:nth-child(9) { width: 14%; }
   tbody tr:hover td { background: var(--accent-soft); }
+  tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
+  tbody tr:nth-child(even):hover td { background: var(--accent-soft); }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
   .nombre { font-weight: 500; }
   .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; }
   .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .chip.ok { background: var(--accent-soft); color: var(--accent); }
   .chip.off { background: var(--critical-soft); color: var(--critical); }
   .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
-  .fila-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+  .link-btn {
+    background: none; border: none; padding: 0; font: inherit; font-size: 12px; font-weight: 600;
+    color: var(--accent); text-decoration: underline; cursor: pointer;
+  }
 
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
 </style>
@@ -202,7 +222,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
       <span>Empleados</span>
     </a>
-    <a class="sidebar-link" href="empleados_registrados.html" data-roles="admin,nomina,jefe_area,supervisor">
+    <a class="sidebar-link activo" href="empleados_registrados.html" data-roles="admin,nomina,jefe_area,supervisor">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="3" y1="15" x2="21" y2="15"></line><line x1="9" y1="3" x2="9" y2="21"></line></svg>
       <span>Empleados registrados</span>
     </a>
@@ -226,7 +246,7 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
       <span>Configuraciones</span>
     </a>
-    <a class="sidebar-link activo" href="usuarios.html" data-roles="admin">
+    <a class="sidebar-link" href="usuarios.html" data-roles="admin">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="5"></circle></svg>
       <span>Usuarios</span>
     </a>
@@ -240,81 +260,55 @@
   <div class="page-header">
     <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="page-logo">
     <span class="page-brand">Cultivos Sayonara</span>
-    <h1>Usuarios</h1>
+    <h1>Empleados registrados</h1>
   </div>
 
   <section class="card">
-    <h2>Crear usuario</h2>
-    <form id="form-usuario">
-      <div class="form-grid">
-        <div class="field">
-          <label for="u-nombre">Nombre <span class="req">*</span></label>
-          <input type="text" id="u-nombre" required autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="u-email">Correo <span class="req">*</span></label>
-          <input type="email" id="u-email" required autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="u-password">Contraseña temporal <span class="req">*</span></label>
-          <input type="text" id="u-password" required minlength="8" autocomplete="off" placeholder="Mínimo 8 caracteres">
-        </div>
-        <div class="field">
-          <label for="u-rol">Rol <span class="req">*</span></label>
-          <select id="u-rol" required>
-            <option value="">Selecciona un rol…</option>
-            <option value="admin">Administrador</option>
-            <option value="nomina">Nómina / RRHH</option>
-            <option value="jefe_area">Jefe de área</option>
-            <option value="supervisor">Supervisor</option>
-          </select>
-        </div>
-        <div class="field" id="u-areas-field" hidden>
-          <label>Área(s) <span class="req">*</span></label>
-          <div class="multiselect" id="u-areas"></div>
-          <span class="field-hint">Solo verá/gestionará información de estas áreas.</span>
-        </div>
-      </div>
-      <div class="form-actions">
-        <button type="submit" class="btn-primary" id="btn-usuario">Crear usuario</button>
-        <span class="form-msg" id="msg-usuario"></span>
-      </div>
-    </form>
-  </section>
-
-  <section class="card">
-    <h2>Usuarios registrados</h2>
+    <h2>Empleados registrados</h2>
     <div class="filters">
       <div class="field">
-        <label for="lu-buscar">Nombre o correo</label>
-        <input type="text" id="lu-buscar" placeholder="Ej. Roqueme o correo…" autocomplete="off">
+        <label for="f-buscar">Cédula o nombre</label>
+        <input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
       </div>
       <div class="field">
-        <label for="lu-rol">Rol</label>
-        <select id="lu-rol">
-          <option value="">Todos</option>
-          <option value="admin">Administrador</option>
-          <option value="nomina">Nómina / RRHH</option>
-          <option value="jefe_area">Jefe de área</option>
-          <option value="supervisor">Supervisor</option>
-        </select>
+        <label>Área</label>
+        <div class="multiselect" id="ms-filtro-area"></div>
       </div>
-      <button class="clear-btn" id="lu-limpiar">Limpiar filtros</button>
-      <span class="result-count" id="lu-count"></span>
+      <div class="field">
+        <label>Estado</label>
+        <div class="seg-btns" id="filtro-estado-btns">
+          <button type="button" class="seg-btn activo" data-valor="">Todos</button>
+          <button type="button" class="seg-btn" data-valor="true">Activos</button>
+          <button type="button" class="seg-btn" data-valor="false">Inactivos</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="f-filtro-desde">Ingreso desde</label>
+        <input type="date" id="f-filtro-desde">
+      </div>
+      <div class="field">
+        <label for="f-filtro-hasta">Ingreso hasta</label>
+        <input type="date" id="f-filtro-hasta">
+      </div>
+      <button class="clear-btn" id="btn-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="result-count"></span>
     </div>
     <div class="table-scroll">
       <table>
         <thead>
           <tr>
+            <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
             <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
-            <th data-key="email">Correo <span class="arrow">↕</span></th>
-            <th data-key="rol">Rol <span class="arrow">↕</span></th>
-            <th>Áreas</th>
+            <th data-key="area">Área <span class="arrow">↕</span></th>
+            <th data-key="labor">Labor <span class="arrow">↕</span></th>
+            <th data-key="sede">Sede <span class="arrow">↕</span></th>
+            <th data-key="fecha_ingreso">Ingreso <span class="arrow">↕</span></th>
+            <th data-key="fecha_ultimo_cambio_area">Cambio área <span class="arrow">↕</span></th>
             <th data-key="activo">Estado <span class="arrow">↕</span></th>
-            <th>Acciones</th>
+            <th id="th-acciones">Acciones</th>
           </tr>
         </thead>
-        <tbody id="lu-tbody"></tbody>
+        <tbody id="tbody"></tbody>
       </table>
     </div>
   </section>
@@ -323,12 +317,27 @@
 </div>
 </div>
 
+<div class="modal-overlay" id="modal-confirmar" hidden>
+  <div class="modal-box">
+    <h3 id="modal-titulo">¿Estás seguro?</h3>
+    <p id="modal-mensaje"></p>
+    <div class="modal-actions">
+      <button type="button" class="clear-btn" id="modal-cancelar">Cancelar</button>
+      <button type="button" class="btn-critical" id="modal-confirmar-btn">Confirmar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script>
 AUTH_READY.then(async function () {
-  if (!requireRole(["admin"])) return;
+  if (!requireRole(["admin", "nomina", "jefe_area", "supervisor"])) return;
   pintarSesion("sesion-box");
+  const puedeEditar = ["admin", "nomina"].includes(window.SESION.rol);
+  if (!puedeEditar) {
+    document.getElementById("th-acciones").hidden = true;
+  }
 
   document.querySelectorAll("#sidebar-nav .sidebar-link").forEach((enlace) => {
     const roles = (enlace.dataset.roles || "").split(",");
@@ -354,285 +363,274 @@ AUTH_READY.then(async function () {
   backdrop.addEventListener("click", () => abrirMenuMovil(false));
 
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
-  const ROL_ETIQUETA = { admin: "Administrador", nomina: "Nómina / RRHH", jefe_area: "Jefe de área", supervisor: "Supervisor" };
-  const ROLES_CON_AREA = ["jefe_area", "supervisor"];
 
-  async function cargarAreasDisponibles() {
-    const resp = await fetch(`${SUPABASE_URL}/rest/v1/areas?select=nombre&activo=eq.true&order=nombre`, { headers: authHeaders() });
-    const filas = await resp.json();
-    return Array.isArray(filas) ? filas.map(f => f.nombre).filter(Boolean) : [];
-  }
-  const AREAS_DISPONIBLES = await cargarAreasDisponibles();
-
-  // ---------------- multiselect generico (igual patron que reporte_biometrico.html) ----------------
-  function crearMultiselect(containerId, opciones, etiquetaTodos) {
+  // ---------- multiselect generico ----------
+  function crearMultiselect(containerId, etiquetaTodos, onChange) {
     const el = document.getElementById(containerId);
     const seleccion = new Set();
-    el.innerHTML = `<button type="button" class="ms-trigger">${etiquetaTodos}</button><div class="ms-panel"></div>`;
+    let etiquetaPorValor = {};
+    el.innerHTML = `<button type="button" class="ms-trigger" disabled>${etiquetaTodos}</button><div class="ms-panel"></div>`;
     const trigger = el.querySelector(".ms-trigger");
     const panel = el.querySelector(".ms-panel");
 
     function actualizarEtiqueta() {
       if (seleccion.size === 0) trigger.textContent = etiquetaTodos;
-      else trigger.textContent = `${seleccion.size} seleccionada${seleccion.size === 1 ? "" : "s"}`;
+      else if (seleccion.size === 1) {
+        const valor = [...seleccion][0];
+        trigger.textContent = etiquetaPorValor[valor] ?? valor;
+      } else trigger.textContent = `${seleccion.size} seleccionadas`;
     }
-
-    panel.innerHTML = opciones.map(a => `<label class="ms-option"><input type="checkbox" value="${a}"><span>${a}</span></label>`).join("");
-    panel.querySelectorAll("input[type=checkbox]").forEach((chk) => {
-      chk.addEventListener("change", () => {
-        if (chk.checked) seleccion.add(chk.value);
-        else seleccion.delete(chk.value);
-        actualizarEtiqueta();
-      });
-    });
 
     trigger.addEventListener("click", (e) => {
       e.stopPropagation();
+      if (trigger.disabled) return;
       document.querySelectorAll(".multiselect.open").forEach(m => { if (m !== el) m.classList.remove("open"); });
       el.classList.toggle("open");
+      const buscar = panel.querySelector(".ms-search");
+      if (el.classList.contains("open") && buscar) {
+        buscar.value = "";
+        panel.querySelectorAll(".ms-option").forEach(o => { o.style.display = ""; });
+        buscar.focus();
+      }
     });
 
     return {
       seleccion,
-      limpiar() { seleccion.clear(); panel.querySelectorAll("input").forEach(c => c.checked = false); actualizarEtiqueta(); },
+      establecerOpciones(opciones, etiquetaVacio) {
+        seleccion.clear();
+        panel.innerHTML = "";
+        etiquetaPorValor = {};
+        if (opciones.length === 0) {
+          trigger.disabled = true;
+          trigger.textContent = etiquetaVacio || "Sin opciones";
+          return;
+        }
+        trigger.disabled = false;
+        panel.innerHTML = `<input type="text" class="ms-search" placeholder="Buscar…" autocomplete="off">`;
+        const buscar = panel.querySelector(".ms-search");
+        opciones.forEach(([valor, texto]) => {
+          etiquetaPorValor[valor] = texto;
+          panel.insertAdjacentHTML("beforeend", `<label class="ms-option" data-texto="${texto.toLowerCase()}"><input type="checkbox" value="${valor}"><span>${texto}</span></label>`);
+        });
+        panel.querySelectorAll("input[type=checkbox]").forEach((chk, i) => {
+          chk.addEventListener("change", () => {
+            if (chk.checked) seleccion.add(opciones[i][0]);
+            else seleccion.delete(opciones[i][0]);
+            actualizarEtiqueta();
+            if (onChange) onChange();
+          });
+        });
+        buscar.addEventListener("click", (e) => e.stopPropagation());
+        buscar.addEventListener("input", () => {
+          const q = buscar.value.trim().toLowerCase();
+          panel.querySelectorAll(".ms-option").forEach((opt) => {
+            opt.style.display = opt.dataset.texto.includes(q) ? "" : "none";
+          });
+        });
+        actualizarEtiqueta();
+      },
+      limpiar() {
+        seleccion.clear();
+        panel.querySelectorAll("input").forEach((c) => { c.checked = false; });
+        actualizarEtiqueta();
+      },
     };
   }
   document.addEventListener("click", (e) => {
     document.querySelectorAll(".multiselect.open").forEach(m => { if (!m.contains(e.target)) m.classList.remove("open"); });
   });
 
-  const msAreas = crearMultiselect("u-areas", AREAS_DISPONIBLES, "Selecciona área(s)…");
-
-  // ---------------- formulario: crear usuario ----------------
-  const inNombre = document.getElementById("u-nombre");
-  const inEmail = document.getElementById("u-email");
-  const inPassword = document.getElementById("u-password");
-  const selRol = document.getElementById("u-rol");
-  const campoAreas = document.getElementById("u-areas-field");
-  const form = document.getElementById("form-usuario");
-  const btn = document.getElementById("btn-usuario");
-  const msg = document.getElementById("msg-usuario");
-
-  selRol.addEventListener("change", () => {
-    campoAreas.hidden = !ROLES_CON_AREA.includes(selRol.value);
-  });
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-    const areas = [...msAreas.seleccion];
-    if (ROLES_CON_AREA.includes(selRol.value) && areas.length === 0) {
-      msg.textContent = "Selecciona al menos un área para este rol.";
-      msg.className = "form-msg error";
-      return;
-    }
-
-    btn.disabled = true;
-    msg.textContent = "Creando...";
-    msg.className = "form-msg";
-
+  async function cargarNombresActivos(tabla) {
     try {
-      const resp = await fetch(`${SUPABASE_URL}/functions/v1/admin-crear-usuario`, {
-        method: "POST",
-        headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({
-          nombre: inNombre.value.trim(),
-          email: inEmail.value.trim(),
-          password: inPassword.value,
-          rol: selRol.value,
-          areas,
-        }),
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?select=nombre&activo=eq.true&order=nombre`, {
+        headers: authHeaders(),
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "No se pudo crear el usuario.");
-
-      msg.textContent = `Usuario "${data.nombre}" creado correctamente.`;
-      msg.className = "form-msg ok";
-      form.reset();
-      msAreas.limpiar();
-      campoAreas.hidden = true;
-      cargarUsuarios();
-    } catch (err) {
-      msg.textContent = "No se pudo crear: " + (err.message || err);
-      msg.className = "form-msg error";
-    } finally {
-      btn.disabled = false;
+      const filas = await resp.json();
+      return resp.ok && Array.isArray(filas) ? filas.map(f => f.nombre) : [];
+    } catch {
+      return [];
     }
+  }
+
+  const AREAS_CONOCIDAS = await cargarNombresActivos("areas");
+  const ROL_AREA_LIMITADA = ["jefe_area", "supervisor"];
+  const AREAS_FILTRO = ROL_AREA_LIMITADA.includes(window.SESION.rol)
+    ? AREAS_CONOCIDAS.filter(a => window.SESION.areas.includes(a))
+    : AREAS_CONOCIDAS;
+  const msFiltroArea = crearMultiselect("ms-filtro-area", "Todas", () => cargarEmpleados());
+  msFiltroArea.establecerOpciones(AREAS_FILTRO.map(a => [a, a]));
+
+  // ---------- confirmacion en popup (reemplaza confirm() nativo) ----------
+  const modalOverlay = document.getElementById("modal-confirmar");
+  const modalTitulo = document.getElementById("modal-titulo");
+  const modalMensaje = document.getElementById("modal-mensaje");
+  const modalCancelar = document.getElementById("modal-cancelar");
+  const modalConfirmarBtn = document.getElementById("modal-confirmar-btn");
+  function pedirConfirmacion({ titulo = "¿Estás seguro?", mensaje, textoConfirmar = "Confirmar" }) {
+    return new Promise((resolve) => {
+      modalTitulo.textContent = titulo;
+      modalMensaje.textContent = mensaje;
+      modalConfirmarBtn.textContent = textoConfirmar;
+      modalOverlay.hidden = false;
+      function limpiar(resultado) {
+        modalOverlay.hidden = true;
+        modalConfirmarBtn.removeEventListener("click", onConfirmar);
+        modalCancelar.removeEventListener("click", onCancelar);
+        modalOverlay.removeEventListener("click", onFondo);
+        resolve(resultado);
+      }
+      function onConfirmar() { limpiar(true); }
+      function onCancelar() { limpiar(false); }
+      function onFondo(e) { if (e.target === modalOverlay) limpiar(false); }
+      modalConfirmarBtn.addEventListener("click", onConfirmar);
+      modalCancelar.addEventListener("click", onCancelar);
+      modalOverlay.addEventListener("click", onFondo);
+    });
+  }
+
+  // ---------- tabla ----------
+  const elBuscar = document.getElementById("f-buscar");
+  const elEstadoBtns = document.getElementById("filtro-estado-btns");
+  let filtroEstado = "";
+  elEstadoBtns.querySelectorAll(".seg-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      elEstadoBtns.querySelectorAll(".seg-btn").forEach((b) => b.classList.remove("activo"));
+      btn.classList.add("activo");
+      filtroEstado = btn.dataset.valor;
+      cargarEmpleados();
+    });
   });
+  const elDesde = document.getElementById("f-filtro-desde");
+  const elHasta = document.getElementById("f-filtro-hasta");
+  const elBody = document.getElementById("tbody");
+  const elCount = document.getElementById("result-count");
 
-  // ---------------- tabla: usuarios registrados ----------------
-  const luBuscar = document.getElementById("lu-buscar");
-  const luRol = document.getElementById("lu-rol");
-  const luBody = document.getElementById("lu-tbody");
-  const luCount = document.getElementById("lu-count");
-  let usuariosCache = [];
-
-  function filaVista(f) {
-    return `<tr data-id="${f.id}">
-      <td class="nombre">${f.nombre}</td>
-      <td>${f.email}</td>
-      <td>${ROL_ETIQUETA[f.rol] || f.rol}</td>
-      <td>${(f.areas && f.areas.length) ? f.areas.join(", ") : "—"}</td>
-      <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
-      <td class="fila-acciones">
-        <button type="button" class="btn-small fila-editar">Editar</button>
-        <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
-        ${f.id !== window.SESION.id ? '<button type="button" class="btn-small critical fila-eliminar">Eliminar</button>' : ""}
-      </td>
-    </tr>`;
+  let sortKey = "activo", sortDir = -1;
+  function construirOrder() {
+    const dir = sortDir === 1 ? "asc" : "desc";
+    if (sortKey === "activo") return `activo.${dir},fecha_ingreso.desc.nullslast`;
+    if (sortKey === "fecha_ingreso") return `fecha_ingreso.${dir}.nullslast`;
+    if (sortKey === "fecha_ultimo_cambio_area") return `fecha_ultimo_cambio_area.${dir}.nullslast`;
+    return `${sortKey}.${dir}`;
   }
 
-  function filaEdicion(f) {
-    const conArea = ROLES_CON_AREA.includes(f.rol);
-    return `<tr data-id="${f.id}">
-      <td><input type="text" class="fila-nombre" value="${f.nombre}"></td>
-      <td><input type="email" class="fila-email" value="${f.email}"></td>
-      <td>${ROL_ETIQUETA[f.rol] || f.rol}</td>
-      <td>${conArea ? `<input type="text" class="fila-areas" value="${(f.areas || []).join(", ")}" placeholder="Ej. RIEGO, ASPERSIÓN">` : "—"}</td>
-      <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
-      <td class="fila-acciones">
-        <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
-        <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
-      </td>
-    </tr>`;
-  }
-
-  let luSortKey = "nombre", luSortDir = 1;
-
-  async function cargarUsuarios() {
+  async function cargarEmpleados() {
     const params = new URLSearchParams();
-    params.set("select", "id,nombre,email,rol,areas,activo");
-    params.set("order", `${luSortKey}.${luSortDir === 1 ? "asc" : "desc"}`);
+    params.set("select", "cedula,nombre,area,sede,labor,fecha_ingreso,fecha_ultimo_cambio_area,activo");
+    params.set("order", construirOrder());
+    params.set("limit", "500");
 
-    const buscar = luBuscar.value.trim();
-    if (buscar) params.set("or", `(nombre.ilike.*${buscar.replace(/[,()]/g, "")}*,email.ilike.*${buscar.replace(/[,()]/g, "")}*)`);
-    if (luRol.value) params.set("rol", "eq." + luRol.value);
+    const buscar = elBuscar.value.trim();
+    if (buscar) {
+      if (/^\d+$/.test(buscar)) params.set("cedula_texto", "ilike.*" + buscar + "*");
+      else params.set("nombre", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
+    }
+    if (msFiltroArea.seleccion.size > 0) {
+      params.set("area", "in.(" + [...msFiltroArea.seleccion].map(a => `"${a}"`).join(",") + ")");
+    }
+    if (filtroEstado) params.set("activo", "eq." + filtroEstado);
+    if (elDesde.value) params.append("fecha_ingreso", "gte." + elDesde.value);
+    if (elHasta.value) params.append("fecha_ingreso", "lte." + elHasta.value);
 
     try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios_perfil?${params.toString()}`, {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, {
         headers: { ...authHeaders(), Prefer: "count=exact" },
       });
       const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
       const rango = resp.headers.get("content-range");
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
-      usuariosCache = Array.isArray(filas) ? filas : [];
-      if (usuariosCache.length === 0) {
-        luBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin usuarios para estos filtros.</div></td></tr>`;
+      if (filas.length === 0) {
+        elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin empleados para estos filtros.</div></td></tr>`;
       } else {
-        luBody.innerHTML = usuariosCache.map(filaVista).join("");
+        elBody.innerHTML = filas.map(f => `<tr>
+          <td class="cedula">${f.cedula}</td>
+          <td class="nombre" title="${f.nombre}">${f.nombre}</td>
+          <td title="${f.area || ""}">${f.area || "—"}</td>
+          <td title="${f.labor || ""}">${f.labor || "—"}</td>
+          <td>${f.sede || "—"}</td>
+          <td>${f.fecha_ingreso ? f.fecha_ingreso.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
+          <td>${f.fecha_ultimo_cambio_area ? f.fecha_ultimo_cambio_area.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
+          <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+          <td>${puedeEditar ? `<button type="button" class="link-btn" data-toggle-cedula="${f.cedula}" data-toggle-activo="${f.activo}">${f.activo ? "Desactivar" : "Activar"}</button> &middot; <button type="button" class="link-btn" data-cedula="${f.cedula}">Editar</button>` : ""}</td>
+        </tr>`).join("");
       }
-      luCount.textContent = total.toLocaleString("es-CO") + " usuario" + (total === 1 ? "" : "s");
+      elCount.textContent = total.toLocaleString("es-CO") + " empleado" + (total === 1 ? "" : "s");
     } catch (err) {
-      luBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      elCount.textContent = "";
     }
 
     document.querySelectorAll("thead th[data-key]").forEach((th) => {
-      th.classList.toggle("sorted", th.dataset.key === luSortKey);
+      th.classList.toggle("sorted", th.dataset.key === sortKey);
       const arrow = th.querySelector(".arrow");
-      if (arrow) arrow.textContent = th.dataset.key === luSortKey ? (luSortDir === 1 ? "↑" : "↓") : "↕";
+      if (arrow) arrow.textContent = th.dataset.key === sortKey ? (sortDir === 1 ? "↑" : "↓") : "↕";
     });
+  }
+
+  elBody.addEventListener("click", (e) => {
+    const btnEditar = e.target.closest("button[data-cedula]");
+    if (btnEditar) { location.href = "empleados.html?editar=" + encodeURIComponent(btnEditar.dataset.cedula); return; }
+    const btnToggle = e.target.closest("button[data-toggle-cedula]");
+    if (btnToggle) toggleActivoEmpleado(btnToggle);
+  });
+
+  async function toggleActivoEmpleado(btn) {
+    const cedula = btn.dataset.toggleCedula;
+    const activoActual = btn.dataset.toggleActivo === "true";
+    const nuevoEstado = !activoActual;
+    const accion = nuevoEstado ? "activar" : "desactivar";
+    const ok = await pedirConfirmacion({
+      titulo: nuevoEstado ? "¿Activar empleado?" : "¿Inactivar empleado?",
+      mensaje: `¿Seguro que quieres ${accion} este empleado?`,
+      textoConfirmar: nuevoEstado ? "Sí, activar" : "Sí, inactivar",
+    });
+    if (!ok) return;
+
+    btn.disabled = true;
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedula}`, {
+        method: "PATCH",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+        body: JSON.stringify({ activo: nuevoEstado }),
+      });
+      const resultado = await resp.json();
+      if (!resp.ok) throw new Error(resultado.message || `HTTP ${resp.status}`);
+      if (!Array.isArray(resultado) || resultado.length === 0) {
+        throw new Error("No se encontró el empleado o no tienes permiso para modificarlo.");
+      }
+      cargarEmpleados();
+    } catch (err) {
+      alert(`No se pudo ${accion} el empleado: ` + (err.message || err));
+      btn.disabled = false;
+    }
   }
 
   document.querySelectorAll("thead th[data-key]").forEach((th) => {
     th.addEventListener("click", () => {
       const key = th.dataset.key;
-      if (luSortKey === key) luSortDir *= -1;
-      else { luSortKey = key; luSortDir = -1; }
-      cargarUsuarios();
+      if (sortKey === key) sortDir *= -1;
+      else { sortKey = key; sortDir = -1; }
+      cargarEmpleados();
     });
   });
 
-  luBody.addEventListener("click", async (e) => {
-    const fila = e.target.closest("tr");
-    if (!fila) return;
-    const id = fila.dataset.id;
-    const datos = usuariosCache.find(u => u.id === id);
-
-    if (e.target.classList.contains("fila-editar") && datos) {
-      fila.outerHTML = filaEdicion(datos);
-      return;
-    }
-
-    if (e.target.classList.contains("fila-cancelar-edicion") && datos) {
-      fila.outerHTML = filaVista(datos);
-      return;
-    }
-
-    if (e.target.classList.contains("fila-guardar-edicion") && datos) {
-      const nombre = fila.querySelector(".fila-nombre").value.trim();
-      const email = fila.querySelector(".fila-email").value.trim();
-      const areasInput = fila.querySelector(".fila-areas");
-      const areas = areasInput
-        ? areasInput.value.split(",").map(a => a.trim().toUpperCase()).filter(Boolean)
-        : (datos.areas || []);
-
-      if (!nombre || !email) {
-        alert("Nombre y correo son obligatorios.");
-        return;
-      }
-
-      e.target.disabled = true;
-      try {
-        const resp = await fetch(`${SUPABASE_URL}/functions/v1/admin-editar-usuario`, {
-          method: "POST",
-          headers: { ...authHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ id, nombre, email, areas }),
-        });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || "No se pudo guardar.");
-        cargarUsuarios();
-      } catch (err) {
-        alert("No se pudo guardar: " + (err.message || err));
-        e.target.disabled = false;
-      }
-      return;
-    }
-
-    if (e.target.classList.contains("fila-toggle")) {
-      const activarA = e.target.textContent.trim() === "Activar";
-      e.target.disabled = true;
-      try {
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios_perfil?id=eq.${id}`, {
-          method: "PATCH",
-          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
-          body: JSON.stringify({ activo: activarA }),
-        });
-        if (!resp.ok) throw new Error(await resp.text());
-        cargarUsuarios();
-      } catch (err) {
-        alert("No se pudo actualizar: " + (err.message || err));
-        e.target.disabled = false;
-      }
-    }
-
-    if (e.target.classList.contains("fila-eliminar") && datos) {
-      if (!confirm(`¿Eliminar definitivamente la cuenta de "${datos.nombre}" (${datos.email})? Esta acción no se puede deshacer.`)) return;
-      e.target.disabled = true;
-      try {
-        const resp = await fetch(`${SUPABASE_URL}/functions/v1/admin-eliminar-usuario`, {
-          method: "POST",
-          headers: { ...authHeaders(), "Content-Type": "application/json" },
-          body: JSON.stringify({ id }),
-        });
-        const data = await resp.json();
-        if (!resp.ok) throw new Error(data.error || "No se pudo eliminar.");
-        cargarUsuarios();
-      } catch (err) {
-        alert("No se pudo eliminar: " + (err.message || err));
-        e.target.disabled = false;
-      }
-    }
+  let buscarTimeout;
+  elBuscar.addEventListener("input", () => { clearTimeout(buscarTimeout); buscarTimeout = setTimeout(cargarEmpleados, 300); });
+  elDesde.addEventListener("change", cargarEmpleados);
+  elHasta.addEventListener("change", cargarEmpleados);
+  document.getElementById("btn-limpiar").addEventListener("click", () => {
+    elBuscar.value = "";
+    msFiltroArea.limpiar();
+    filtroEstado = "";
+    elEstadoBtns.querySelectorAll(".seg-btn").forEach((b) => b.classList.toggle("activo", b.dataset.valor === ""));
+    elDesde.value = "";
+    elHasta.value = "";
+    cargarEmpleados();
   });
 
-  let luTimeout;
-  luBuscar.addEventListener("input", () => { clearTimeout(luTimeout); luTimeout = setTimeout(cargarUsuarios, 300); });
-  luRol.addEventListener("change", cargarUsuarios);
-  document.getElementById("lu-limpiar").addEventListener("click", () => {
-    luBuscar.value = ""; luRol.value = "";
-    cargarUsuarios();
-  });
-
-  cargarUsuarios();
+  cargarEmpleados();
 });
 </script>
 </body>
