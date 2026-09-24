@@ -784,6 +784,20 @@ AUTH_READY.then(async function () {
     return true;
   }
 
+  // Dias que cuentan de desde a hasta (ambos inclusive) para codigos con
+  // conteo_dias "habil": no se cuentan domingos ni festivos.
+  function contarDiasHabiles(desde, hasta) {
+    const [y, m, d] = desde.split("-").map(Number);
+    const [yh, mh, dh] = hasta.split("-").map(Number);
+    const fin = new Date(yh, mh - 1, dh);
+    let n = 0;
+    for (let cursor = new Date(y, m - 1, d); cursor <= fin; cursor.setDate(cursor.getDate() + 1)) {
+      const fecha = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(cursor.getDate()).padStart(2, "0")}`;
+      if (!esDiaNoHabil(fecha)) n++;
+    }
+    return n;
+  }
+
   // ---------------- previsualizacion de cargadores ----------------
   let ultimoCargador = null;
   const cgPreview = document.getElementById("cg-preview");
@@ -962,6 +976,7 @@ AUTH_READY.then(async function () {
     if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
     const mapa = await obtenerMapaCodigos();
     const mapaTipoAusencia = await obtenerMapaTipoAusencia();
+    await cargarFestivosCargador();
     // Se trae TODO el historico (sin acotar fecha) porque una ausencia larga
     // puede haber empezado antes del rango elegido -- hace falta ver el
     // episodio completo para calcular bien su fecha de inicio real.
@@ -992,7 +1007,9 @@ AUTH_READY.then(async function () {
       const fechas = [...new Set(fechasStr)].sort();
       let inicio = null, anterior = null;
       const cerrar = (fin) => {
-        const dias = Math.round((new Date(fin) - new Date(inicio)) / 86400000) + 1;
+        const dias = esHabil
+          ? Math.max(1, contarDiasHabiles(inicio, fin))
+          : Math.round((new Date(fin) - new Date(inicio)) / 86400000) + 1;
         episodios.push({ cedula: Number(cedula), codigo, inicio, fin, dias });
       };
       fechas.forEach(f => {
