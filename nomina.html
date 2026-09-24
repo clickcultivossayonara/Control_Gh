@@ -356,6 +356,12 @@
           <option value="">Todos los códigos</option>
         </select>
       </div>
+      <div class="field">
+        <label for="cg-concepto">Concepto (solo Horas)</label>
+        <select id="cg-concepto" disabled>
+          <option value="">Todos los conceptos</option>
+        </select>
+      </div>
       <button type="button" class="excel-btn" id="btn-cg-descargar" disabled>Descargar Excel</button>
     </div>
     <div class="cargador-botones">
@@ -738,6 +744,7 @@ AUTH_READY.then(async function () {
   const cgDesde = document.getElementById("cg-desde");
   const cgHasta = document.getElementById("cg-hasta");
   const cgCodigo = document.getElementById("cg-codigo");
+  const cgConcepto = document.getElementById("cg-concepto");
   const msgCargadores = document.getElementById("msg-cargadores");
   cgDesde.value = fechaISO(new Date(new Date().setDate(new Date().getDate() - 15)));
   cgHasta.value = fechaISO(new Date());
@@ -905,10 +912,11 @@ AUTH_READY.then(async function () {
     cgCodigo.disabled = true;
     cgCodigo.value = "";
     cacheAusentismo = null;
+    cacheHoras = null;
     if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
     const mapa = await obtenerMapaCodigos();
     const filas = await traerNovedadesPaginado([
-      ["select", "id_nomina,cedula,hora,codigo_novedad"],
+      ["select", "id_nomina,cedula,hora,codigo_novedad,administrativo"],
       ["fecha_novedad", `gte.${cgDesde.value}T00:00:00`],
       ["fecha_novedad", `lte.${cgHasta.value}T23:59:59`],
       ["order", "id_nomina"],
@@ -923,14 +931,51 @@ AUTH_READY.then(async function () {
       totales[clave] = (totales[clave] || 0) + Number(f.hora);
     });
 
-    const filasExcel = Object.entries(totales).map(([clave, cantidad]) => {
-      const [cedula, concepto] = clave.split("|");
-      return { EMPLEADO: Number(cedula), CONCEPTO: concepto, CANTIDAD: Math.round(cantidad * 100) / 100, NOMINA: "QUIN" };
-    });
-    if (filasExcel.length === 0) throw new Error("No hay novedades de horas en ese rango.");
+    // NOMINA depende del flag administrativo ACTUAL del empleado (true ->
+    // QADM, false -> QUIN); la copia guardada en cada novedad puede estar
+    // desactualizada, se usa solo si el empleado ya no existe.
+    const adminActual = await obtenerMapaAdministrativo();
+    const adminNovedad = {};
+    filas.forEach(f => { if (f.administrativo != null) adminNovedad[f.cedula] = f.administrativo; });
 
-    mostrarPreviewCargador(filasExcel, "Cargador Horas", `cargador_horas_${fechaISO(new Date())}.xlsx`, [12, 12, 10, 8]);
+    const filasHoras = Object.entries(totales).map(([clave, cantidad]) => {
+      const [cedula, concepto] = clave.split("|");
+      const esAdmin = cedula in adminActual ? adminActual[cedula] : adminNovedad[cedula] === true;
+      return { EMPLEADO: Number(cedula), CONCEPTO: concepto, CANTIDAD: Math.round(cantidad * 100) / 100, NOMINA: esAdmin ? "QADM" : "QUIN" };
+    });
+    if (filasHoras.length === 0) throw new Error("No hay novedades de horas en ese rango.");
+
+    cacheHoras = { filasHoras };
+    const conceptos = [...new Set(filasHoras.map(f => f.CONCEPTO))].sort();
+    cgConcepto.innerHTML = `<option value="">Todos los conceptos</option>` + conceptos.map(c => `<option value="${c}">${c}</option>`).join("");
+    cgConcepto.disabled = false;
+    renderizarPreviewHoras();
   }));
+
+  async function obtenerMapaAdministrativo() {
+    const mapa = {};
+    let offset = 0;
+    while (true) {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=cedula,administrativo&limit=1000&offset=${offset}`, { headers: authHeaders() });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const lote = await resp.json();
+      lote.forEach(e => { mapa[e.cedula] = e.administrativo === true; });
+      if (lote.length < 1000) break;
+      offset += 1000;
+    }
+    return mapa;
+  }
+
+  // Igual que ausentismo: cambiar el filtro de concepto solo re-renderiza.
+  let cacheHoras = null;
+  function renderizarPreviewHoras() {
+    if (!cacheHoras) return;
+    const concepto = cgConcepto.value;
+    const filtradas = concepto ? cacheHoras.filasHoras.filter(f => f.CONCEPTO === concepto) : cacheHoras.filasHoras;
+    msgCargadores.textContent = "";
+    mostrarPreviewCargador(filtradas, "Cargador Horas", `cargador_horas_${concepto || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 12, 10, 8]);
+  }
+  cgConcepto.addEventListener("change", renderizarPreviewHoras);
 
   // Se guarda lo ya calculado (episodios en el rango, sin filtrar por
   // codigo, mas los mapas usados para armar el Excel) para que cambiar el
@@ -968,11 +1013,14 @@ AUTH_READY.then(async function () {
   cgCodigo.addEventListener("change", renderizarPreviewAusentismo);
   // Cambiar el rango de fechas invalida el cache -- hay que volver a
   // previsualizar para traer los datos de ese nuevo rango.
-  cgDesde.addEventListener("change", () => { cacheAusentismo = null; });
-  cgHasta.addEventListener("change", () => { cacheAusentismo = null; });
+  cgDesde.addEventListener("change", () => { cacheAusentismo = null; cacheHoras = null; });
+  cgHasta.addEventListener("change", () => { cacheAusentismo = null; cacheHoras = null; });
 
   document.getElementById("btn-cargador-ausentismo").addEventListener("click", (e) => conBotonOcupado(e.target, async () => {
     cgCodigo.disabled = false;
+    cgConcepto.disabled = true;
+    cgConcepto.value = "";
+    cacheHoras = null;
     if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
     const mapa = await obtenerMapaCodigos();
     const mapaTipoAusencia = await obtenerMapaTipoAusencia();
