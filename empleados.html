@@ -1562,7 +1562,13 @@ AUTH_READY.then(async function () {
   // un valor nuevo -- <datalist> no restringe, solo sugiere -- y ese valor
   // queda disponible de inmediato para el resto de la sesion, ademas de
   // quedar guardado en la base para las proximas veces que se recargue.
-  const CAMPOS_AUTOCOMPLETAR = ["nombre", ...CAMPOS_RRHH];
+  // Campos que se digitan siempre a mano (datos unicos por persona): sin sugerencias.
+  const CAMPOS_SIN_SUGERENCIA = new Set([
+    "direccion", "telefono_1", "telefono_2", "numero_cuenta", "email_personal",
+    "hijo_1_nombre", "hijo_1_edad", "hijo_2_nombre", "hijo_2_edad", "hijo_3_nombre", "hijo_3_edad",
+    "hijo_4_nombre", "hijo_4_edad", "hijo_5_nombre", "hijo_5_edad",
+  ]);
+  const CAMPOS_AUTOCOMPLETAR = CAMPOS_RRHH.filter((campo) => !CAMPOS_SIN_SUGERENCIA.has(campo));
   const opcionesAutocompletar = {};
 
   function escaparHtml(s) {
