@@ -1778,6 +1778,19 @@ AUTH_READY.then(async function () {
       boton.nextElementSibling.hidden = true;
       boton.classList.remove("expandida");
     });
+    // Los catalogos del formulario solo listan valores activos; si el empleado
+    // trae uno inactivo (ej. area historica de un retirado) se agrega como
+    // opcion para que al guardar no se borre.
+    const asegurarOpcion = (id, valor) => {
+      const sel = document.getElementById(id);
+      if (valor && ![...sel.options].some((o) => o.value === valor)) {
+        sel.insertAdjacentHTML("beforeend", `<option value="${escaparHtml(valor)}">${escaparHtml(valor)}</option>`);
+      }
+    };
+    asegurarOpcion("e-area", emp.area);
+    asegurarOpcion("e-labor", emp.labor);
+    asegurarOpcion("e-cargo", emp.cargo);
+    asegurarOpcion("e-motivo-retiro", emp.motivo_retiro);
     document.getElementById("e-cedula").value = emp.cedula;
     document.getElementById("e-nombre").value = emp.nombre || "";
     document.getElementById("e-area").value = emp.area || "";
