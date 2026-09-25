@@ -166,6 +166,7 @@
   .form-msg { font-size: 13.5px; font-weight: 500; }
   .form-msg.ok { color: var(--accent); }
   .form-msg.error { color: var(--critical); }
+  input.invalido { border-color: var(--critical); outline-color: var(--critical); }
 
   .clear-btn {
     font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
@@ -1554,10 +1555,11 @@ AUTH_READY.then(async function () {
   const CAMPOS_RRHH_NUMERICOS = ["peso_kg", "talla_mts", "imc"];
   const idRrhh = (prefijo, campo) => `${prefijo}-${campo.replace(/_/g, "-")}`;
 
-  // ---------- "Agregar empleado": campos limitados a opciones existentes ----------
-  // Cada campo de texto RRHH se convierte en una lista desplegable con los
-  // valores ya usados en la base (asi no se crean variantes nuevas de un
-  // mismo dato). Quedan como texto libre solo los datos unicos por persona
+  // ---------- Agregar / Editar: campos limitados a opciones existentes ----------
+  // Cada campo de texto RRHH sugiere (datalist) los valores ya usados en la
+  // base mientras se escribe, pero NO deja guardar nada que no coincida con
+  // una opcion (validarCombobox). Asi no se crean variantes nuevas de un
+  // mismo dato. Quedan como texto libre solo los datos unicos por persona
   // (cedula, nombre, direccion, telefonos, email, cuenta, salario, hijos) y
   // los campos descriptivos/numericos (detalle, descripcion, peso, talla, IMC).
   const CAMPOS_SIN_SUGERENCIA = new Set([
@@ -1569,35 +1571,73 @@ AUTH_READY.then(async function () {
     "peso_kg", "talla_mts", "imc",
   ]);
   const CAMPOS_AUTOCOMPLETAR = CAMPOS_RRHH.filter((campo) => !CAMPOS_SIN_SUGERENCIA.has(campo));
+  const opcionesCombobox = {}; // campo -> Map(MAYUSCULAS -> valor canonico)
+  const NOMBRES_CAMPO = {};    // id -> etiqueta, para los mensajes
 
   function escaparHtml(s) {
     return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   }
 
-  // Reemplaza el <input type="text"> por un <select> con las opciones dadas
-  // (mismo id, asi el resto del formulario lo lee igual).
-  function convertirEnSelect(campo, valores) {
-    const el = document.getElementById(idRrhh("f", campo));
+  function prepararCombobox(prefijo, campo, valores) {
+    const el = document.getElementById(idRrhh(prefijo, campo));
     if (!el || el.tagName !== "INPUT" || el.type !== "text") return;
-    const sel = document.createElement("select");
-    sel.id = el.id;
+    el.dataset.combobox = campo;
+    const datalistId = `dl-${el.id}`;
+    let datalist = document.getElementById(datalistId);
+    if (!datalist) {
+      datalist = document.createElement("datalist");
+      datalist.id = datalistId;
+      el.insertAdjacentElement("afterend", datalist);
+      el.setAttribute("list", datalistId);
+    }
     const ordenados = [...valores].sort((a, b) => a.localeCompare(b, "es"));
-    sel.innerHTML = `<option value="">—</option>` + ordenados.map(v => `<option value="${escaparHtml(v)}">${escaparHtml(v)}</option>`).join("");
-    el.replaceWith(sel);
+    datalist.innerHTML = ordenados.map(v => `<option value="${escaparHtml(v)}"></option>`).join("");
+    const label = document.querySelector(`label[for="${el.id}"]`);
+    NOMBRES_CAMPO[el.id] = label ? label.textContent.trim() : campo;
+    el.addEventListener("input", () => el.classList.remove("invalido"));
+    el.addEventListener("blur", () => verificarCombobox(el));
+  }
+
+  // Devuelve el valor canonico de la opcion que coincide (sin importar
+  // mayusculas), o null si no coincide. Un valor vacio siempre es valido.
+  // En Editar tambien se acepta el valor con el que se cargo el empleado, para
+  // poder guardar otros cambios sin obligar a corregir datos historicos.
+  function verificarCombobox(el) {
+    const v = el.value.trim();
+    if (!v) { el.classList.remove("invalido"); return ""; }
+    if (el.dataset.original !== undefined && v === el.dataset.original) { el.classList.remove("invalido"); return v; }
+    const canonico = (opcionesCombobox[el.dataset.combobox] || new Map()).get(v.toUpperCase());
+    if (canonico === undefined) { el.classList.add("invalido"); return null; }
+    el.value = canonico;
+    el.classList.remove("invalido");
+    return canonico;
+  }
+
+  // true si todos los campos limitados del formulario son validos; si no,
+  // abre la seccion del primero invalido y avisa en el mensaje del formulario.
+  function validarComboboxes(formEl, msgEl) {
+    const malos = [...formEl.querySelectorAll("input[data-combobox]")].filter(el => verificarCombobox(el) === null);
+    if (malos.length === 0) return true;
+    const primero = malos[0];
+    const grid = primero.closest(".form-grid");
+    if (grid && grid.hidden) {
+      grid.hidden = false;
+      const boton = grid.previousElementSibling;
+      if (boton) boton.classList.add("expandida");
+    }
+    primero.focus();
+    msgEl.textContent = "Elige una opción de la lista en: " + malos.map(el => NOMBRES_CAMPO[el.id]).join(", ") + ".";
+    msgEl.className = "form-msg error";
+    return false;
   }
 
   // Se hace en segundo plano (sin await) para no atrasar el resto del formulario.
   // Si la consulta falla, los campos quedan como texto libre.
   (async function cargarOpcionesAutocompletar() {
-    const columnas = CAMPOS_AUTOCOMPLETAR.filter((campo) => {
-      const el = document.getElementById(idRrhh("f", campo));
-      return el && el.tagName === "INPUT" && el.type === "text";
-    });
-    if (columnas.length === 0) return;
     try {
       const filas = [];
       for (let offset = 0; ; offset += 1000) {
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=${columnas.join(",")}&limit=1000&offset=${offset}`, {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=${CAMPOS_AUTOCOMPLETAR.join(",")}&limit=1000&offset=${offset}`, {
           headers: authHeaders(),
         });
         const lote = await resp.json();
@@ -1605,13 +1645,17 @@ AUTH_READY.then(async function () {
         filas.push(...lote);
         if (lote.length < 1000) break;
       }
-      columnas.forEach((campo) => {
-        const set = new Set();
+      CAMPOS_AUTOCOMPLETAR.forEach((campo) => {
+        const mapa = new Map();
         filas.forEach((f) => {
           const v = f[campo];
-          if (v != null && String(v).trim()) set.add(String(v).trim());
+          if (v != null && String(v).trim()) {
+            const t = String(v).trim();
+            if (!mapa.has(t.toUpperCase())) mapa.set(t.toUpperCase(), t);
+          }
         });
-        convertirEnSelect(campo, set);
+        opcionesCombobox[campo] = mapa;
+        ["f", "e"].forEach(pref => prepararCombobox(pref, campo, mapa.values()));
       });
     } catch {}
   })();
@@ -1678,6 +1722,8 @@ AUTH_READY.then(async function () {
       msg.className = "form-msg error";
       return;
     }
+
+    if (!validarComboboxes(form, msg)) return;
 
     const val = (id) => document.getElementById(id).value.trim() || null;
 
@@ -1797,6 +1843,8 @@ AUTH_READY.then(async function () {
       let valor = emp[campo];
       if (valor != null && el.type === "date") valor = String(valor).slice(0, 10);
       el.value = valor ?? "";
+      el.classList.remove("invalido");
+      if (el.dataset.combobox !== undefined || !CAMPOS_SIN_SUGERENCIA.has(campo)) el.dataset.original = el.value.trim();
     });
     // Si una seccion colapsada ya tiene algun dato cargado (muy probable,
     // ya que la base de RRHH se importo completa), se abre sola para que
@@ -1898,6 +1946,8 @@ AUTH_READY.then(async function () {
       editarMsg.className = "form-msg error";
       return;
     }
+
+    if (!validarComboboxes(formEditar, editarMsg)) return;
 
     const val = (id) => document.getElementById(id).value.trim() || null;
 
