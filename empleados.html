@@ -1554,74 +1554,64 @@ AUTH_READY.then(async function () {
   const CAMPOS_RRHH_NUMERICOS = ["peso_kg", "talla_mts", "imc"];
   const idRrhh = (prefijo, campo) => `${prefijo}-${campo.replace(/_/g, "-")}`;
 
-  // ---------- autocompletar "Agregar empleado" con valores ya usados ----------
-  // Cedula no entra (cada empleado tiene la suya, sugerir cedulas ajenas no
-  // sirve); todo lo demas que no sea fecha (ni un <select> con su propia
-  // lista, como area/cargo/labor/motivo de retiro) sí. Si lo que se escribe
-  // no coincide con ninguna opcion, el campo igual deja terminar de escribir
-  // un valor nuevo -- <datalist> no restringe, solo sugiere -- y ese valor
-  // queda disponible de inmediato para el resto de la sesion, ademas de
-  // quedar guardado en la base para las proximas veces que se recargue.
-  // Campos que se digitan siempre a mano (datos unicos por persona): sin sugerencias.
+  // ---------- "Agregar empleado": campos limitados a opciones existentes ----------
+  // Cada campo de texto RRHH se convierte en una lista desplegable con los
+  // valores ya usados en la base (asi no se crean variantes nuevas de un
+  // mismo dato). Quedan como texto libre solo los datos unicos por persona
+  // (cedula, nombre, direccion, telefonos, email, cuenta, salario, hijos) y
+  // los campos descriptivos/numericos (detalle, descripcion, peso, talla, IMC).
   const CAMPOS_SIN_SUGERENCIA = new Set([
     "direccion", "telefono_1", "telefono_2", "numero_cuenta", "email_personal",
+    "salario_letras", "salario_cifras", "numero_hijos",
     "hijo_1_nombre", "hijo_1_edad", "hijo_2_nombre", "hijo_2_edad", "hijo_3_nombre", "hijo_3_edad",
     "hijo_4_nombre", "hijo_4_edad", "hijo_5_nombre", "hijo_5_edad",
+    "detalle_retiro", "descripcion_escolaridad", "cual_ejercicio",
+    "peso_kg", "talla_mts", "imc",
   ]);
   const CAMPOS_AUTOCOMPLETAR = CAMPOS_RRHH.filter((campo) => !CAMPOS_SIN_SUGERENCIA.has(campo));
-  const opcionesAutocompletar = {};
 
   function escaparHtml(s) {
     return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   }
 
-  function pintarDatalist(campo) {
+  // Reemplaza el <input type="text"> por un <select> con las opciones dadas
+  // (mismo id, asi el resto del formulario lo lee igual).
+  function convertirEnSelect(campo, valores) {
     const el = document.getElementById(idRrhh("f", campo));
-    if (!el || el.tagName !== "INPUT" || el.type === "date") return;
-    const datalistId = `dl-${idRrhh("f", campo)}`;
-    let datalist = document.getElementById(datalistId);
-    if (!datalist) {
-      datalist = document.createElement("datalist");
-      datalist.id = datalistId;
-      el.insertAdjacentElement("afterend", datalist);
-      el.setAttribute("list", datalistId);
-    }
-    const valores = [...(opcionesAutocompletar[campo] || [])].sort((a, b) => a.localeCompare(b, "es")).slice(0, 500);
-    datalist.innerHTML = valores.map(v => `<option value="${escaparHtml(v)}"></option>`).join("");
-  }
-
-  function recordarValorAutocompletar(campo, valor) {
-    if (valor == null) return;
-    const v = String(valor).trim();
-    if (!v) return;
-    if (!opcionesAutocompletar[campo]) opcionesAutocompletar[campo] = new Set();
-    if (!opcionesAutocompletar[campo].has(v)) {
-      opcionesAutocompletar[campo].add(v);
-      pintarDatalist(campo);
-    }
+    if (!el || el.tagName !== "INPUT" || el.type !== "text") return;
+    const sel = document.createElement("select");
+    sel.id = el.id;
+    const ordenados = [...valores].sort((a, b) => a.localeCompare(b, "es"));
+    sel.innerHTML = `<option value="">—</option>` + ordenados.map(v => `<option value="${escaparHtml(v)}">${escaparHtml(v)}</option>`).join("");
+    el.replaceWith(sel);
   }
 
   // Se hace en segundo plano (sin await) para no atrasar el resto del formulario.
+  // Si la consulta falla, los campos quedan como texto libre.
   (async function cargarOpcionesAutocompletar() {
     const columnas = CAMPOS_AUTOCOMPLETAR.filter((campo) => {
       const el = document.getElementById(idRrhh("f", campo));
-      return el && el.tagName === "INPUT" && el.type !== "date";
+      return el && el.tagName === "INPUT" && el.type === "text";
     });
     if (columnas.length === 0) return;
     try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=${columnas.join(",")}&limit=5000`, {
-        headers: authHeaders(),
-      });
-      const filas = await resp.json();
-      if (!resp.ok || !Array.isArray(filas)) return;
+      const filas = [];
+      for (let offset = 0; ; offset += 1000) {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=${columnas.join(",")}&limit=1000&offset=${offset}`, {
+          headers: authHeaders(),
+        });
+        const lote = await resp.json();
+        if (!resp.ok || !Array.isArray(lote)) return;
+        filas.push(...lote);
+        if (lote.length < 1000) break;
+      }
       columnas.forEach((campo) => {
         const set = new Set();
         filas.forEach((f) => {
           const v = f[campo];
           if (v != null && String(v).trim()) set.add(String(v).trim());
         });
-        opcionesAutocompletar[campo] = set;
-        pintarDatalist(campo);
+        convertirEnSelect(campo, set);
       });
     } catch {}
   })();
@@ -1729,7 +1719,6 @@ AUTH_READY.then(async function () {
 
       msg.textContent = `Empleado "${nombre}" guardado correctamente.`;
       msg.className = "form-msg ok";
-      CAMPOS_AUTOCOMPLETAR.forEach((campo) => recordarValorAutocompletar(campo, registro[campo]));
       form.reset();
       document.getElementById("f-activo").checked = true;
       elFechaIngreso.value = fechaHoy();
