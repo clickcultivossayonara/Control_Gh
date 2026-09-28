@@ -718,7 +718,7 @@
           <input type="text" id="f-cual-ejercicio" autocomplete="off">
         </div>
         <div class="field">
-          <label for="f-dosis">Frecuencia</label>
+          <label for="f-dosis">Frecuencia (Dosis Medicamento)</label>
           <input type="text" id="f-dosis" autocomplete="off">
         </div>
       </div>
@@ -1212,7 +1212,7 @@
           <input type="text" id="e-cual-ejercicio" autocomplete="off">
         </div>
         <div class="field">
-          <label for="e-dosis">Frecuencia</label>
+          <label for="e-dosis">Frecuencia (Dosis Medicamento)</label>
           <input type="text" id="e-dosis" autocomplete="off">
         </div>
       </div>
@@ -1567,13 +1567,14 @@ AUTH_READY.then(async function () {
     "salario_letras", "salario_cifras", "numero_hijos",
     "hijo_1_nombre", "hijo_1_edad", "hijo_2_nombre", "hijo_2_edad", "hijo_3_nombre", "hijo_3_edad",
     "hijo_4_nombre", "hijo_4_edad", "hijo_5_nombre", "hijo_5_edad",
-    "detalle_retiro", "cual_ejercicio",
+    "detalle_retiro",
     "peso_kg", "talla_mts", "imc",
   ]);
   const CAMPOS_AUTOCOMPLETAR = CAMPOS_RRHH.filter((campo) => !CAMPOS_SIN_SUGERENCIA.has(campo));
   // Campos que sugieren valores ya usados (datalist) pero sin restringir --
-  // mezclan grado escolar con titulos, no tiene sentido forzar una lista cerrada.
-  const CAMPOS_SUGERENCIA_LIBRE = new Set(["descripcion_escolaridad"]);
+  // mezclan grado escolar con titulos (o varios deportes separados por coma),
+  // no tiene sentido forzar una lista cerrada.
+  const CAMPOS_SUGERENCIA_LIBRE = new Set(["descripcion_escolaridad", "cual_ejercicio"]);
   const opcionesCombobox = {}; // campo -> Map(MAYUSCULAS -> valor canonico)
   const NOMBRES_CAMPO = {};    // id -> etiqueta, para los mensajes
 
