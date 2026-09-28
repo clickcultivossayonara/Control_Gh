@@ -1581,6 +1581,27 @@ AUTH_READY.then(async function () {
     return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
   }
 
+  // tiempo_contrato y prorroga_1..4 comparten el mismo vocabulario mezclado
+  // (mes de renovacion, duracion del contrato, o el tipo de contrato cuando
+  // no aplica un mes concreto) -- se ordena por esas 3 categorias en vez de
+  // alfabetico, para que no salgan revueltos como en la lista sin ordenar.
+  const CAMPOS_ORDEN_CONTRATO = new Set(["tiempo_contrato", "prorroga_1", "prorroga_2", "prorroga_3", "prorroga_4"]);
+  const ORDEN_CONTRATO = [
+    "ENERO", "FEBRERO", "MARZO", "ABRIL", "MAYO", "JUNIO",
+    "JULIO", "AGOSTO", "SEPTIEMBRE", "OCTUBRE", "NOVIEMBRE", "DICIEMBRE",
+    "15 DÍAS", "1 MES", "2 MESES", "60 DÍAS", "3 MESES", "6 MESES", "1 AÑO",
+    "IND.", "FIJO", "OBRA Y LABOR", "APRENDIZAJE",
+  ];
+  function ordenarValoresCombobox(campo, valores) {
+    if (!CAMPOS_ORDEN_CONTRATO.has(campo)) return [...valores].sort((a, b) => a.localeCompare(b, "es"));
+    const indice = new Map(ORDEN_CONTRATO.map((v, i) => [v, i]));
+    return [...valores].sort((a, b) => {
+      const ia = indice.has(a) ? indice.get(a) : ORDEN_CONTRATO.length;
+      const ib = indice.has(b) ? indice.get(b) : ORDEN_CONTRATO.length;
+      return ia !== ib ? ia - ib : a.localeCompare(b, "es");
+    });
+  }
+
   function prepararCombobox(prefijo, campo, valores) {
     const el = document.getElementById(idRrhh(prefijo, campo));
     if (!el || el.tagName !== "INPUT" || el.type !== "text") return;
@@ -1593,7 +1614,7 @@ AUTH_READY.then(async function () {
       el.insertAdjacentElement("afterend", datalist);
       el.setAttribute("list", datalistId);
     }
-    const ordenados = [...valores].sort((a, b) => a.localeCompare(b, "es"));
+    const ordenados = ordenarValoresCombobox(campo, valores);
     datalist.innerHTML = ordenados.map(v => `<option value="${escaparHtml(v)}"></option>`).join("");
     const label = document.querySelector(`label[for="${el.id}"]`);
     NOMBRES_CAMPO[el.id] = label ? label.textContent.trim() : campo;
@@ -1615,7 +1636,7 @@ AUTH_READY.then(async function () {
       el.insertAdjacentElement("afterend", datalist);
       el.setAttribute("list", datalistId);
     }
-    const ordenados = [...valores].sort((a, b) => a.localeCompare(b, "es"));
+    const ordenados = ordenarValoresCombobox(campo, valores);
     datalist.innerHTML = ordenados.map(v => `<option value="${escaparHtml(v)}"></option>`).join("");
   }
 
