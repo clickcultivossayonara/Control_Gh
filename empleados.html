@@ -1567,10 +1567,13 @@ AUTH_READY.then(async function () {
     "salario_letras", "salario_cifras", "numero_hijos",
     "hijo_1_nombre", "hijo_1_edad", "hijo_2_nombre", "hijo_2_edad", "hijo_3_nombre", "hijo_3_edad",
     "hijo_4_nombre", "hijo_4_edad", "hijo_5_nombre", "hijo_5_edad",
-    "detalle_retiro", "descripcion_escolaridad", "cual_ejercicio",
+    "detalle_retiro", "cual_ejercicio",
     "peso_kg", "talla_mts", "imc",
   ]);
   const CAMPOS_AUTOCOMPLETAR = CAMPOS_RRHH.filter((campo) => !CAMPOS_SIN_SUGERENCIA.has(campo));
+  // Campos que sugieren valores ya usados (datalist) pero sin restringir --
+  // mezclan grado escolar con titulos, no tiene sentido forzar una lista cerrada.
+  const CAMPOS_SUGERENCIA_LIBRE = new Set(["descripcion_escolaridad"]);
   const opcionesCombobox = {}; // campo -> Map(MAYUSCULAS -> valor canonico)
   const NOMBRES_CAMPO = {};    // id -> etiqueta, para los mensajes
 
@@ -1596,6 +1599,24 @@ AUTH_READY.then(async function () {
     NOMBRES_CAMPO[el.id] = label ? label.textContent.trim() : campo;
     el.addEventListener("input", () => el.classList.remove("invalido"));
     el.addEventListener("blur", () => verificarCombobox(el));
+  }
+
+  // Igual que prepararCombobox pero sin restringir: solo sugiere (datalist),
+  // no marca invalido ni bloquea el envio -- para campos de vocabulario mixto
+  // donde no tiene sentido forzar una lista cerrada.
+  function prepararSugerencia(prefijo, campo, valores) {
+    const el = document.getElementById(idRrhh(prefijo, campo));
+    if (!el || el.tagName !== "INPUT" || el.type !== "text") return;
+    const datalistId = `dl-${el.id}`;
+    let datalist = document.getElementById(datalistId);
+    if (!datalist) {
+      datalist = document.createElement("datalist");
+      datalist.id = datalistId;
+      el.insertAdjacentElement("afterend", datalist);
+      el.setAttribute("list", datalistId);
+    }
+    const ordenados = [...valores].sort((a, b) => a.localeCompare(b, "es"));
+    datalist.innerHTML = ordenados.map(v => `<option value="${escaparHtml(v)}"></option>`).join("");
   }
 
   // Devuelve el valor canonico de la opcion que coincide (sin importar
@@ -1654,6 +1675,10 @@ AUTH_READY.then(async function () {
             if (!mapa.has(t.toUpperCase())) mapa.set(t.toUpperCase(), t);
           }
         });
+        if (CAMPOS_SUGERENCIA_LIBRE.has(campo)) {
+          ["f", "e"].forEach(pref => prepararSugerencia(pref, campo, mapa.values()));
+          return;
+        }
         opcionesCombobox[campo] = mapa;
         ["f", "e"].forEach(pref => prepararCombobox(pref, campo, mapa.values()));
       });
