@@ -5,11 +5,14 @@
 //   <script src="auth.js"></script>
 //
 // Expone:
-//   AUTH_READY        Promise que resuelve con window.SESION (o navega a login.html)
-//   authHeaders()      headers para fetch directo a Supabase REST con la sesion actual
-//   requireRole([...]) redirige a index.html si el rol de la sesion no esta permitido
-//   cerrarSesion()     logout + redirect a login.html
-//   pintarSesion(id)    inserta nombre/rol + boton "Cerrar sesion" en el elemento #id
+//   AUTH_READY          Promise que resuelve con window.SESION (o navega a login.html)
+//   authHeaders()        headers para fetch directo a Supabase REST con la sesion actual
+//   requierePagina(pag)  redirige a index.html si el rol de la sesion no tiene esa pagina
+//                         habilitada en la matriz de permisos (tabla permisos_rol,
+//                         editable por Super Admin desde Usuarios)
+//   filtrarSidebar()      oculta del menu lateral los enlaces con data-pagina no habilitada
+//   cerrarSesion()       logout + redirect a login.html
+//   pintarSesion(id)      inserta nombre/rol + boton "Cerrar sesion" en el elemento #id
 
 const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
 const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
@@ -51,7 +54,19 @@ const AUTH_READY = (async () => {
     nombre: perfil.nombre,
     rol: perfil.rol,
     areas: perfil.areas || [],
+    // Super Admin ve todo siempre, sin depender de lo que haya en la tabla
+    // (evita que se pueda bloquear a si mismo por accidente editando la matriz).
+    permisos: perfil.rol === "super_admin" ? new Proxy({}, { get: () => true }) : {},
   };
+
+  if (perfil.rol !== "super_admin") {
+    const { data: filas } = await _sb
+      .from("permisos_rol")
+      .select("pagina,puede_ver")
+      .eq("rol", perfil.rol);
+    (filas || []).forEach((f) => { window.SESION.permisos[f.pagina] = f.puede_ver; });
+  }
+
   return window.SESION;
 })();
 
@@ -67,12 +82,19 @@ function authHeaders() {
   };
 }
 
-function requireRole(rolesPermitidos) {
-  if (!window.SESION || !rolesPermitidos.includes(window.SESION.rol)) {
+function requierePagina(pagina) {
+  if (!window.SESION || !window.SESION.permisos[pagina]) {
     location.href = "index.html";
     return false;
   }
   return true;
+}
+
+function filtrarSidebar() {
+  document.querySelectorAll("#sidebar-nav .sidebar-link, [data-pagina]").forEach((enlace) => {
+    const pagina = enlace.dataset.pagina;
+    if (pagina && !window.SESION.permisos[pagina]) enlace.remove();
+  });
 }
 
 async function cerrarSesion() {
@@ -80,7 +102,10 @@ async function cerrarSesion() {
   location.href = "login.html";
 }
 
-const ROL_ETIQUETA = { admin: "Administrador", nomina: "Nómina / RRHH", jefe_area: "Jefe de área", supervisor: "Supervisor" };
+const ROL_ETIQUETA = {
+  super_admin: "Super Admin", admin: "Administrador", nomina: "Nómina", rrhh: "RRHH",
+  jefe_area: "Jefe de área", supervisor: "Supervisor", auxiliar: "Auxiliar",
+};
 
 function pintarSesion(elId) {
   const el = document.getElementById(elId);
