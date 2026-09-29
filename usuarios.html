@@ -156,7 +156,15 @@
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
-  table { border-collapse: collapse; width: 100%; min-width: 720px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  #tabla-permisos { min-width: 640px; }
+  #tabla-usuarios { min-width: 980px; table-layout: fixed; }
+  #tabla-usuarios th:nth-child(1), #tabla-usuarios td:nth-child(1) { width: 15%; }
+  #tabla-usuarios th:nth-child(2), #tabla-usuarios td:nth-child(2) { width: 23%; overflow-wrap: break-word; }
+  #tabla-usuarios th:nth-child(3), #tabla-usuarios td:nth-child(3) { width: 11%; }
+  #tabla-usuarios th:nth-child(4), #tabla-usuarios td:nth-child(4) { width: 19%; overflow-wrap: break-word; }
+  #tabla-usuarios th:nth-child(5), #tabla-usuarios td:nth-child(5) { width: 10%; }
+  #tabla-usuarios th:nth-child(6), #tabla-usuarios td:nth-child(6) { width: 22%; }
   thead th {
     position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
     font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
@@ -174,7 +182,8 @@
   .chip.ok { background: var(--accent-soft); color: var(--accent); }
   .chip.off { background: var(--critical-soft); color: var(--critical); }
   .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
-  .fila-acciones { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fila-acciones { display: flex; gap: 6px; flex-wrap: nowrap; }
+  .fila-acciones .btn-small { padding: 6px 9px; white-space: nowrap; }
 
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
 </style>
@@ -304,7 +313,7 @@
       <span class="result-count" id="lu-count"></span>
     </div>
     <div class="table-scroll">
-      <table>
+      <table id="tabla-usuarios">
         <thead>
           <tr>
             <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
