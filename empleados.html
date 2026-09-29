@@ -1593,14 +1593,22 @@ AUTH_READY.then(async function () {
     "15 DÍAS", "1 MES", "2 MESES", "60 DÍAS", "3 MESES", "6 MESES", "1 AÑO",
     "IND.", "FIJO", "OBRA Y LABOR", "APRENDIZAJE",
   ];
+  // Numero puro (talla de calzado, cantidad, etc.) -> de menor a mayor por
+  // valor, no alfabetico como texto (si no, "10" queda antes que "2").
+  const ES_NUMERICO = /^-?\d+([.,]\d+)?$/;
   function ordenarValoresCombobox(campo, valores) {
-    if (!CAMPOS_ORDEN_CONTRATO.has(campo)) return [...valores].sort((a, b) => a.localeCompare(b, "es"));
-    const indice = new Map(ORDEN_CONTRATO.map((v, i) => [v, i]));
-    return [...valores].sort((a, b) => {
-      const ia = indice.has(a) ? indice.get(a) : ORDEN_CONTRATO.length;
-      const ib = indice.has(b) ? indice.get(b) : ORDEN_CONTRATO.length;
-      return ia !== ib ? ia - ib : a.localeCompare(b, "es");
-    });
+    if (CAMPOS_ORDEN_CONTRATO.has(campo)) {
+      const indice = new Map(ORDEN_CONTRATO.map((v, i) => [v, i]));
+      return [...valores].sort((a, b) => {
+        const ia = indice.has(a) ? indice.get(a) : ORDEN_CONTRATO.length;
+        const ib = indice.has(b) ? indice.get(b) : ORDEN_CONTRATO.length;
+        return ia !== ib ? ia - ib : a.localeCompare(b, "es");
+      });
+    }
+    const numeros = valores.filter(v => ES_NUMERICO.test(v.trim()))
+      .sort((a, b) => parseFloat(a.replace(",", ".")) - parseFloat(b.replace(",", ".")));
+    const letras = valores.filter(v => !ES_NUMERICO.test(v.trim())).sort((a, b) => a.localeCompare(b, "es"));
+    return [...numeros, ...letras];
   }
 
   function prepararCombobox(prefijo, campo, valores) {
