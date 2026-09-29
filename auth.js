@@ -32,7 +32,7 @@ const AUTH_READY = (async () => {
 
   const { data: perfil, error } = await _sb
     .from("usuarios_perfil")
-    .select("nombre,email,rol,areas,activo")
+    .select("nombre,email,rol,areas,activo,debe_cambiar_password")
     .eq("id", session.user.id)
     .single();
 
@@ -44,6 +44,10 @@ const AUTH_READY = (async () => {
   if (!perfil.activo) {
     await _sb.auth.signOut();
     location.href = "login.html?motivo=desactivada";
+    return new Promise(() => {});
+  }
+  if (perfil.debe_cambiar_password && _paginaActual() !== "restablecer.html") {
+    location.href = "restablecer.html?motivo=temporal";
     return new Promise(() => {});
   }
 

@@ -71,6 +71,7 @@
   <div>
     <img class="marca" src="logo-sayonara.png" alt="Cultivos Sayonara">
     <h1>Crea una nueva contraseña</h1>
+    <p class="form-msg" id="motivo-msg" hidden>Tu contraseña es temporal. Antes de continuar, crea una nueva que solo tú conozcas.</p>
   </div>
   <div class="field">
     <label for="np-password">Nueva contraseña</label>
@@ -98,6 +99,10 @@
   const btnALogin = document.getElementById("btn-a-login");
 
   btnALogin.addEventListener("click", () => { location.href = "login.html"; });
+
+  if (new URLSearchParams(location.search).get("motivo") === "temporal") {
+    document.getElementById("motivo-msg").hidden = false;
+  }
 
   function bloquearFormulario(texto) {
     msg.textContent = texto;
@@ -136,6 +141,10 @@
       btn.disabled = false;
       return;
     }
+
+    // Si la trajo aqui una contraseña temporal (no un link de recuperacion),
+    // apaga la bandera para que no vuelva a pedirle esto en el proximo ingreso.
+    try { await sb.rpc("confirmar_cambio_password"); } catch {}
 
     await sb.auth.signOut();
     bloquearFormulario("Contraseña actualizada correctamente.");

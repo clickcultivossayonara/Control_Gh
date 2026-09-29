@@ -438,11 +438,6 @@ AUTH_READY.then(async function () {
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
     const areas = [...msAreas.seleccion];
-    if (ROLES_CON_AREA.includes(selRol.value) && areas.length === 0) {
-      msg.textContent = "Selecciona al menos un área para este rol.";
-      msg.className = "form-msg error";
-      return;
-    }
 
     btn.disabled = true;
     msg.textContent = "Creando...";
