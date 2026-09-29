@@ -1605,9 +1605,10 @@ AUTH_READY.then(async function () {
         return ia !== ib ? ia - ib : a.localeCompare(b, "es");
       });
     }
-    const numeros = valores.filter(v => ES_NUMERICO.test(v.trim()))
+    const lista = [...valores];
+    const numeros = lista.filter(v => ES_NUMERICO.test(v.trim()))
       .sort((a, b) => parseFloat(a.replace(",", ".")) - parseFloat(b.replace(",", ".")));
-    const letras = valores.filter(v => !ES_NUMERICO.test(v.trim())).sort((a, b) => a.localeCompare(b, "es"));
+    const letras = lista.filter(v => !ES_NUMERICO.test(v.trim())).sort((a, b) => a.localeCompare(b, "es"));
     return [...numeros, ...letras];
   }
 
