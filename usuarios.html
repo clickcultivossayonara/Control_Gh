@@ -507,13 +507,43 @@ AUTH_READY.then(async function () {
       <td><input type="text" class="fila-nombre" value="${f.nombre}"></td>
       <td><input type="email" class="fila-email" value="${f.email}"></td>
       <td>${window.SESION.rol === "super_admin" || f.rol !== "super_admin" ? selectRol : ROL_ETIQUETA[f.rol]}</td>
-      <td>${conArea ? `<input type="text" class="fila-areas" value="${(f.areas || []).join(", ")}" placeholder="Ej. RIEGO, ASPERSIÓN">` : "—"}</td>
+      <td>
+        <div class="multiselect fila-areas-ms" id="ms-fila-${f.id}" ${conArea ? "" : "hidden"}></div>
+        <span class="fila-areas-vacio" ${conArea ? "hidden" : ""}>—</span>
+      </td>
       <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
       <td class="fila-acciones">
         <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
         <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
       </td>
     </tr>`;
+  }
+
+  // Multiselects de areas de las filas en edicion, por id de usuario -- se
+  // crean cuando la fila entra en modo edicion y se leen al guardar.
+  const msFilaAreas = new Map();
+
+  function activarEdicionAreas(fila, datos) {
+    const contenedor = fila.querySelector(".fila-areas-ms");
+    const vacio = fila.querySelector(".fila-areas-vacio");
+    const ms = crearMultiselect(contenedor.id, AREAS_DISPONIBLES, "Selecciona área(s)…");
+    (datos.areas || []).forEach((a) => {
+      const chk = contenedor.querySelector(`input[value="${CSS.escape(a)}"]`);
+      if (chk) { chk.checked = true; ms.seleccion.add(a); }
+    });
+    contenedor.querySelector(".ms-trigger").textContent = ms.seleccion.size
+      ? `${ms.seleccion.size} seleccionada${ms.seleccion.size === 1 ? "" : "s"}`
+      : "Selecciona área(s)…";
+    msFilaAreas.set(datos.id, ms);
+
+    const selRolFila = fila.querySelector(".fila-rol");
+    if (selRolFila) {
+      selRolFila.addEventListener("change", () => {
+        const necesitaArea = ROLES_CON_AREA.includes(selRolFila.value);
+        contenedor.hidden = !necesitaArea;
+        vacio.hidden = necesitaArea;
+      });
+    }
   }
 
   let luSortKey = "nombre", luSortDir = 1;
@@ -570,10 +600,13 @@ AUTH_READY.then(async function () {
 
     if (e.target.classList.contains("fila-editar") && datos) {
       fila.outerHTML = filaEdicion(datos);
+      const nuevaFila = luBody.querySelector(`tr[data-id="${id}"]`);
+      if (nuevaFila) activarEdicionAreas(nuevaFila, datos);
       return;
     }
 
     if (e.target.classList.contains("fila-cancelar-edicion") && datos) {
+      msFilaAreas.delete(id);
       fila.outerHTML = filaVista(datos);
       return;
     }
@@ -583,10 +616,8 @@ AUTH_READY.then(async function () {
       const email = fila.querySelector(".fila-email").value.trim();
       const selRolFila = fila.querySelector(".fila-rol");
       const rol = selRolFila ? selRolFila.value : datos.rol;
-      const areasInput = fila.querySelector(".fila-areas");
-      const areas = areasInput
-        ? areasInput.value.split(",").map(a => a.trim().toUpperCase()).filter(Boolean)
-        : (datos.areas || []);
+      const msArea = msFilaAreas.get(id);
+      const areas = ROLES_CON_AREA.includes(rol) ? [...(msArea ? msArea.seleccion : (datos.areas || []))] : [];
 
       if (!nombre || !email) {
         alert("Nombre y correo son obligatorios.");
@@ -602,6 +633,7 @@ AUTH_READY.then(async function () {
         });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || "No se pudo guardar.");
+        msFilaAreas.delete(id);
         cargarUsuarios();
       } catch (err) {
         alert("No se pudo guardar: " + (err.message || err));
