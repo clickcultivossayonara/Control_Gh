@@ -63,6 +63,28 @@
     background: none; border: none; padding: 0; font: inherit; font-size: 12.5px; color: var(--accent);
     text-decoration: underline; cursor: pointer; text-align: center;
   }
+  .popup-overlay {
+    position: fixed; inset: 0; background: rgba(20, 24, 15, 0.45); display: flex;
+    align-items: center; justify-content: center; padding: 24px; z-index: 50;
+    animation: popup-fade-in 0.15s ease-out;
+  }
+  .popup-overlay[hidden] { display: none; }
+  .popup-card {
+    background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 32px 28px; max-width: 320px; width: 100%; text-align: center;
+    display: flex; flex-direction: column; align-items: center; gap: 10px;
+    animation: popup-pop-in 0.2s ease-out;
+  }
+  .popup-check {
+    width: 48px; height: 48px; border-radius: 50%; background: var(--accent-soft);
+    color: var(--accent); display: flex; align-items: center; justify-content: center;
+    font-size: 26px; font-weight: 700; margin-bottom: 4px;
+  }
+  .popup-card p { margin: 0; }
+  .popup-titulo { font-weight: 700; font-size: 15.5px; }
+  .popup-sub { font-size: 12.5px; color: var(--ink-faint); }
+  @keyframes popup-fade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes popup-pop-in { from { opacity: 0; transform: scale(0.94); } to { opacity: 1; transform: scale(1); } }
 </style>
 </head>
 <body>
@@ -85,6 +107,14 @@
   <div class="form-msg" id="nueva-msg"></div>
   <button type="button" class="link-btn" id="btn-a-login" hidden>Ir a iniciar sesión</button>
 </form>
+
+<div class="popup-overlay" id="popup-exito" hidden>
+  <div class="popup-card">
+    <div class="popup-check">✓</div>
+    <p class="popup-titulo">¡Contraseña actualizada con éxito!</p>
+    <p class="popup-sub">Te llevamos a iniciar sesión…</p>
+  </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
@@ -147,8 +177,8 @@
     try { await sb.rpc("confirmar_cambio_password"); } catch {}
 
     await sb.auth.signOut();
-    bloquearFormulario("Contraseña actualizada correctamente.");
-    msg.className = "form-msg ok";
+    document.getElementById("popup-exito").hidden = false;
+    setTimeout(() => { location.href = "login.html"; }, 1600);
   });
 })();
 </script>
