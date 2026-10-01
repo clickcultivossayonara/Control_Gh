@@ -773,12 +773,24 @@ AUTH_READY.then(async function () {
     return { minima: restarDias(hoy, DIAS_ATRAS_HORA_EXTRA), maxima: hoy };
   }
 
+  // Limite general para TODA novedad (de cualquier tipo): no se puede cargar
+  // con vigencia de mas de DIAS_ATRAS_GENERAL dias atras (hoy, ayer y
+  // antier). Hacia adelante no hay limite -- salvo hora extra, que ademas
+  // nunca permite fecha futura (ver limiteFechaHoraExtra arriba).
+  const DIAS_ATRAS_GENERAL = 2;
+  function fechaMinimaGeneral() {
+    return restarDias(fechaHoy(), DIAS_ATRAS_GENERAL);
+  }
+
   // Restringe fecha y horas cuando el codigo seleccionado es de hora extra
   // (HE/HEC/HEF/HEFN/HEN): solo se puede cargar hoy/ayer/antier y maximo
   // MAX_HORAS_HORA_EXTRA horas por colaborador. Aplica a todos los roles.
+  // Para los demas tipos, igual se aplica el limite general hacia atras
+  // (hoy/ayer/antier) pero sin tope hacia adelante.
   function actualizarLimitesHoraExtra() {
     const cod = codigosPorValor[selCodigo.value];
     const esHoraExtra = cod && CODIGOS_HORA_EXTRA.includes(cod.codigo);
+    const minimaGeneral = fechaMinimaGeneral();
 
     if (esHoraExtra) {
       const { minima, maxima } = limiteFechaHoraExtra();
@@ -788,11 +800,12 @@ AUTH_READY.then(async function () {
       hintHoraExtra.textContent = `"${cod.codigo_descripcion}" solo se puede cargar para hoy, ayer o antier (${minima} a ${maxima}), máximo ${MAX_HORAS_HORA_EXTRA} horas por colaborador.`;
       hintHoraExtra.hidden = false;
     } else {
-      inFecha.min = "";
+      inFecha.min = minimaGeneral;
       inFecha.max = "";
       inHora.max = "";
       hintHoraExtra.hidden = true;
     }
+    inFechaInicio.min = minimaGeneral;
   }
 
   // Festivos de Colombia (editable por año desde Configuraciones), para que
@@ -989,6 +1002,19 @@ AUTH_READY.then(async function () {
     } else {
       if (!inFecha.value) { msgNovedad.textContent = "La fecha es obligatoria."; msgNovedad.className = "form-msg error"; return; }
       fechas = [inFecha.value];
+    }
+
+    // Limite general para TODA novedad: no se puede cargar con vigencia de
+    // mas de DIAS_ATRAS_GENERAL dias atras (hoy, ayer y antier). Se revisa
+    // la fecha inicio (o la fecha unica si no es rango) -- hacia adelante
+    // es libre. No basta con el min= del input: si se escribe la fecha a
+    // mano en vez de usar el calendario, el navegador no la bloquea sola.
+    const minimaGeneral = fechaMinimaGeneral();
+    const fechaAValidar = usaRango ? inFechaInicio.value : inFecha.value;
+    if (fechaAValidar < minimaGeneral) {
+      msgNovedad.textContent = `No se puede cargar una novedad con vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minimaGeneral}).`;
+      msgNovedad.className = "form-msg error";
+      return;
     }
 
     if (CODIGOS_HORA_EXTRA.includes(cod.codigo)) {
