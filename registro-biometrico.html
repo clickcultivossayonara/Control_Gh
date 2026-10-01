@@ -158,6 +158,22 @@
   }
   .auto-toggle input { accent-color: var(--accent); }
 
+  .alerta-sin-entrada {
+    border: 1px solid var(--warn-soft); border-radius: var(--radius);
+    background: var(--warn-soft); padding: 10px 14px;
+  }
+  .alerta-sin-entrada.ok { border-color: var(--accent-soft-line); background: var(--accent-soft); }
+  .alerta-header { display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; }
+  .alerta-icono { font-size: 14px; line-height: 1; }
+  .alerta-titulo { font-weight: 600; font-size: 13px; flex: 1; color: var(--warn); }
+  .alerta-sin-entrada.ok .alerta-titulo { color: var(--accent); }
+  .alerta-toggle { font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
+  .alerta-lista { margin-top: 9px; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+  .alerta-lista[hidden] { display: none; }
+  .alerta-fila { display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; padding: 5px 9px; border-radius: 6px; background: var(--surface); }
+  .alerta-fila .af-nombre { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
+  .alerta-fila .af-area, .alerta-fila .af-sede { color: var(--ink-faint); font-size: 11.5px; white-space: nowrap; }
+
   .filters {
     position: sticky;
     top: 0;
@@ -358,6 +374,15 @@
         Autoactualizar cada 60s
       </label>
     </div>
+
+  <div class="alerta-sin-entrada" id="alerta-sin-entrada" hidden>
+    <div class="alerta-header" id="alerta-header">
+      <span class="alerta-icono" id="alerta-icono">⚠</span>
+      <span class="alerta-titulo" id="alerta-titulo">Verificando marcaciones de hoy…</span>
+      <span class="alerta-toggle" id="alerta-toggle">Ocultar ▾</span>
+    </div>
+    <div class="alerta-lista" id="alerta-lista"></div>
+  </div>
 
   <div class="filters">
     <div class="field">
@@ -594,6 +619,61 @@ AUTH_READY.then(async function () {
     }
   }
 
+  const elAlerta = document.getElementById('alerta-sin-entrada');
+  const elAlertaHeader = document.getElementById('alerta-header');
+  const elAlertaIcono = document.getElementById('alerta-icono');
+  const elAlertaTitulo = document.getElementById('alerta-titulo');
+  const elAlertaToggle = document.getElementById('alerta-toggle');
+  const elAlertaLista = document.getElementById('alerta-lista');
+
+  elAlertaHeader.addEventListener('click', () => {
+    const oculto = elAlertaLista.hidden;
+    elAlertaLista.hidden = !oculto;
+    elAlertaToggle.textContent = oculto ? 'Ocultar ▾' : 'Mostrar ▸';
+  });
+
+  function filaSinEntrada(p) {
+    return `<div class="alerta-fila">
+      <span class="af-nombre" title="${p.nombre}">${p.nombre}</span>
+      <span class="af-area">${p.area || '—'}</span>
+      <span class="af-sede">${p.sede || '—'}</span>
+    </div>`;
+  }
+
+  async function cargarSinEntradaHoy() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/sin_entrada_hoy?select=cedula,nombre,area,sede&limit=1000`, {
+        headers: authHeaders(),
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const filas = await resp.json();
+
+      elAlerta.hidden = false;
+      if (filas.length === 0) {
+        elAlerta.classList.add('ok');
+        elAlertaIcono.textContent = '✓';
+        elAlertaTitulo.textContent = 'Todos marcaron entrada hoy';
+        elAlertaLista.innerHTML = '';
+        elAlertaLista.hidden = true;
+        elAlertaToggle.hidden = true;
+      } else {
+        elAlerta.classList.remove('ok');
+        elAlertaIcono.textContent = '⚠';
+        elAlertaTitulo.textContent = `${filas.length} persona${filas.length === 1 ? '' : 's'} sin marcar entrada hoy`;
+        elAlertaLista.innerHTML = filas.map(filaSinEntrada).join('');
+        elAlertaToggle.hidden = false;
+      }
+    } catch (err) {
+      elAlerta.hidden = false;
+      elAlerta.classList.remove('ok');
+      elAlertaIcono.textContent = '⚠';
+      elAlertaTitulo.textContent = 'No se pudo verificar las marcaciones de hoy';
+      elAlertaToggle.hidden = true;
+      elAlertaLista.innerHTML = '';
+      elAlertaLista.hidden = true;
+    }
+  }
+
   function chipVacio() { return '—'; }
 
   function fila(r) {
@@ -649,7 +729,7 @@ AUTH_READY.then(async function () {
 
   function reiniciarAutoRefresh() {
     if (autoTimer) clearInterval(autoTimer);
-    if (elChkAuto.checked) autoTimer = setInterval(reset, 60000);
+    if (elChkAuto.checked) autoTimer = setInterval(() => { reset(); cargarSinEntradaHoy(); }, 60000);
   }
 
   document.querySelectorAll('thead th').forEach(th => {
@@ -681,7 +761,7 @@ AUTH_READY.then(async function () {
     elBuscar.value = '';
     reset();
   });
-  document.getElementById('btn-actualizar').addEventListener('click', reset);
+  document.getElementById('btn-actualizar').addEventListener('click', () => { reset(); cargarSinEntradaHoy(); });
   elChkAuto.addEventListener('change', reiniciarAutoRefresh);
 
   async function exportarExcel() {
@@ -750,6 +830,7 @@ AUTH_READY.then(async function () {
   fechasPorDefecto();
   reiniciarAutoRefresh();
   cargar();
+  cargarSinEntradaHoy();
 });
 </script>
 </body>
