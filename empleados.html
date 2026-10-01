@@ -104,6 +104,7 @@
   .seccion-rrhh + .form-grid { margin-top: 12px; }
 
   .form-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .form-grid[hidden] { display: none; }
   @media (max-width: 900px) { .form-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 520px) { .form-grid { grid-template-columns: minmax(0, 1fr); } }
   .field { display: flex; flex-direction: column; gap: 5px; }
@@ -147,17 +148,6 @@
   .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
   .ms-option:hover { background: var(--accent-soft); }
   .ms-option input { margin: 0; accent-color: var(--accent); }
-
-  .aviso-cargando-opciones {
-    display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600;
-    color: var(--warn); background: var(--warn-soft); border: 1px solid var(--warn-soft);
-    border-radius: 8px; padding: 8px 12px;
-  }
-  .aviso-cargando-opciones .spinner {
-    width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--warn);
-    border-top-color: transparent; animation: girar 0.7s linear infinite; flex-shrink: 0;
-  }
-  @keyframes girar { to { transform: rotate(360deg); } }
 
   .tabs { display: flex; gap: 8px; }
   .tab-btn {
@@ -325,11 +315,6 @@
     <button type="button" class="tab-btn activo" data-tab="agregar">Agregar empleado</button>
     <button type="button" class="tab-btn" data-tab="editar">Editar empleado</button>
     <button type="button" class="tab-btn" data-tab="registrados">Empleados registrados</button>
-  </div>
-
-  <div class="aviso-cargando-opciones" id="aviso-cargando-opciones">
-    <span class="spinner"></span>
-    <span>Cargando las opciones de los campos, un momento…</span>
   </div>
 
   <section class="card" id="card-agregar-empleado">
@@ -1705,11 +1690,9 @@ AUTH_READY.then(async function () {
   // (opciones_autocompletar_empleados, ver schema_opciones_autocompletar_rpc.sql)
   // y devuelve solo los valores ya unicos -- un viaje de red mucho mas chico.
   //
-  // Mientras carga (deberia ser casi instantaneo, pero por si la conexion
-  // esta lenta) se bloquea Guardar y se avisa con un banner, porque sin
-  // las opciones cargadas los combobox no tienen con que validar y
-  // rechazarian como invalido hasta un valor correcto.
-  const avisoCargando = document.getElementById("aviso-cargando-opciones");
+  // Mientras carga (deberia ser casi instantaneo) se bloquea Guardar sin
+  // avisar nada -- sin las opciones cargadas los combobox no tienen con
+  // que validar y rechazarian como invalido hasta un valor correcto.
   const botonesGuardar = [document.getElementById("btn-guardar"), document.getElementById("btn-guardar-editar")];
   botonesGuardar.forEach(b => { if (b) b.disabled = true; });
 
@@ -1741,7 +1724,6 @@ AUTH_READY.then(async function () {
       });
     } catch {
     } finally {
-      avisoCargando.hidden = true;
       botonesGuardar.forEach(b => { if (b) b.disabled = false; });
     }
   })();
