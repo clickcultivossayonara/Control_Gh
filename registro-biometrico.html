@@ -225,12 +225,19 @@
 
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
 
-  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); position: relative; }
+  .table-scroll {
+    overflow: auto; max-height: 68vh; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); box-shadow: var(--shadow); position: relative;
+  }
 
-  table { border-collapse: collapse; width: 100%; min-width: 1050px; table-layout: fixed; font-size: 12.5px; }
+  table { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1100px; table-layout: fixed; font-size: 12.5px; }
 
+  /* Encabezado fijo arriba al bajar, y primera columna (Fecha) fija a la
+     izquierda al desplazar horizontal -- asi siempre se sabe que es cada
+     columna y a que fila (fecha) corresponde el dato, sin importar hacia
+     donde se haya movido la tabla. */
   thead th {
-    position: sticky; top: 0; background: var(--ink); color: var(--paper);
+    position: sticky; top: 0; z-index: 2; background: var(--ink); color: var(--paper);
     text-align: left; padding: 9px 8px; font-weight: 600; font-size: 10.5px;
     text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
     overflow: hidden; text-overflow: ellipsis; cursor: pointer; user-select: none;
@@ -242,16 +249,18 @@
 
   tbody td { padding: 4px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink); }
 
-  thead th:nth-child(1), tbody td:nth-child(1) { width: 9%; }
+  thead th:nth-child(1), tbody td:nth-child(1) { position: sticky; left: 0; width: 9%; background: var(--surface); }
+  thead th:nth-child(1) { z-index: 3; background: var(--ink); }
+  tbody td:nth-child(1) { z-index: 1; border-right: 1px solid var(--line); }
   thead th:nth-child(2), tbody td:nth-child(2) { width: 6%; }
   thead th:nth-child(3), tbody td:nth-child(3) { width: 9%; }
-  thead th:nth-child(4), tbody td:nth-child(4) { width: 19%; }
-  thead th:nth-child(5), tbody td:nth-child(5) { width: 14%; }
+  thead th:nth-child(4), tbody td:nth-child(4) { width: 18%; }
+  thead th:nth-child(5), tbody td:nth-child(5) { width: 13%; }
   thead th:nth-child(6), tbody td:nth-child(6) { width: 7%; }
   thead th:nth-child(7), tbody td:nth-child(7) { width: 9%; }
   thead th:nth-child(8), tbody td:nth-child(8) { width: 9%; }
-  thead th:nth-child(9), tbody td:nth-child(9) { width: 9%; }
-  thead th:nth-child(10), tbody td:nth-child(10) { width: 9%; }
+  thead th:nth-child(9), tbody td:nth-child(9) { width: 12%; white-space: normal; }
+  thead th:nth-child(10), tbody td:nth-child(10) { width: 8%; }
 
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
@@ -396,7 +405,7 @@
           <th data-key="sede">Sede <span class="arrow">↕</span></th>
           <th data-key="hora_entrada">Entrada <span class="arrow">↕</span></th>
           <th data-key="hora_salida">Salida <span class="arrow">↕</span></th>
-          <th data-key="horas_trabajadas">Horas Trabajadas <span class="arrow">↕</span></th>
+          <th data-key="horas_trabajadas">Horas Laboradas <span class="arrow">↕</span></th>
           <th data-key="diferencia_tiempo">Diferencia <span class="arrow">↕</span></th>
         </tr>
       </thead>
@@ -715,7 +724,7 @@ AUTH_READY.then(async function () {
         'Sede': r.sede || '',
         'Hora Entrada': fmtHora(r.hora_entrada) || '',
         'Hora Salida': fmtHora(r.hora_salida) || '',
-        'Horas Trabajadas': r.horas_trabajadas != null ? Number(r.horas_trabajadas) : '',
+        'Horas Laboradas': r.horas_trabajadas != null ? Number(r.horas_trabajadas) : '',
         'Diferencia': r.diferencia_tiempo != null ? Number(r.diferencia_tiempo) : '',
         'Estado': r.estado,
         'Semana': r.semana ?? '',
