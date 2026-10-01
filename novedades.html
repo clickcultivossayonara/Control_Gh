@@ -806,6 +806,7 @@ AUTH_READY.then(async function () {
       hintHoraExtra.hidden = true;
     }
     inFechaInicio.min = minimaGeneral;
+    inFechaFinal.min = minimaGeneral;
   }
 
   // Festivos de Colombia (editable por año desde Configuraciones), para que
@@ -1005,13 +1006,24 @@ AUTH_READY.then(async function () {
     }
 
     // Limite general para TODA novedad: no se puede cargar con vigencia de
-    // mas de DIAS_ATRAS_GENERAL dias atras (hoy, ayer y antier). Se revisa
-    // la fecha inicio (o la fecha unica si no es rango) -- hacia adelante
-    // es libre. No basta con el min= del input: si se escribe la fecha a
-    // mano en vez de usar el calendario, el navegador no la bloquea sola.
+    // mas de DIAS_ATRAS_GENERAL dias atras (hoy, ayer y antier). En los
+    // tipos de rango se revisan fecha inicio Y fecha final por separado
+    // (no basta con que inicio sea valida) -- hacia adelante es libre. No
+    // basta con el min= del input: si se escribe la fecha a mano en vez de
+    // usar el calendario, el navegador no la bloquea sola.
     const minimaGeneral = fechaMinimaGeneral();
-    const fechaAValidar = usaRango ? inFechaInicio.value : inFecha.value;
-    if (fechaAValidar < minimaGeneral) {
+    if (usaRango) {
+      if (inFechaInicio.value < minimaGeneral) {
+        msgNovedad.textContent = `La fecha inicio no puede tener vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minimaGeneral}).`;
+        msgNovedad.className = "form-msg error";
+        return;
+      }
+      if (inFechaFinal.value < minimaGeneral) {
+        msgNovedad.textContent = `La fecha final no puede tener vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minimaGeneral}).`;
+        msgNovedad.className = "form-msg error";
+        return;
+      }
+    } else if (inFecha.value < minimaGeneral) {
       msgNovedad.textContent = `No se puede cargar una novedad con vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minimaGeneral}).`;
       msgNovedad.className = "form-msg error";
       return;
