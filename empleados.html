@@ -148,6 +148,17 @@
   .ms-option:hover { background: var(--accent-soft); }
   .ms-option input { margin: 0; accent-color: var(--accent); }
 
+  .aviso-cargando-opciones {
+    display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600;
+    color: var(--warn); background: var(--warn-soft); border: 1px solid var(--warn-soft);
+    border-radius: 8px; padding: 8px 12px;
+  }
+  .aviso-cargando-opciones .spinner {
+    width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--warn);
+    border-top-color: transparent; animation: girar 0.7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes girar { to { transform: rotate(360deg); } }
+
   .tabs { display: flex; gap: 8px; }
   .tab-btn {
     font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px;
@@ -314,6 +325,11 @@
     <button type="button" class="tab-btn activo" data-tab="agregar">Agregar empleado</button>
     <button type="button" class="tab-btn" data-tab="editar">Editar empleado</button>
     <button type="button" class="tab-btn" data-tab="registrados">Empleados registrados</button>
+  </div>
+
+  <div class="aviso-cargando-opciones" id="aviso-cargando-opciones">
+    <span class="spinner"></span>
+    <span>Cargando las opciones de los campos, un momento…</span>
   </div>
 
   <section class="card" id="card-agregar-empleado">
@@ -1680,24 +1696,37 @@ AUTH_READY.then(async function () {
     return false;
   }
 
-  // Se hace en segundo plano (sin await) para no atrasar el resto del formulario.
-  // Si la consulta falla, los campos quedan como texto libre.
+  // Antes esto traia las 72 columnas RRHH de TODOS los empleados (varias
+  // peticiones de 1000 filas) solo para sacar, ya en el navegador, los
+  // valores distintos por campo -- un payload enorme que tardaba varios
+  // segundos, y mientras tanto las sugerencias/validacion no estaban
+  // listas (de ahi que hubiera que escribir o hacer clic varias veces).
+  // Ahora el "distinct por columna" lo hace Postgres de una sola vez
+  // (opciones_autocompletar_empleados, ver schema_opciones_autocompletar_rpc.sql)
+  // y devuelve solo los valores ya unicos -- un viaje de red mucho mas chico.
+  //
+  // Mientras carga (deberia ser casi instantaneo, pero por si la conexion
+  // esta lenta) se bloquea Guardar y se avisa con un banner, porque sin
+  // las opciones cargadas los combobox no tienen con que validar y
+  // rechazarian como invalido hasta un valor correcto.
+  const avisoCargando = document.getElementById("aviso-cargando-opciones");
+  const botonesGuardar = [document.getElementById("btn-guardar"), document.getElementById("btn-guardar-editar")];
+  botonesGuardar.forEach(b => { if (b) b.disabled = true; });
+
   (async function cargarOpcionesAutocompletar() {
     try {
-      const filas = [];
-      for (let offset = 0; ; offset += 1000) {
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=${CAMPOS_AUTOCOMPLETAR.join(",")}&limit=1000&offset=${offset}`, {
-          headers: authHeaders(),
-        });
-        const lote = await resp.json();
-        if (!resp.ok || !Array.isArray(lote)) return;
-        filas.push(...lote);
-        if (lote.length < 1000) break;
-      }
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/opciones_autocompletar_empleados`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const datos = await resp.json();
+      if (!resp.ok || typeof datos !== "object" || datos === null) return;
+
       CAMPOS_AUTOCOMPLETAR.forEach((campo) => {
+        const lista = Array.isArray(datos[campo]) ? datos[campo] : [];
         const mapa = new Map();
-        filas.forEach((f) => {
-          const v = f[campo];
+        lista.forEach((v) => {
           if (v != null && String(v).trim()) {
             const t = String(v).trim();
             if (!mapa.has(t.toUpperCase())) mapa.set(t.toUpperCase(), t);
@@ -1710,7 +1739,11 @@ AUTH_READY.then(async function () {
         opcionesCombobox[campo] = mapa;
         ["f", "e"].forEach(pref => prepararCombobox(pref, campo, mapa.values()));
       });
-    } catch {}
+    } catch {
+    } finally {
+      avisoCargando.hidden = true;
+      botonesGuardar.forEach(b => { if (b) b.disabled = false; });
+    }
   })();
 
   // Secciones RRHH desplegables: cada boton .seccion-rrhh colapsa/expande el
