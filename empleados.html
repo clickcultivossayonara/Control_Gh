@@ -167,7 +167,7 @@
   .form-msg { font-size: 13.5px; font-weight: 500; }
   .form-msg.ok { color: var(--accent); }
   .form-msg.error { color: var(--critical); }
-  input.invalido { border-color: var(--critical); outline-color: var(--critical); }
+  input.invalido, .field select.invalido { border-color: var(--critical); outline-color: var(--critical); background: var(--critical-soft); }
 
   .clear-btn {
     font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
@@ -312,14 +312,14 @@
   </div>
 
   <div class="tabs" id="tabs-empleado">
-    <button type="button" class="tab-btn activo" data-tab="agregar">Agregar empleado</button>
+    <button type="button" class="tab-btn activo" data-tab="registrados">Empleados registrados</button>
+    <button type="button" class="tab-btn" data-tab="agregar">Agregar empleado</button>
     <button type="button" class="tab-btn" data-tab="editar">Editar empleado</button>
-    <button type="button" class="tab-btn" data-tab="chequeo">Lista de Chequeo</button>
     <button type="button" class="tab-btn" data-tab="dotacion">Dotación</button>
-    <button type="button" class="tab-btn" data-tab="registrados">Empleados registrados</button>
+    <button type="button" class="tab-btn" data-tab="chequeo">Lista de Chequeo</button>
   </div>
 
-  <section class="card" id="card-agregar-empleado">
+  <section class="card" id="card-agregar-empleado" hidden>
     <h2>Agregar empleado</h2>
     <form id="form-empleado">
       <div class="form-grid">
@@ -656,6 +656,7 @@
           <input type="text" id="f-dosis" autocomplete="off">
         </div>
       </div>
+      <p class="card-hint" style="margin:14px 0 0"><span style="color:var(--critical)">*</span> Obligatorio. No aplican al ingreso: retiro, prórrogas y crédito Feser. Frecuencias de tabaco/alcohol/ejercicio, descripción de escolaridad y datos de hijos solo se exigen si corresponden.</p>
       <div class="form-actions">
         <button type="submit" class="btn-primary" id="btn-guardar">Guardar empleado</button>
         <span class="form-msg" id="form-msg"></span>
@@ -1032,6 +1033,10 @@
         <label for="c-buscar-cedula">Cédula o nombre</label>
         <input type="text" id="c-buscar-cedula" autocomplete="off" placeholder="Ej. 1193599748 o Roqueme…">
       </div>
+      <div class="field">
+        <label for="c-area-filtro">Área</label>
+        <select id="c-area-filtro"><option value="">Todas</option></select>
+      </div>
       <div class="field" style="justify-content:flex-end; flex-direction:row; gap:8px;">
         <button type="button" class="btn-primary" id="btn-buscar-chequeo" style="width:fit-content">Buscar</button>
         <button type="button" class="clear-btn" id="btn-limpiar-chequeo" style="width:fit-content">Limpiar</button>
@@ -1127,6 +1132,10 @@
         <label for="d-buscar-cedula">Cédula o nombre</label>
         <input type="text" id="d-buscar-cedula" autocomplete="off" placeholder="Ej. 1193599748 o Roqueme…">
       </div>
+      <div class="field">
+        <label for="d-area-filtro">Área</label>
+        <select id="d-area-filtro"><option value="">Todas</option></select>
+      </div>
       <div class="field" style="justify-content:flex-end; flex-direction:row; gap:8px;">
         <button type="button" class="btn-primary" id="btn-buscar-dotacion" style="width:fit-content">Buscar</button>
         <button type="button" class="clear-btn" id="btn-limpiar-dotacion" style="width:fit-content">Limpiar</button>
@@ -1208,7 +1217,7 @@
     </form>
   </section>
 
-  <section class="card" id="card-empleados-registrados" hidden>
+  <section class="card" id="card-empleados-registrados">
     <h2>Empleados registrados</h2>
     <div class="filters">
       <div class="field">
@@ -1631,8 +1640,96 @@ AUTH_READY.then(async function () {
   function validarObligatorios(prefijo, msgEl) {
     const faltantes = OBLIGATORIOS_BASICOS.filter(([id]) => !document.getElementById(`${prefijo}-${id}`).value.trim());
     if (faltantes.length === 0) return true;
+    const els = faltantes.map(([id]) => document.getElementById(`${prefijo}-${id}`));
+    els.forEach((el) => {
+      el.classList.add("invalido");
+      el.addEventListener("input", () => el.classList.remove("invalido"), { once: true });
+      el.addEventListener("change", () => el.classList.remove("invalido"), { once: true });
+      const grid = el.closest(".form-grid");
+      if (grid && grid.hidden) {
+        grid.hidden = false;
+        const boton = grid.previousElementSibling;
+        if (boton) boton.classList.add("expandida");
+      }
+    });
     msgEl.textContent = "Completa los campos obligatorios: " + faltantes.map(([, etiqueta]) => etiqueta).join(", ") + ".";
     msgEl.className = "form-msg error";
+    els[0].scrollIntoView({ behavior: "smooth", block: "center" });
+    return false;
+  }
+
+  // ---------- Agregar empleado: TODO obligatorio salvo lo que no aplica ----------
+  // No aplican a un ingreso nuevo: retiro (motivo/detalle/fecha), prorrogas
+  // y credito Feser. Y solo se exigen cuando corresponde: frecuencia de
+  // tabaco/alcohol (si consume), ejercicio y su frecuencia (si practica),
+  // descripcion de escolaridad (si tiene titulo) y hijo N (si N <= N° de hijos).
+  // En Editar NO se exige todo: hay empleados historicos con datos vacios y
+  // un bloqueo asi impediria hasta corregirles un telefono.
+  const NO_APLICAN_AL_INGRESO = new Set([
+    "motivo_retiro", "detalle_retiro", "fecha_retiro", "inicio_credito_feser", "fin_credito_feser",
+    "prorroga_1", "prorroga_2", "prorroga_3", "prorroga_4",
+  ]);
+  const ESCOLARIDAD_CON_TITULO = ["TÉCNICO", "TECNÓLOGO", "UNIVERSITARIO", "POSTGRADO", "MAESTRÍA", "DOCTORADO"];
+  const valorDe = (id) => (document.getElementById(id)?.value || "").trim();
+  const respondeNo = (id) => /^NO\b/i.test(valorDe(id));
+
+  function aplicaCampoAgregar(campo) {
+    if (NO_APLICAN_AL_INGRESO.has(campo)) return false;
+    if (campo === "frecuencia_tabaco") return !respondeNo("f-consumo-tabaco");
+    if (campo === "frecuencia_alcohol") return !respondeNo("f-consumo-alcohol");
+    if (campo === "cual_ejercicio" || campo === "dosis") return !respondeNo("f-practica-ejercicio");
+    if (campo === "descripcion_escolaridad") return ESCOLARIDAD_CON_TITULO.includes(valorDe("f-escolaridad"));
+    const hijo = /^hijo_(\d)_(nombre|edad)$/.exec(campo);
+    if (hijo) return Number(hijo[1]) <= (parseInt(valorDe("f-numero-hijos"), 10) || 0);
+    return true;
+  }
+
+  // Ids (en orden de formulario) de los campos que hoy son obligatorios en Agregar.
+  function idsObligatoriosAgregar() {
+    const ids = ["f-area", "f-cargo", "f-labor", "f-eficiencia", "f-fecha-ingreso", "f-cedula", "f-nombre"];
+    const selTurno = document.getElementById("f-turno");
+    if (selTurno && !selTurno.closest(".field").hidden) ids.push("f-turno");
+    CAMPOS_RRHH.filter(aplicaCampoAgregar).forEach((campo) => ids.push(idRrhh("f", campo)));
+    return [...new Set(ids)]
+      .map((id) => document.getElementById(id))
+      .filter(Boolean)
+      .sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
+  }
+
+  // Asterisco rojo en la etiqueta de todo campo que pueda ser obligatorio en Agregar.
+  function marcarObligatoriosAgregar() {
+    const posibles = ["f-area", "f-cargo", "f-labor", "f-eficiencia", "f-fecha-ingreso", "f-turno"]
+      .concat(CAMPOS_RRHH.filter((c) => !NO_APLICAN_AL_INGRESO.has(c)).map((c) => idRrhh("f", c)));
+    posibles.forEach((id) => {
+      const label = document.querySelector(`#form-empleado label[for="${id}"]`);
+      if (label && !label.querySelector(".req")) label.insertAdjacentHTML("beforeend", ' <span class="req">*</span>');
+    });
+  }
+  const formAgregarEl = document.getElementById("form-empleado");
+  marcarObligatoriosAgregar();
+  ["input", "change"].forEach((ev) => formAgregarEl.addEventListener(ev, (e) => e.target.classList.remove("invalido")));
+
+  function validarObligatoriosAgregar(msgEl) {
+    const vacios = idsObligatoriosAgregar().filter((el) => !el.value.trim());
+    formAgregarEl.querySelectorAll(".invalido").forEach((el) => el.classList.remove("invalido"));
+    if (vacios.length === 0) return true;
+    vacios.forEach((el) => el.classList.add("invalido"));
+    // abre las secciones cerradas que tienen campos faltantes
+    vacios.forEach((el) => {
+      const grid = el.closest(".form-grid");
+      if (grid && grid.hidden) {
+        grid.hidden = false;
+        const boton = grid.previousElementSibling;
+        if (boton) boton.classList.add("expandida");
+      }
+    });
+    const etiqueta = (el) => (document.querySelector(`#form-empleado label[for="${el.id}"]`)?.textContent || el.id).replace("*", "").trim();
+    const nombres = vacios.map(etiqueta);
+    const lista = nombres.length > 8 ? nombres.slice(0, 8).join(", ") + ` y ${nombres.length - 8} más` : nombres.join(", ");
+    msgEl.textContent = `Faltan ${vacios.length} campo(s) obligatorio(s): ${lista}.`;
+    msgEl.className = "form-msg error";
+    vacios[0].scrollIntoView({ behavior: "smooth", block: "center" });
+    vacios[0].focus({ preventScroll: true });
     return false;
   }
 
@@ -1745,7 +1842,7 @@ AUTH_READY.then(async function () {
       msg.className = "form-msg error";
       return;
     }
-    if (!validarObligatorios("f", msg)) return;
+    if (!validarObligatoriosAgregar(msg)) return;
 
     if (!validarComboboxes(form, msg)) return;
 
@@ -1873,17 +1970,11 @@ AUTH_READY.then(async function () {
       el.classList.remove("invalido");
       if (el.dataset.combobox !== undefined || !CAMPOS_SIN_SUGERENCIA.has(campo)) el.dataset.original = el.value.trim();
     });
-    // Si una seccion colapsada ya tiene algun dato cargado (muy probable,
-    // ya que la base de RRHH se importo completa), se abre sola para que
-    // no parezca vacia -- evita que alguien escriba encima sin verla.
-    formEditar.querySelectorAll(".seccion-rrhh").forEach((boton) => {
-      const grid = boton.nextElementSibling;
-      const tieneDato = [...grid.querySelectorAll("input, select")].some(el => el.value);
-      if (tieneDato) {
-        grid.hidden = false;
-        boton.classList.add("expandida");
-      }
-    });
+    // Igual que en Agregar: solo la primera seccion (Identificacion) queda
+    // abierta; el resto se despliega con clic en el titulo o la flecha.
+    const primeraSeccion = formEditar.querySelector(".seccion-rrhh");
+    primeraSeccion.nextElementSibling.hidden = false;
+    primeraSeccion.classList.add("expandida");
     formEditar.hidden = false;
   }
 
@@ -2043,6 +2134,8 @@ AUTH_READY.then(async function () {
     const buscarMsg = document.getElementById(`${seccion}-buscar-msg`);
     const msg = document.getElementById(`form-${seccion}-msg`);
     const elNombre = document.getElementById(`${seccion}-empleado-nombre`);
+    const elArea = document.getElementById(`${prefijo}-area-filtro`);
+    AREAS_CONOCIDAS.forEach((a) => elArea.insertAdjacentHTML("beforeend", `<option value="${escaparHtml(a)}">${escaparHtml(a)}</option>`));
     let cedulaActual = null;
     let resultados = [];
 
@@ -2072,11 +2165,17 @@ AUTH_READY.then(async function () {
       buscarMsg.className = "form-msg";
       try {
         const params = new URLSearchParams();
-        params.set("select", "cedula,nombre," + campos.join(","));
-        if (/^\d+$/.test(termino)) params.set("cedula_texto", "ilike.*" + termino + "*");
-        else params.set("nombre", "ilike.*" + termino.replace(/[,()]/g, "") + "*");
+        params.set("select", "cedula,nombre,area," + campos.join(","));
+        if (termino) {
+          if (/^\d+$/.test(termino)) params.set("cedula_texto", "ilike.*" + termino + "*");
+          else params.set("nombre", "ilike.*" + termino.replace(/[,()]/g, "") + "*");
+        }
+        if (elArea.value) params.set("area", "eq." + elArea.value);
+        // Al listar un area completa solo salen los activos; una busqueda por
+        // cedula/nombre sigue encontrando tambien a los retirados.
+        if (!termino) params.set("activo", "eq.true");
         params.set("order", "nombre.asc");
-        params.set("limit", "20");
+        params.set("limit", termino ? "50" : "300");
         const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers: authHeaders() });
         const filas = await resp.json();
         if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
@@ -2093,7 +2192,7 @@ AUTH_READY.then(async function () {
         resultados = filas;
         buscarMsg.textContent = `${filas.length} coincidencias, elige un empleado.`;
         buscarMsg.className = "form-msg";
-        elResultados.innerHTML = filas.map(f => `<button type="button" class="resultado-item" data-cedula="${f.cedula}"><span class="ced">${f.cedula}</span>${f.nombre}</button>`).join("");
+        elResultados.innerHTML = filas.map(f => `<button type="button" class="resultado-item" data-cedula="${f.cedula}"><span class="ced">${f.cedula}</span>${f.nombre}${f.area ? " — " + f.area : ""}</button>`).join("");
         elResultados.hidden = false;
       } catch (err) {
         buscarMsg.textContent = "Error al buscar: " + (err.message || err);
@@ -2108,21 +2207,25 @@ AUTH_READY.then(async function () {
       if (emp) cargar(emp);
     });
 
-    document.getElementById(`btn-buscar-${seccion}`).addEventListener("click", () => {
+    // Se puede buscar por cedula/nombre, por area, o por ambos a la vez.
+    function lanzarBusqueda() {
       const termino = elBuscar.value.trim();
-      if (!termino) {
-        buscarMsg.textContent = "Escribe una cédula o un nombre.";
+      if (!termino && !elArea.value) {
+        buscarMsg.textContent = "Escribe una cédula o un nombre, o elige un área.";
         buscarMsg.className = "form-msg error";
         return;
       }
       buscar(termino);
-    });
+    }
+    document.getElementById(`btn-buscar-${seccion}`).addEventListener("click", lanzarBusqueda);
+    elArea.addEventListener("change", () => { if (elArea.value || elBuscar.value.trim()) lanzarBusqueda(); });
     elBuscar.addEventListener("keydown", (e) => {
       if (e.key === "Enter") { e.preventDefault(); document.getElementById(`btn-buscar-${seccion}`).click(); }
     });
 
     document.getElementById(`btn-limpiar-${seccion}`).addEventListener("click", () => {
       elBuscar.value = "";
+      elArea.value = "";
       elResultados.hidden = true;
       elResultados.innerHTML = "";
       form.hidden = true;
