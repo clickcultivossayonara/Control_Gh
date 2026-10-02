@@ -327,6 +327,7 @@
             <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
             <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
             <th data-key="area">Área <span class="arrow">↕</span></th>
+            <th data-key="horas_esperadas">Horas Esperadas <span class="arrow">↕</span></th>
             <th data-key="horas_trabajadas">Horas Trabajadas <span class="arrow">↕</span></th>
             <th data-key="diferencia_tiempo">Diferencia <span class="arrow">↕</span></th>
             <th data-key="codigo_descripcion">Novedad <span class="arrow">↕</span></th>
@@ -512,6 +513,7 @@ AUTH_READY.then(async function () {
   const CODIGOS_SIN_VALIDACION = new Set(["B072", "B073", "CAP", "CD", "DF", "HEC", "LIR", "LMA", "LPA", "LPL", "PR", "VAC"]);
 
   function fila(r) {
+    const he = r.horas_esperadas != null ? Number(r.horas_esperadas).toFixed(2) : "—";
     const ht = r.horas_trabajadas != null ? Number(r.horas_trabajadas).toFixed(2) : "—";
     let dt = "—";
     if (r.diferencia_tiempo != null) {
@@ -543,6 +545,7 @@ AUTH_READY.then(async function () {
       <td class="cedula">${r.cedula}</td>
       <td class="nombre" title="${r.nombre}">${r.nombre}</td>
       <td title="${r.area || ""}">${r.area || "—"}</td>
+      <td class="num">${he}</td>
       <td class="num">${ht}</td>
       <td class="num">${dt}</td>
       <td title="${r.codigo_descripcion || ""}">${r.codigo_descripcion || "—"}</td>
@@ -583,13 +586,13 @@ AUTH_READY.then(async function () {
 
   async function cargar() {
     if (rangoDemasiadoAmplio()) {
-      elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para consultar.</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="10"><div class="empty-state">El rango de fechas es muy amplio (máximo ${RANGO_MAX_DIAS} días). Reduce el rango para consultar.</div></td></tr>`;
       elCount.textContent = "";
       return;
     }
 
     const params = new URLSearchParams();
-    params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana,codigo_novedad");
+    params.set("select", "fecha,cedula,nombre,area,horas_esperadas,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana,codigo_novedad");
     params.set("order", `${sortKey}.${sortDir === 1 ? "asc" : "desc"}.nullslast`);
     params.set("limit", String(visibles));
     aplicarFiltros(params);
@@ -604,11 +607,11 @@ AUTH_READY.then(async function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       if (filas.length === 0) {
-        elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
+        elBody.innerHTML = `<tr><td colspan="10"><div class="empty-state">Sin registros para estos filtros.</div></td></tr>`;
       } else {
         let html = filas.map(fila).join("");
         if (total > filas.length) {
-          html += `<tr class="load-more-row"><td colspan="9">
+          html += `<tr class="load-more-row"><td colspan="10">
             <button class="load-more-btn" id="btn-cargar-mas">Cargar más (${(total - filas.length).toLocaleString("es-CO")} restantes)</button>
           </td></tr>`;
         }
@@ -619,7 +622,7 @@ AUTH_READY.then(async function () {
       elCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      elBody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      elBody.innerHTML = `<tr><td colspan="10"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       elCount.textContent = "";
     }
 
@@ -655,7 +658,7 @@ AUTH_READY.then(async function () {
       while (true) {
         btn.textContent = `Generando... (${filas.length.toLocaleString("es-CO")})`;
         const params = new URLSearchParams();
-        params.set("select", "fecha,cedula,nombre,area,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana,codigo_novedad");
+        params.set("select", "fecha,cedula,nombre,area,horas_esperadas,horas_trabajadas,diferencia_tiempo,codigo_descripcion,horas_novedad,semana,codigo_novedad");
         aplicarFiltros(params);
         params.set("limit", String(tamanoPagina));
         params.set("offset", String(offset));
@@ -674,6 +677,7 @@ AUTH_READY.then(async function () {
         "Cédula": r.cedula,
         "Nombre": r.nombre,
         "Área": r.area || "",
+        "Horas Esperadas": r.horas_esperadas != null ? Number(r.horas_esperadas) : "",
         "Horas Trabajadas": r.horas_trabajadas != null ? Number(r.horas_trabajadas) : "",
         "Diferencia": r.diferencia_tiempo != null ? Number(r.diferencia_tiempo) : "",
         "Novedad": r.codigo_descripcion || "",
@@ -681,7 +685,7 @@ AUTH_READY.then(async function () {
       }));
 
       const ws = XLSX.utils.json_to_sheet(filasExcel);
-      ws["!cols"] = [{ wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 32 }, { wch: 20 }, { wch: 14 }, { wch: 11 }, { wch: 24 }, { wch: 12 }];
+      ws["!cols"] = [{ wch: 12 }, { wch: 8 }, { wch: 12 }, { wch: 32 }, { wch: 20 }, { wch: 14 }, { wch: 14 }, { wch: 11 }, { wch: 24 }, { wch: 12 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Nomina");
 

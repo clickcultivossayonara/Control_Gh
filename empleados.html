@@ -314,6 +314,8 @@
   <div class="tabs" id="tabs-empleado">
     <button type="button" class="tab-btn activo" data-tab="agregar">Agregar empleado</button>
     <button type="button" class="tab-btn" data-tab="editar">Editar empleado</button>
+    <button type="button" class="tab-btn" data-tab="chequeo">Lista de Chequeo</button>
+    <button type="button" class="tab-btn" data-tab="dotacion">Dotación</button>
     <button type="button" class="tab-btn" data-tab="registrados">Empleados registrados</button>
   </div>
 
@@ -412,7 +414,9 @@
         </div>
         <div class="field">
           <label for="f-escolaridad">Escolaridad</label>
-          <input type="text" id="f-escolaridad" autocomplete="off">
+          <select id="f-escolaridad">
+            <option value="">—</option>
+          </select>
         </div>
         <div class="field">
           <label for="f-descripcion-escolaridad">Descripción Escolaridad</label>
@@ -433,6 +437,14 @@
         <div class="field">
           <label for="f-tipo-vivienda">Tipo de Vivienda</label>
           <input type="text" id="f-tipo-vivienda" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-banco">Banco</label>
+          <input type="text" id="f-banco" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-numero-cuenta">Número de Cuenta</label>
+          <input type="text" id="f-numero-cuenta" autocomplete="off">
         </div>
       </div>
       <button type="button" class="seccion-rrhh">Contrato<span class="flecha">▸</span></button>
@@ -483,14 +495,6 @@
           <label for="f-fecha-retiro">Fecha de Retiro</label>
           <input type="date" id="f-fecha-retiro">
         </div>
-        <div class="field">
-          <label for="f-salario-letras">Salario (letras)</label>
-          <input type="text" id="f-salario-letras" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-salario-cifras">Salario (cifras)</label>
-          <input type="text" id="f-salario-cifras" autocomplete="off">
-        </div>
       </div>
       <button type="button" class="seccion-rrhh">Contacto y residencia<span class="flecha">▸</span></button>
       <div class="form-grid">
@@ -523,12 +527,24 @@
           <input type="text" id="f-medio-transporte" autocomplete="off">
         </div>
         <div class="field">
-          <label for="f-telefono-1">Teléfono / Celular 1</label>
+          <label for="f-telefono-1">Teléfono (operario)</label>
           <input type="text" id="f-telefono-1" autocomplete="off">
         </div>
         <div class="field">
-          <label for="f-telefono-2">Teléfono / Celular 2</label>
+          <label for="f-telefono-2">Teléfono contacto de emergencia 1</label>
           <input type="text" id="f-telefono-2" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-contacto-emergencia-1-nombre">Nombre contacto de emergencia 1</label>
+          <input type="text" id="f-contacto-emergencia-1-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-contacto-emergencia-2-nombre">Nombre contacto de emergencia 2</label>
+          <input type="text" id="f-contacto-emergencia-2-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="f-contacto-emergencia-2-telefono">Teléfono contacto de emergencia 2</label>
+          <input type="text" id="f-contacto-emergencia-2-telefono" autocomplete="off">
         </div>
       </div>
       <button type="button" class="seccion-rrhh">Afiliaciones<span class="flecha">▸</span></button>
@@ -552,85 +568,6 @@
         <div class="field">
           <label for="f-arl">ARL</label>
           <input type="text" id="f-arl" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-banco">Banco</label>
-          <input type="text" id="f-banco" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-numero-cuenta">Número de Cuenta</label>
-          <input type="text" id="f-numero-cuenta" autocomplete="off">
-        </div>
-      </div>
-      <button type="button" class="seccion-rrhh">Checklist de ingreso<span class="flecha">▸</span></button>
-      <div class="form-grid">
-        <div class="field">
-          <label for="f-carnet-arl">Carnet ARL</label>
-          <input type="text" id="f-carnet-arl" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-exm-ingreso">Exm. Ingreso</label>
-          <input type="text" id="f-exm-ingreso" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-doc-contrato">Contrato (doc.)</label>
-          <input type="text" id="f-doc-contrato" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-claus-mod">Claus-Mod</label>
-          <input type="text" id="f-claus-mod" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-doc-cc">CC (doc.)</label>
-          <input type="text" id="f-doc-cc" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-hv-formato-sayonara">HV Formato Sayonara</label>
-          <input type="text" id="f-hv-formato-sayonara" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-cert-est">Cert. Est.</label>
-          <input type="text" id="f-cert-est" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-entrevista">Entrevista</label>
-          <input type="text" id="f-entrevista" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-visita-domiciliaria">Visita Domiciliaria</label>
-          <input type="text" id="f-visita-domiciliaria" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-estudio-seguridad">Estudio de Seguridad</label>
-          <input type="text" id="f-estudio-seguridad" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-antecedentes">Antecedentes</label>
-          <input type="text" id="f-antecedentes" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-doc-beneficiarios">Doc. Beneficiarios</label>
-          <input type="text" id="f-doc-beneficiarios" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-afi-eps">Afiliación EPS</label>
-          <input type="text" id="f-afi-eps" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-afi-afp">Afiliación AFP</label>
-          <input type="text" id="f-afi-afp" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-afi-arl">Afiliación ARL</label>
-          <input type="text" id="f-afi-arl" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-afi-comfama">Afiliación Comfama</label>
-          <input type="text" id="f-afi-comfama" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-induccion">Inducción</label>
-          <input type="text" id="f-induccion" autocomplete="off">
         </div>
       </div>
       <button type="button" class="seccion-rrhh">Familia<span class="flecha">▸</span></button>
@@ -687,12 +624,8 @@
           <input type="number" step="0.01" id="f-peso-kg" autocomplete="off">
         </div>
         <div class="field">
-          <label for="f-talla-mts">Talla (Mts)</label>
+          <label for="f-talla-mts">Altura (Mts)</label>
           <input type="number" step="0.01" id="f-talla-mts" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-imc">IMC</label>
-          <input type="number" step="0.01" id="f-imc" autocomplete="off">
         </div>
         <div class="field">
           <label for="f-consumo-tabaco">Consumo de Tabaco</label>
@@ -721,69 +654,6 @@
         <div class="field">
           <label for="f-dosis">Frecuencia (Ejercicio)</label>
           <input type="text" id="f-dosis" autocomplete="off">
-        </div>
-      </div>
-      <button type="button" class="seccion-rrhh">Dotación<span class="flecha">▸</span></button>
-      <div class="form-grid">
-        <div class="field">
-          <label for="f-camisa-blanca">Camisa Blanca</label>
-          <input type="text" id="f-camisa-blanca" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-camibuso">Camibuso</label>
-          <input type="text" id="f-camibuso" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-sudadera">Sudadera</label>
-          <input type="text" id="f-sudadera" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-jean">Jean</label>
-          <input type="text" id="f-jean" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-antifluido">Antifluido</label>
-          <input type="text" id="f-antifluido" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-zapato-normal">Zapato Normal</label>
-          <input type="text" id="f-zapato-normal" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-zapato-punta-acero">Zapato Punta Acero</label>
-          <input type="text" id="f-zapato-punta-acero" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-zapato-dielectrico">Zapato Dieléctrico</label>
-          <input type="text" id="f-zapato-dielectrico" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-jumbo">Jumbo</label>
-          <input type="text" id="f-jumbo" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-croydon">Tenis</label>
-          <input type="text" id="f-croydon" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-bota">Bota</label>
-          <input type="text" id="f-bota" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-bota-royal">Bota Royal</label>
-          <input type="text" id="f-bota-royal" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-bota-cana-alta">Bota Caña Alta</label>
-          <input type="text" id="f-bota-cana-alta" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-bota-pvc-puntera">Bota PVC Puntera</label>
-          <input type="text" id="f-bota-pvc-puntera" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="f-overol">Overol</label>
-          <input type="text" id="f-overol" autocomplete="off">
         </div>
       </div>
       <div class="form-actions">
@@ -906,7 +776,9 @@
         </div>
         <div class="field">
           <label for="e-escolaridad">Escolaridad</label>
-          <input type="text" id="e-escolaridad" autocomplete="off">
+          <select id="e-escolaridad">
+            <option value="">—</option>
+          </select>
         </div>
         <div class="field">
           <label for="e-descripcion-escolaridad">Descripción Escolaridad</label>
@@ -927,6 +799,14 @@
         <div class="field">
           <label for="e-tipo-vivienda">Tipo de Vivienda</label>
           <input type="text" id="e-tipo-vivienda" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-banco">Banco</label>
+          <input type="text" id="e-banco" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-numero-cuenta">Número de Cuenta</label>
+          <input type="text" id="e-numero-cuenta" autocomplete="off">
         </div>
       </div>
       <button type="button" class="seccion-rrhh">Contrato<span class="flecha">▸</span></button>
@@ -977,14 +857,6 @@
           <label for="e-fecha-retiro">Fecha de Retiro</label>
           <input type="date" id="e-fecha-retiro">
         </div>
-        <div class="field">
-          <label for="e-salario-letras">Salario (letras)</label>
-          <input type="text" id="e-salario-letras" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-salario-cifras">Salario (cifras)</label>
-          <input type="text" id="e-salario-cifras" autocomplete="off">
-        </div>
       </div>
       <button type="button" class="seccion-rrhh">Contacto y residencia<span class="flecha">▸</span></button>
       <div class="form-grid">
@@ -1017,12 +889,24 @@
           <input type="text" id="e-medio-transporte" autocomplete="off">
         </div>
         <div class="field">
-          <label for="e-telefono-1">Teléfono / Celular 1</label>
+          <label for="e-telefono-1">Teléfono (operario)</label>
           <input type="text" id="e-telefono-1" autocomplete="off">
         </div>
         <div class="field">
-          <label for="e-telefono-2">Teléfono / Celular 2</label>
+          <label for="e-telefono-2">Teléfono contacto de emergencia 1</label>
           <input type="text" id="e-telefono-2" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-contacto-emergencia-1-nombre">Nombre contacto de emergencia 1</label>
+          <input type="text" id="e-contacto-emergencia-1-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-contacto-emergencia-2-nombre">Nombre contacto de emergencia 2</label>
+          <input type="text" id="e-contacto-emergencia-2-nombre" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="e-contacto-emergencia-2-telefono">Teléfono contacto de emergencia 2</label>
+          <input type="text" id="e-contacto-emergencia-2-telefono" autocomplete="off">
         </div>
       </div>
       <button type="button" class="seccion-rrhh">Afiliaciones<span class="flecha">▸</span></button>
@@ -1046,85 +930,6 @@
         <div class="field">
           <label for="e-arl">ARL</label>
           <input type="text" id="e-arl" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-banco">Banco</label>
-          <input type="text" id="e-banco" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-numero-cuenta">Número de Cuenta</label>
-          <input type="text" id="e-numero-cuenta" autocomplete="off">
-        </div>
-      </div>
-      <button type="button" class="seccion-rrhh">Checklist de ingreso<span class="flecha">▸</span></button>
-      <div class="form-grid">
-        <div class="field">
-          <label for="e-carnet-arl">Carnet ARL</label>
-          <input type="text" id="e-carnet-arl" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-exm-ingreso">Exm. Ingreso</label>
-          <input type="text" id="e-exm-ingreso" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-doc-contrato">Contrato (doc.)</label>
-          <input type="text" id="e-doc-contrato" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-claus-mod">Claus-Mod</label>
-          <input type="text" id="e-claus-mod" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-doc-cc">CC (doc.)</label>
-          <input type="text" id="e-doc-cc" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-hv-formato-sayonara">HV Formato Sayonara</label>
-          <input type="text" id="e-hv-formato-sayonara" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-cert-est">Cert. Est.</label>
-          <input type="text" id="e-cert-est" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-entrevista">Entrevista</label>
-          <input type="text" id="e-entrevista" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-visita-domiciliaria">Visita Domiciliaria</label>
-          <input type="text" id="e-visita-domiciliaria" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-estudio-seguridad">Estudio de Seguridad</label>
-          <input type="text" id="e-estudio-seguridad" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-antecedentes">Antecedentes</label>
-          <input type="text" id="e-antecedentes" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-doc-beneficiarios">Doc. Beneficiarios</label>
-          <input type="text" id="e-doc-beneficiarios" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-afi-eps">Afiliación EPS</label>
-          <input type="text" id="e-afi-eps" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-afi-afp">Afiliación AFP</label>
-          <input type="text" id="e-afi-afp" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-afi-arl">Afiliación ARL</label>
-          <input type="text" id="e-afi-arl" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-afi-comfama">Afiliación Comfama</label>
-          <input type="text" id="e-afi-comfama" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-induccion">Inducción</label>
-          <input type="text" id="e-induccion" autocomplete="off">
         </div>
       </div>
       <button type="button" class="seccion-rrhh">Familia<span class="flecha">▸</span></button>
@@ -1181,12 +986,8 @@
           <input type="number" step="0.01" id="e-peso-kg" autocomplete="off">
         </div>
         <div class="field">
-          <label for="e-talla-mts">Talla (Mts)</label>
+          <label for="e-talla-mts">Altura (Mts)</label>
           <input type="number" step="0.01" id="e-talla-mts" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-imc">IMC</label>
-          <input type="number" step="0.01" id="e-imc" autocomplete="off">
         </div>
         <div class="field">
           <label for="e-consumo-tabaco">Consumo de Tabaco</label>
@@ -1217,72 +1018,192 @@
           <input type="text" id="e-dosis" autocomplete="off">
         </div>
       </div>
-      <button type="button" class="seccion-rrhh">Dotación<span class="flecha">▸</span></button>
-      <div class="form-grid">
-        <div class="field">
-          <label for="e-camisa-blanca">Camisa Blanca</label>
-          <input type="text" id="e-camisa-blanca" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-camibuso">Camibuso</label>
-          <input type="text" id="e-camibuso" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-sudadera">Sudadera</label>
-          <input type="text" id="e-sudadera" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-jean">Jean</label>
-          <input type="text" id="e-jean" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-antifluido">Antifluido</label>
-          <input type="text" id="e-antifluido" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-zapato-normal">Zapato Normal</label>
-          <input type="text" id="e-zapato-normal" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-zapato-punta-acero">Zapato Punta Acero</label>
-          <input type="text" id="e-zapato-punta-acero" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-zapato-dielectrico">Zapato Dieléctrico</label>
-          <input type="text" id="e-zapato-dielectrico" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-jumbo">Jumbo</label>
-          <input type="text" id="e-jumbo" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-croydon">Tenis</label>
-          <input type="text" id="e-croydon" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-bota">Bota</label>
-          <input type="text" id="e-bota" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-bota-royal">Bota Royal</label>
-          <input type="text" id="e-bota-royal" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-bota-cana-alta">Bota Caña Alta</label>
-          <input type="text" id="e-bota-cana-alta" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-bota-pvc-puntera">Bota PVC Puntera</label>
-          <input type="text" id="e-bota-pvc-puntera" autocomplete="off">
-        </div>
-        <div class="field">
-          <label for="e-overol">Overol</label>
-          <input type="text" id="e-overol" autocomplete="off">
-        </div>
-      </div>
       <div class="form-actions">
         <button type="submit" class="btn-primary" id="btn-guardar-editar">Guardar cambios</button>
         <span class="form-msg" id="form-editar-msg"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" id="card-chequeo-empleado" hidden>
+    <h2>Lista de Chequeo</h2>
+    <div class="form-grid" style="margin-bottom:14px">
+      <div class="field">
+        <label for="c-buscar-cedula">Cédula o nombre</label>
+        <input type="text" id="c-buscar-cedula" autocomplete="off" placeholder="Ej. 1193599748 o Roqueme…">
+      </div>
+      <div class="field" style="justify-content:flex-end; flex-direction:row; gap:8px;">
+        <button type="button" class="btn-primary" id="btn-buscar-chequeo" style="width:fit-content">Buscar</button>
+        <button type="button" class="clear-btn" id="btn-limpiar-chequeo" style="width:fit-content">Limpiar</button>
+      </div>
+      <span class="form-msg" id="chequeo-buscar-msg" style="align-self:center"></span>
+    </div>
+
+    <div class="resultados-busqueda" id="chequeo-resultados" hidden></div>
+
+    <form id="form-chequeo-empleado" hidden>
+      <p class="card-hint" id="chequeo-empleado-nombre" style="margin:0 0 14px"></p>
+      <div class="form-grid">
+        <div class="field">
+          <label for="c-carnet-arl">Carnet ARL</label>
+          <input type="text" id="c-carnet-arl" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-exm-ingreso">Exm. Ingreso</label>
+          <input type="text" id="c-exm-ingreso" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-doc-contrato">Contrato (doc.)</label>
+          <input type="text" id="c-doc-contrato" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-claus-mod">Claus-Mod</label>
+          <input type="text" id="c-claus-mod" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-doc-cc">CC (doc.)</label>
+          <input type="text" id="c-doc-cc" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-hv-formato-sayonara">HV Formato Sayonara</label>
+          <input type="text" id="c-hv-formato-sayonara" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-cert-est">Cert. Est.</label>
+          <input type="text" id="c-cert-est" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-entrevista">Entrevista</label>
+          <input type="text" id="c-entrevista" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-visita-domiciliaria">Visita Domiciliaria</label>
+          <input type="text" id="c-visita-domiciliaria" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-estudio-seguridad">Estudio de Seguridad</label>
+          <input type="text" id="c-estudio-seguridad" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-antecedentes">Antecedentes</label>
+          <input type="text" id="c-antecedentes" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-doc-beneficiarios">Doc. Beneficiarios</label>
+          <input type="text" id="c-doc-beneficiarios" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-afi-eps">Afiliación EPS</label>
+          <input type="text" id="c-afi-eps" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-afi-afp">Afiliación AFP</label>
+          <input type="text" id="c-afi-afp" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-afi-arl">Afiliación ARL</label>
+          <input type="text" id="c-afi-arl" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-afi-comfama">Afiliación Comfama</label>
+          <input type="text" id="c-afi-comfama" autocomplete="off">
+        </div>
+        <div class="field">
+          <label for="c-induccion">Inducción</label>
+          <input type="text" id="c-induccion" autocomplete="off">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-guardar-chequeo">Guardar lista de chequeo</button>
+        <span class="form-msg" id="form-chequeo-msg"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" id="card-dotacion-empleado" hidden>
+    <h2>Dotación</h2>
+    <div class="form-grid" style="margin-bottom:14px">
+      <div class="field">
+        <label for="d-buscar-cedula">Cédula o nombre</label>
+        <input type="text" id="d-buscar-cedula" autocomplete="off" placeholder="Ej. 1193599748 o Roqueme…">
+      </div>
+      <div class="field" style="justify-content:flex-end; flex-direction:row; gap:8px;">
+        <button type="button" class="btn-primary" id="btn-buscar-dotacion" style="width:fit-content">Buscar</button>
+        <button type="button" class="clear-btn" id="btn-limpiar-dotacion" style="width:fit-content">Limpiar</button>
+      </div>
+      <span class="form-msg" id="dotacion-buscar-msg" style="align-self:center"></span>
+    </div>
+
+    <div class="resultados-busqueda" id="dotacion-resultados" hidden></div>
+
+    <form id="form-dotacion-empleado" hidden>
+      <p class="card-hint" id="dotacion-empleado-nombre" style="margin:0 0 14px"></p>
+      <p class="card-hint">Marca qué prendas necesita este colaborador según su labor.</p>
+      <div class="form-grid">
+        <div class="field checkbox">
+          <input type="checkbox" id="d-camisa-blanca">
+          <label for="d-camisa-blanca">Camisa Blanca</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-camibuso">
+          <label for="d-camibuso">Camibuso</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-sudadera">
+          <label for="d-sudadera">Sudadera</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-jean">
+          <label for="d-jean">Jean</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-antifluido">
+          <label for="d-antifluido">Antifluido</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-zapato-normal">
+          <label for="d-zapato-normal">Zapato Guayo</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-zapato-punta-acero">
+          <label for="d-zapato-punta-acero">Zapato Punta Acero</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-zapato-dielectrico">
+          <label for="d-zapato-dielectrico">Zapato Dieléctrico</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-jumbo">
+          <label for="d-jumbo">Jumbo</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-croydon">
+          <label for="d-croydon">Tenis</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-bota">
+          <label for="d-bota">Bota</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-bota-royal">
+          <label for="d-bota-royal">Bota Royal</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-bota-cana-alta">
+          <label for="d-bota-cana-alta">Bota Caña Alta</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-bota-pvc-puntera">
+          <label for="d-bota-pvc-puntera">Bota PVC Puntera</label>
+        </div>
+        <div class="field checkbox">
+          <input type="checkbox" id="d-overol">
+          <label for="d-overol">Overol</label>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-guardar-dotacion">Guardar dotación</button>
+        <span class="form-msg" id="form-dotacion-msg"></span>
       </div>
     </form>
   </section>
@@ -1362,8 +1283,12 @@ AUTH_READY.then(async function () {
   if (!puedeEditar) {
     document.querySelector('#tabs-empleado [data-tab="agregar"]').hidden = true;
     document.querySelector('#tabs-empleado [data-tab="editar"]').hidden = true;
+    document.querySelector('#tabs-empleado [data-tab="chequeo"]').hidden = true;
+    document.querySelector('#tabs-empleado [data-tab="dotacion"]').hidden = true;
     document.getElementById("card-agregar-empleado").hidden = true;
     document.getElementById("card-editar-empleado").hidden = true;
+    document.getElementById("card-chequeo-empleado").hidden = true;
+    document.getElementById("card-dotacion-empleado").hidden = true;
     document.getElementById("th-acciones").hidden = true;
     document.querySelectorAll("#tabs-empleado .tab-btn").forEach((b) => b.classList.remove("activo"));
     document.querySelector('#tabs-empleado [data-tab="registrados"]').classList.add("activo");
@@ -1529,28 +1454,28 @@ AUTH_READY.then(async function () {
   // columna, usada para armar/leer el payload de los formularios de forma
   // generica en vez de escribir 95 lineas repetidas. Los ids en el HTML son
   // el mismo nombre con "_" cambiado por "-" (ej. hijo_1_nombre -> f-hijo-1-nombre).
+  // Checklist de ingreso y Dotacion ya no viven aqui -- se manejan en sus
+  // propias pestañas (ver CAMPOS_CHEQUEO / CAMPOS_DOTACION mas abajo).
+  // Salario e IMC se quitaron del formulario (siguen en Supabase, solo
+  // dejaron de mostrarse/editarse aqui).
   const CAMPOS_RRHH = [
     "tipo_documento", "lugar_expedicion", "fecha_expedicion",
     "cargo", "inicio_credito_feser", "fin_credito_feser", "tipo_contrato", "tiempo_contrato",
     "prorroga_1", "prorroga_2", "prorroga_3", "prorroga_4", "motivo_retiro", "detalle_retiro",
-    "fecha_retiro", "salario_letras", "salario_cifras",
+    "fecha_retiro",
     "lugar_nacimiento", "fecha_nacimiento", "direccion", "barrio", "ciudad", "ciudad_trabajo",
-    "medio_transporte", "telefono_1", "telefono_2", "sexo", "email_personal", "escolaridad",
+    "medio_transporte", "telefono_1", "telefono_2",
+    "contacto_emergencia_1_nombre", "contacto_emergencia_2_nombre", "contacto_emergencia_2_telefono",
+    "sexo", "email_personal", "escolaridad",
     "descripcion_escolaridad", "rh", "discapacidad", "estado_civil", "tipo_vivienda",
     "fondo_cesantias", "eps", "fondo_pension", "caja_compensacion", "arl", "banco", "numero_cuenta",
-    "carnet_arl", "exm_ingreso", "doc_contrato", "claus_mod", "doc_cc", "hv_formato_sayonara",
-    "cert_est", "entrevista", "visita_domiciliaria", "estudio_seguridad", "antecedentes",
-    "doc_beneficiarios", "afi_eps", "afi_afp", "afi_arl", "afi_comfama", "induccion",
     "numero_hijos",
     "hijo_1_nombre", "hijo_1_edad", "hijo_2_nombre", "hijo_2_edad", "hijo_3_nombre", "hijo_3_edad",
     "hijo_4_nombre", "hijo_4_edad", "hijo_5_nombre", "hijo_5_edad",
-    "peso_kg", "talla_mts", "imc", "consumo_tabaco", "frecuencia_tabaco", "consumo_alcohol",
+    "peso_kg", "talla_mts", "consumo_tabaco", "frecuencia_tabaco", "consumo_alcohol",
     "frecuencia_alcohol", "practica_ejercicio", "cual_ejercicio", "dosis",
-    "camisa_blanca", "camibuso", "sudadera", "jean", "antifluido", "zapato_normal",
-    "zapato_punta_acero", "zapato_dielectrico", "jumbo", "croydon", "bota", "bota_royal",
-    "bota_cana_alta", "bota_pvc_puntera", "overol",
   ];
-  const CAMPOS_RRHH_NUMERICOS = ["peso_kg", "talla_mts", "imc"];
+  const CAMPOS_RRHH_NUMERICOS = ["peso_kg", "talla_mts"];
   const idRrhh = (prefijo, campo) => `${prefijo}-${campo.replace(/_/g, "-")}`;
 
   // ---------- Agregar / Editar: campos limitados a opciones existentes ----------
@@ -1558,15 +1483,18 @@ AUTH_READY.then(async function () {
   // base mientras se escribe, pero NO deja guardar nada que no coincida con
   // una opcion (validarCombobox). Asi no se crean variantes nuevas de un
   // mismo dato. Quedan como texto libre solo los datos unicos por persona
-  // (cedula, nombre, direccion, telefonos, email, cuenta, salario, hijos) y
-  // los campos descriptivos/numericos (detalle, descripcion, peso, talla, IMC).
+  // (cedula, nombre, direccion, telefonos, contactos de emergencia, email,
+  // cuenta, hijos) y los campos descriptivos (detalle, descripcion).
+  // "escolaridad" tambien se excluye de las sugerencias -- ahora es un
+  // <select> de lista fija, no un combobox de texto.
   const CAMPOS_SIN_SUGERENCIA = new Set([
     "direccion", "telefono_1", "telefono_2", "numero_cuenta", "email_personal",
-    "salario_letras", "salario_cifras", "numero_hijos",
+    "contacto_emergencia_1_nombre", "contacto_emergencia_2_nombre", "contacto_emergencia_2_telefono",
+    "numero_hijos",
     "hijo_1_nombre", "hijo_1_edad", "hijo_2_nombre", "hijo_2_edad", "hijo_3_nombre", "hijo_3_edad",
     "hijo_4_nombre", "hijo_4_edad", "hijo_5_nombre", "hijo_5_edad",
-    "detalle_retiro",
-    "peso_kg", "talla_mts", "imc",
+    "detalle_retiro", "escolaridad",
+    "peso_kg", "talla_mts",
   ]);
   const CAMPOS_AUTOCOMPLETAR = CAMPOS_RRHH.filter((campo) => !CAMPOS_SIN_SUGERENCIA.has(campo));
   // Campos que sugieren valores ya usados (datalist) pero sin restringir --
@@ -1575,6 +1503,18 @@ AUTH_READY.then(async function () {
   const CAMPOS_SUGERENCIA_LIBRE = new Set(["descripcion_escolaridad", "cual_ejercicio"]);
   const opcionesCombobox = {}; // campo -> Map(MAYUSCULAS -> valor canonico)
   const NOMBRES_CAMPO = {};    // id -> etiqueta, para los mensajes
+
+  // Escolaridad: lista fija (antes era un combobox de texto libre que solo
+  // validaba contra valores ya existentes en algun empleado -- por eso
+  // nunca se podia elegir "Doctorado" mientras nadie lo tuviera todavia).
+  const OPCIONES_ESCOLARIDAD = [
+    "NINGUNO", "PRIMARIA", "SECUNDARIA", "BACHILLER", "TÉCNICO", "TECNÓLOGO",
+    "UNIVERSITARIO", "POSTGRADO", "MAESTRÍA", "DOCTORADO", "NO REGISTRA",
+  ];
+  ["f-escolaridad", "e-escolaridad"].forEach((id) => {
+    const sel = document.getElementById(id);
+    OPCIONES_ESCOLARIDAD.forEach((v) => sel.insertAdjacentHTML("beforeend", `<option value="${v}">${v}</option>`));
+  });
 
   function escaparHtml(s) {
     return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
@@ -1677,6 +1617,21 @@ AUTH_READY.then(async function () {
     }
     primero.focus();
     msgEl.textContent = "Elige una opción de la lista en: " + malos.map(el => NOMBRES_CAMPO[el.id]).join(", ") + ".";
+    msgEl.className = "form-msg error";
+    return false;
+  }
+
+  // Campos basicos obligatorios ademas de cedula/nombre (que ya se validan
+  // aparte): area, cargo, tipo de documento, fecha de nacimiento y fecha de
+  // ingreso. El resto de los ~60 campos RRHH se queda opcional.
+  const OBLIGATORIOS_BASICOS = [
+    ["area", "Área"], ["cargo", "Cargo"], ["tipo-documento", "Tipo Documento"],
+    ["fecha-nacimiento", "Fecha de Nacimiento"], ["fecha-ingreso", "Fecha Ingreso"],
+  ];
+  function validarObligatorios(prefijo, msgEl) {
+    const faltantes = OBLIGATORIOS_BASICOS.filter(([id]) => !document.getElementById(`${prefijo}-${id}`).value.trim());
+    if (faltantes.length === 0) return true;
+    msgEl.textContent = "Completa los campos obligatorios: " + faltantes.map(([, etiqueta]) => etiqueta).join(", ") + ".";
     msgEl.className = "form-msg error";
     return false;
   }
@@ -1790,6 +1745,7 @@ AUTH_READY.then(async function () {
       msg.className = "form-msg error";
       return;
     }
+    if (!validarObligatorios("f", msg)) return;
 
     if (!validarComboboxes(form, msg)) return;
 
@@ -1854,6 +1810,8 @@ AUTH_READY.then(async function () {
       const tab = btn.dataset.tab;
       document.getElementById("card-agregar-empleado").hidden = tab !== "agregar";
       document.getElementById("card-editar-empleado").hidden = tab !== "editar";
+      document.getElementById("card-chequeo-empleado").hidden = tab !== "chequeo";
+      document.getElementById("card-dotacion-empleado").hidden = tab !== "dotacion";
       document.getElementById("card-empleados-registrados").hidden = tab !== "registrados";
     });
   });
@@ -1894,6 +1852,7 @@ AUTH_READY.then(async function () {
     asegurarOpcion("e-labor", emp.labor);
     asegurarOpcion("e-cargo", emp.cargo);
     asegurarOpcion("e-motivo-retiro", emp.motivo_retiro);
+    asegurarOpcion("e-escolaridad", emp.escolaridad);
     document.getElementById("e-cedula").value = emp.cedula;
     document.getElementById("e-nombre").value = emp.nombre || "";
     document.getElementById("e-area").value = emp.area || "";
@@ -2014,6 +1973,7 @@ AUTH_READY.then(async function () {
       editarMsg.className = "form-msg error";
       return;
     }
+    if (!validarObligatorios("e", editarMsg)) return;
 
     if (!validarComboboxes(formEditar, editarMsg)) return;
 
@@ -2070,6 +2030,157 @@ AUTH_READY.then(async function () {
     elBuscarCedula.value = cedula;
     buscarEmpleados(String(cedula));
   }
+
+  // ---------- Lista de Chequeo y Dotacion ----------
+  // Mismo patron de busqueda que Editar empleado (buscar cedula/nombre,
+  // elegir si hay varias coincidencias, cargar), pero cada pestaña solo
+  // carga/guarda su propio subconjunto de campos con un PATCH propio --
+  // asi no se pisan entre si ni con el formulario completo de Editar.
+  function crearPestanaSubconjunto({ prefijo, seccion, campos, esCheckbox, nombreSeccion }) {
+    const elBuscar = document.getElementById(`${prefijo}-buscar-cedula`);
+    const form = document.getElementById(`form-${seccion}-empleado`);
+    const elResultados = document.getElementById(`${seccion}-resultados`);
+    const buscarMsg = document.getElementById(`${seccion}-buscar-msg`);
+    const msg = document.getElementById(`form-${seccion}-msg`);
+    const elNombre = document.getElementById(`${seccion}-empleado-nombre`);
+    let cedulaActual = null;
+    let resultados = [];
+
+    function cargar(emp) {
+      elResultados.hidden = true;
+      cedulaActual = emp.cedula;
+      elNombre.textContent = `${emp.cedula} — ${emp.nombre}`;
+      campos.forEach((campo) => {
+        const el = document.getElementById(idRrhh(prefijo, campo));
+        const valor = emp[campo];
+        if (esCheckbox) {
+          const v = (valor ?? "").toString().trim().toUpperCase();
+          el.checked = v !== "" && v !== "NO";
+        } else {
+          el.value = valor ?? "";
+        }
+      });
+      form.hidden = false;
+    }
+
+    async function buscar(termino) {
+      form.hidden = true;
+      msg.textContent = "";
+      elResultados.hidden = true;
+      elResultados.innerHTML = "";
+      buscarMsg.textContent = "Buscando...";
+      buscarMsg.className = "form-msg";
+      try {
+        const params = new URLSearchParams();
+        params.set("select", "cedula,nombre," + campos.join(","));
+        if (/^\d+$/.test(termino)) params.set("cedula_texto", "ilike.*" + termino + "*");
+        else params.set("nombre", "ilike.*" + termino.replace(/[,()]/g, "") + "*");
+        params.set("order", "nombre.asc");
+        params.set("limit", "20");
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?${params.toString()}`, { headers: authHeaders() });
+        const filas = await resp.json();
+        if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+        if (!filas.length) {
+          buscarMsg.textContent = `No se encontró ningún empleado con "${termino}".`;
+          buscarMsg.className = "form-msg error";
+          return;
+        }
+        if (filas.length === 1) {
+          buscarMsg.textContent = "";
+          cargar(filas[0]);
+          return;
+        }
+        resultados = filas;
+        buscarMsg.textContent = `${filas.length} coincidencias, elige un empleado.`;
+        buscarMsg.className = "form-msg";
+        elResultados.innerHTML = filas.map(f => `<button type="button" class="resultado-item" data-cedula="${f.cedula}"><span class="ced">${f.cedula}</span>${f.nombre}</button>`).join("");
+        elResultados.hidden = false;
+      } catch (err) {
+        buscarMsg.textContent = "Error al buscar: " + (err.message || err);
+        buscarMsg.className = "form-msg error";
+      }
+    }
+
+    elResultados.addEventListener("click", (e) => {
+      const btn = e.target.closest(".resultado-item");
+      if (!btn) return;
+      const emp = resultados.find(f => String(f.cedula) === btn.dataset.cedula);
+      if (emp) cargar(emp);
+    });
+
+    document.getElementById(`btn-buscar-${seccion}`).addEventListener("click", () => {
+      const termino = elBuscar.value.trim();
+      if (!termino) {
+        buscarMsg.textContent = "Escribe una cédula o un nombre.";
+        buscarMsg.className = "form-msg error";
+        return;
+      }
+      buscar(termino);
+    });
+    elBuscar.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") { e.preventDefault(); document.getElementById(`btn-buscar-${seccion}`).click(); }
+    });
+
+    document.getElementById(`btn-limpiar-${seccion}`).addEventListener("click", () => {
+      elBuscar.value = "";
+      elResultados.hidden = true;
+      elResultados.innerHTML = "";
+      form.hidden = true;
+      form.reset();
+      cedulaActual = null;
+      buscarMsg.textContent = "";
+      buscarMsg.className = "form-msg";
+      msg.textContent = "";
+      msg.className = "form-msg";
+      elBuscar.focus();
+    });
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!cedulaActual) return;
+      const cambios = {};
+      campos.forEach((campo) => {
+        const el = document.getElementById(idRrhh(prefijo, campo));
+        cambios[campo] = esCheckbox ? (el.checked ? "SI" : "NO") : (el.value.trim() || null);
+      });
+      const btn = form.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      msg.textContent = "Guardando...";
+      msg.className = "form-msg";
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedulaActual}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify(cambios),
+        });
+        const resultado = await resp.json();
+        if (!resp.ok) throw new Error(resultado.message || `HTTP ${resp.status}`);
+        if (!Array.isArray(resultado) || resultado.length === 0) {
+          throw new Error("No se guardó ningún cambio: no se encontró el empleado o no tienes permiso para editarlo.");
+        }
+        msg.textContent = `${nombreSeccion} guardada correctamente.`;
+        msg.className = "form-msg ok";
+      } catch (err) {
+        msg.textContent = "No se pudo guardar: " + (err.message || err);
+        msg.className = "form-msg error";
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
+  const CAMPOS_CHEQUEO = [
+    "carnet_arl", "exm_ingreso", "doc_contrato", "claus_mod", "doc_cc", "hv_formato_sayonara",
+    "cert_est", "entrevista", "visita_domiciliaria", "estudio_seguridad", "antecedentes",
+    "doc_beneficiarios", "afi_eps", "afi_afp", "afi_arl", "afi_comfama", "induccion",
+  ];
+  const CAMPOS_DOTACION = [
+    "camisa_blanca", "camibuso", "sudadera", "jean", "antifluido", "zapato_normal",
+    "zapato_punta_acero", "zapato_dielectrico", "jumbo", "croydon", "bota", "bota_royal",
+    "bota_cana_alta", "bota_pvc_puntera", "overol",
+  ];
+  crearPestanaSubconjunto({ prefijo: "c", seccion: "chequeo", campos: CAMPOS_CHEQUEO, esCheckbox: false, nombreSeccion: "Lista de chequeo" });
+  crearPestanaSubconjunto({ prefijo: "d", seccion: "dotacion", campos: CAMPOS_DOTACION, esCheckbox: true, nombreSeccion: "Dotación" });
 
   // ---------- confirmacion en popup (reemplaza confirm() nativo) ----------
   const modalOverlay = document.getElementById("modal-confirmar");
