@@ -326,7 +326,7 @@
 AUTH_READY.then(async function () {
   if (!requierePagina("ausentismo")) return;
   pintarSesion("sesion-box");
-  const puedeEditar = ["admin", "nomina"].includes(window.SESION.rol);
+  const puedeEditar = ["admin", "nomina", "rrhh", "super_admin"].includes(window.SESION.rol);
 
   filtrarSidebar();
 
