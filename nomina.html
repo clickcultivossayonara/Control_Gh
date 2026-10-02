@@ -187,6 +187,23 @@
   th:nth-child(7), td:nth-child(7) { width: 9%; }
   th:nth-child(8), td:nth-child(8) { width: 16%; }
   th:nth-child(9), td:nth-child(9) { width: 10%; }
+
+  /* Consulta de nomina: 10 columnas (con Horas Esperadas). Anchos propios
+     que suman 100% y min-width mayor para que ninguna columna quede
+     recortada ni fuera de vista; los encabezados largos se parten en dos
+     lineas en vez de cortarse. */
+  #tabla-nomina { min-width: 1260px; }
+  #tabla-nomina thead th { white-space: normal; line-height: 1.25; vertical-align: bottom; }
+  #tabla-nomina th:nth-child(1), #tabla-nomina td:nth-child(1) { width: 8%; }
+  #tabla-nomina th:nth-child(2), #tabla-nomina td:nth-child(2) { width: 6%; }
+  #tabla-nomina th:nth-child(3), #tabla-nomina td:nth-child(3) { width: 8%; }
+  #tabla-nomina th:nth-child(4), #tabla-nomina td:nth-child(4) { width: 20%; }
+  #tabla-nomina th:nth-child(5), #tabla-nomina td:nth-child(5) { width: 11%; }
+  #tabla-nomina th:nth-child(6), #tabla-nomina td:nth-child(6) { width: 7%; }
+  #tabla-nomina th:nth-child(7), #tabla-nomina td:nth-child(7) { width: 8%; }
+  #tabla-nomina th:nth-child(8), #tabla-nomina td:nth-child(8) { width: 8%; }
+  #tabla-nomina th:nth-child(9), #tabla-nomina td:nth-child(9) { width: 16%; }
+  #tabla-nomina th:nth-child(10), #tabla-nomina td:nth-child(10) { width: 8%; }
   .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
   .nombre { font-weight: 500; }
   .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
@@ -319,7 +336,7 @@
       </div>
     </div>
     <div class="table-scroll">
-      <table>
+      <table id="tabla-nomina">
         <thead>
           <tr>
             <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
