@@ -101,6 +101,27 @@
   h2 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 19px; margin: 0 0 4px; }
   .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 18px; }
 
+  .popup-biometrico {
+    position: fixed; inset: 0; background: rgba(20, 24, 15, 0.5); display: flex; align-items: center;
+    justify-content: center; padding: 20px; z-index: 60;
+  }
+  .popup-biometrico[hidden] { display: none; }
+  .popup-biometrico .caja {
+    background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); max-width: 520px; width: 100%;
+    max-height: 85vh; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 12px;
+    border-top: 4px solid var(--critical);
+  }
+  .popup-biometrico h3 { margin: 0; font-size: 17px; color: var(--critical); }
+  .popup-biometrico p { margin: 0; font-size: 13.5px; line-height: 1.45; }
+  .popup-biometrico ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .popup-biometrico li { background: var(--critical-soft); border-radius: 7px; padding: 8px 10px; font-size: 13px; }
+  .popup-biometrico li strong { display: block; }
+  .popup-biometrico li span { color: var(--ink-soft); font-size: 12.5px; }
+  .popup-biometrico .btn-cerrar {
+    align-self: flex-end; font: inherit; font-weight: 600; font-size: 13.5px; padding: 9px 20px; border: none;
+    border-radius: 7px; background: var(--accent); color: var(--accent-ink); cursor: pointer;
+  }
+
   .alerta-banner {
     display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 10px;
     background: var(--critical-soft); border: 1px solid var(--critical); color: var(--critical);
@@ -498,6 +519,16 @@
 
   <footer>Cultivos Sayonara &middot; datos guardados en vivo en Supabase</footer>
 </div>
+</div>
+
+<div class="popup-biometrico" id="popup-biometrico" hidden role="alertdialog" aria-modal="true" aria-labelledby="popup-bio-titulo">
+  <div class="caja">
+    <h3 id="popup-bio-titulo"></h3>
+    <p id="popup-bio-texto"></p>
+    <ul id="popup-bio-lista"></ul>
+    <p id="popup-bio-pie" style="color:var(--ink-soft);font-size:12.5px"></p>
+    <button type="button" class="btn-cerrar" id="popup-bio-cerrar">Entendido</button>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -966,6 +997,92 @@ AUTH_READY.then(async function () {
     }
   }
 
+  // ---------- Hora extra: contra la diferencia del biometrico ----------
+  // Los jefes cargan las horas extra dias despues. Antes de guardar se
+  // revisa, para cada colaborador, la DIFERENCIA de ese dia en el registro
+  // biometrico (horas trabajadas - horas esperadas): no se puede cargar mas
+  // horas extra de las que esa diferencia respalda (sumando las horas extra
+  // que ya tenga cargadas ese mismo dia). Tolerancia de 0.1 h (6 min) por el
+  // ruido normal de las marcaciones. Solo aplica a los codigos de hora
+  // extra; las demas novedades no se comparan contra el biometrico.
+  const TOLERANCIA_BIOMETRICO_H = 0.1;
+  const popupBio = document.getElementById("popup-biometrico");
+  document.getElementById("popup-bio-cerrar").addEventListener("click", () => { popupBio.hidden = true; });
+  popupBio.addEventListener("click", (e) => { if (e.target === popupBio) popupBio.hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") popupBio.hidden = true; });
+
+  function mostrarPopupBiometrico(problemas, horas, cod, fecha) {
+    const varios = problemas.length > 1;
+    document.getElementById("popup-bio-titulo").textContent = "Horas insuficientes en el biométrico";
+    document.getElementById("popup-bio-texto").textContent = varios
+      ? `Estos colaboradores no trabajaron la cantidad suficiente para el cargue de esta novedad (${horas} h de "${cod.codigo_descripcion}" el ${fecha}).`
+      : `Este colaborador no trabajó la cantidad suficiente para el cargue de esta novedad (${horas} h de "${cod.codigo_descripcion}" el ${fecha}).`;
+    document.getElementById("popup-bio-lista").innerHTML = problemas.map((p) =>
+      `<li><strong>${escaparTexto(p.nombre)}</strong><span>${escaparTexto(p.detalle)}</span></li>`).join("");
+    document.getElementById("popup-bio-pie").textContent =
+      "No se guardó nada. Quita a estos colaboradores de la selección o reduce las horas y vuelve a guardar.";
+    popupBio.hidden = false;
+    document.getElementById("popup-bio-cerrar").focus();
+  }
+  function escaparTexto(s) {
+    return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  // Devuelve la lista de colaboradores que NO respaldan las horas pedidas.
+  // Lanza error si no se puede consultar el biometrico (no se guarda a ciegas).
+  async function colaboradoresSinHorasSuficientes(cedulas, fecha, horas) {
+    // Chile no tiene dispositivo biometrico: no se puede comparar, se omite.
+    const aVerificar = cedulas.filter((c) => {
+      const e = empleadosPorCedula[c] || {};
+      return String(e.area || "").toUpperCase() !== "CHILE" && String(e.sede || "").toUpperCase() !== "CHILE";
+    });
+    if (aVerificar.length === 0) return [];
+    const lista = aVerificar.join(",");
+
+    const respBio = await fetch(
+      `${SUPABASE_URL}/rest/v1/registro_horas_detalle?select=cedula,diferencia_tiempo,horas_trabajadas&fecha=eq.${fecha}&cedula=in.(${lista})`,
+      { headers: authHeaders() });
+    if (!respBio.ok) throw new Error("No se pudo consultar el registro biométrico (HTTP " + respBio.status + ").");
+    const filasBio = await respBio.json();
+    const bioPorCedula = {};
+    filasBio.forEach((r) => { bioPorCedula[r.cedula] = r; });
+
+    // horas extra que ya tiene cargadas ese mismo dia
+    const siguiente = restarDias(fecha, -1);
+    const respYa = await fetch(
+      `${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?select=cedula,hora&cedula=in.(${lista})` +
+      `&codigo_novedad=in.(${CODIGOS_HORA_EXTRA.join(",")})&fecha_novedad=gte.${fecha}T00:00:00&fecha_novedad=lt.${siguiente}T00:00:00`,
+      { headers: authHeaders() });
+    if (!respYa.ok) throw new Error("No se pudieron consultar las horas extra ya cargadas (HTTP " + respYa.status + ").");
+    const yaCargadas = {};
+    (await respYa.json()).forEach((r) => { yaCargadas[r.cedula] = (yaCargadas[r.cedula] || 0) + Number(r.hora || 0); });
+
+    const problemas = [];
+    aVerificar.forEach((c) => {
+      const nombre = (empleadosPorCedula[c] || {}).nombre || String(c);
+      const bio = bioPorCedula[c];
+      if (!bio) {
+        problemas.push({ nombre, detalle: "Sin marcación en el biométrico ese día." });
+        return;
+      }
+      if (bio.diferencia_tiempo == null) {
+        problemas.push({ nombre, detalle: "Marcación incompleta ese día (falta entrada o salida), no se puede calcular la diferencia." });
+        return;
+      }
+      const dif = Number(bio.diferencia_tiempo);
+      const previas = yaCargadas[c] || 0;
+      if (previas + horas > dif + TOLERANCIA_BIOMETRICO_H) {
+        problemas.push({
+          nombre,
+          detalle: `Diferencia del biométrico: ${dif.toFixed(2)} h` +
+            (previas ? ` · ya tiene ${previas} h extra cargadas ese día` : "") +
+            ` · se intenta cargar ${horas} h.`,
+        });
+      }
+    });
+    return problemas;
+  }
+
   selCodigo.addEventListener("change", async () => {
     const c = codigosPorValor[selCodigo.value];
     inCodigoNovedad.value = c ? c.codigo : "";
@@ -1041,6 +1158,28 @@ AUTH_READY.then(async function () {
         msgNovedad.className = "form-msg error";
         return;
       }
+
+      // Contra la diferencia del biometrico (ver colaboradoresSinHorasSuficientes)
+      btnNovedad.disabled = true;
+      msgNovedad.textContent = "Verificando el registro biométrico...";
+      msgNovedad.className = "form-msg";
+      let sinHoras;
+      try {
+        sinHoras = await colaboradoresSinHorasSuficientes(cedulasSeleccionadas, inFecha.value, Number(inHora.value));
+      } catch (err) {
+        btnNovedad.disabled = false;
+        msgNovedad.textContent = "No se pudo verificar el biométrico, no se guardó nada: " + (err.message || err);
+        msgNovedad.className = "form-msg error";
+        return;
+      }
+      btnNovedad.disabled = false;
+      if (sinHoras.length > 0) {
+        msgNovedad.textContent = `${sinHoras.length} colaborador(es) sin horas suficientes en el biométrico. No se guardó nada.`;
+        msgNovedad.className = "form-msg error";
+        mostrarPopupBiometrico(sinHoras, Number(inHora.value), cod, inFecha.value);
+        return;
+      }
+      msgNovedad.textContent = "";
     }
 
     if (CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo)) {
