@@ -209,24 +209,21 @@
   #tabla-aus th:nth-child(8), #tabla-aus td:nth-child(8) { width: 19%; overflow: visible; }
   /* Texto largo: se parte en dos lineas en vez de cortarse con "..." (se debe ver toda la informacion). */
   #tabla-aus td:nth-child(4), #tabla-aus td:nth-child(5), #tabla-aus td:nth-child(6),
-  #tabla-rachas td:nth-child(1), #tabla-rachas td:nth-child(3), #tabla-rachas td:nth-child(4) {
+  #tabla-rachas td:nth-child(1) {
     white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; word-break: break-word;
   }
   #tabla-aus .chip { white-space: normal; line-height: 1.25; border-radius: 12px; }
 
-  /* Tabla de la alerta de ausencias seguidas (10 columnas, suman 100%). */
-  #tabla-rachas { min-width: 1150px; }
+  /* Tabla de la alerta de ausencias seguidas (7 columnas, suman 100%). */
+  #tabla-rachas { min-width: 760px; }
   #tabla-rachas thead th { white-space: normal; line-height: 1.25; vertical-align: bottom; }
-  #tabla-rachas th:nth-child(1), #tabla-rachas td:nth-child(1) { width: 17%; }
-  #tabla-rachas th:nth-child(2), #tabla-rachas td:nth-child(2) { width: 9%; }
+  #tabla-rachas th:nth-child(1), #tabla-rachas td:nth-child(1) { width: 32%; }
+  #tabla-rachas th:nth-child(2), #tabla-rachas td:nth-child(2) { width: 14%; }
   #tabla-rachas th:nth-child(3), #tabla-rachas td:nth-child(3) { width: 12%; }
-  #tabla-rachas th:nth-child(4), #tabla-rachas td:nth-child(4) { width: 17%; }
-  #tabla-rachas th:nth-child(5), #tabla-rachas td:nth-child(5) { width: 9%; }
-  #tabla-rachas th:nth-child(6), #tabla-rachas td:nth-child(6) { width: 7%; }
-  #tabla-rachas th:nth-child(7), #tabla-rachas td:nth-child(7) { width: 7%; }
-  #tabla-rachas th:nth-child(8), #tabla-rachas td:nth-child(8) { width: 6%; }
-  #tabla-rachas th:nth-child(9), #tabla-rachas td:nth-child(9) { width: 8%; }
-  #tabla-rachas th:nth-child(10), #tabla-rachas td:nth-child(10) { width: 8%; }
+  #tabla-rachas th:nth-child(4), #tabla-rachas td:nth-child(4) { width: 12%; }
+  #tabla-rachas th:nth-child(5), #tabla-rachas td:nth-child(5) { width: 10%; }
+  #tabla-rachas th:nth-child(6), #tabla-rachas td:nth-child(6) { width: 11%; }
+  #tabla-rachas th:nth-child(7), #tabla-rachas td:nth-child(7) { width: 9%; }
 
   .sel-novedad {
     width: 100%; max-width: 100%; font: inherit; font-size: 12px; font-weight: 600; padding: 5px 6px;
@@ -341,8 +338,8 @@
         <table id="tabla-rachas">
           <thead>
             <tr>
-              <th>Colaborador</th><th>Cédula</th><th>Área</th><th>Jefe</th><th>Teléfono</th>
-              <th>Desde</th><th>Hasta</th><th>Días seguidos</th><th>Última marcación</th><th>Estado</th>
+              <th>Colaborador</th><th>Cédula</th><th>Desde</th><th>Hasta</th>
+              <th>Días seguidos</th><th>Última marcación</th><th>Estado</th>
             </tr>
           </thead>
           <tbody id="rachas-tbody"></tbody>
@@ -739,13 +736,10 @@ AUTH_READY.then(async function () {
       `<button type="button" class="rachas-chip${k === grupoRachas ? " activo" : ""}" data-grupo="${k}">${g.etiqueta} (${cuenta(k)})</button>`).join("");
     const filas = rachas.filter(GRUPOS_RACHAS[grupoRachas].filtro);
     document.getElementById("rachas-tbody").innerHTML = filas.length === 0
-      ? `<tr><td colspan="10"><div class="empty-state">Ninguno en este grupo.</div></td></tr>`
+      ? `<tr><td colspan="7"><div class="empty-state">Ninguno en este grupo.</div></td></tr>`
       : filas.map((r) => `<tr>
           <td class="nombre" title="${escRach(r.nombre)}">${escRach(r.nombre)}</td>
           <td class="cedula">${r.cedula}</td>
-          <td title="${escRach(r.area)}">${escRach(r.area || "—")}</td>
-          <td title="${escRach(r.nombre_jefe)}">${escRach(r.nombre_jefe || "—")}</td>
-          <td class="num">${escRach(r.telefono || "—")}</td>
           <td class="num">${fmtFecha(r.desde)}</td>
           <td class="num">${fmtFecha(r.hasta)}</td>
           <td class="num dias">${r.dias}</td>
