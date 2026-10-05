@@ -197,14 +197,43 @@
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
   tbody tr:hover td { background: var(--accent-soft); }
 
-  th:nth-child(1), td:nth-child(1) { width: 7%; }
-  th:nth-child(2), td:nth-child(2) { width: 5%; }
-  th:nth-child(3), td:nth-child(3) { width: 9%; }
-  th:nth-child(4), td:nth-child(4) { width: 18%; }
-  th:nth-child(5), td:nth-child(5) { width: 13%; }
-  th:nth-child(6), td:nth-child(6) { width: 24%; }
-  th:nth-child(7), td:nth-child(7) { width: 6%; }
-  th:nth-child(8), td:nth-child(8) { width: 18%; }
+  /* Tabla principal (8 columnas). Los anchos van con #tabla-aus para que NO se
+     apliquen tambien a la tabla de la alerta de ausencias seguidas. */
+  #tabla-aus th:nth-child(1), #tabla-aus td:nth-child(1) { width: 8%; }
+  #tabla-aus th:nth-child(2), #tabla-aus td:nth-child(2) { width: 7%; }
+  #tabla-aus th:nth-child(3), #tabla-aus td:nth-child(3) { width: 9%; }
+  #tabla-aus th:nth-child(4), #tabla-aus td:nth-child(4) { width: 19%; }
+  #tabla-aus th:nth-child(5), #tabla-aus td:nth-child(5) { width: 12%; }
+  #tabla-aus th:nth-child(6), #tabla-aus td:nth-child(6) { width: 20%; }
+  #tabla-aus th:nth-child(7), #tabla-aus td:nth-child(7) { width: 6%; }
+  #tabla-aus th:nth-child(8), #tabla-aus td:nth-child(8) { width: 19%; overflow: visible; }
+  /* Texto largo: se parte en dos lineas en vez de cortarse con "..." (se debe ver toda la informacion). */
+  #tabla-aus td:nth-child(4), #tabla-aus td:nth-child(5), #tabla-aus td:nth-child(6),
+  #tabla-rachas td:nth-child(1), #tabla-rachas td:nth-child(3), #tabla-rachas td:nth-child(4) {
+    white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; word-break: break-word;
+  }
+  #tabla-aus .chip { white-space: normal; line-height: 1.25; border-radius: 12px; }
+
+  /* Tabla de la alerta de ausencias seguidas (10 columnas, suman 100%). */
+  #tabla-rachas { min-width: 1150px; }
+  #tabla-rachas thead th { white-space: normal; line-height: 1.25; vertical-align: bottom; }
+  #tabla-rachas th:nth-child(1), #tabla-rachas td:nth-child(1) { width: 17%; }
+  #tabla-rachas th:nth-child(2), #tabla-rachas td:nth-child(2) { width: 9%; }
+  #tabla-rachas th:nth-child(3), #tabla-rachas td:nth-child(3) { width: 12%; }
+  #tabla-rachas th:nth-child(4), #tabla-rachas td:nth-child(4) { width: 17%; }
+  #tabla-rachas th:nth-child(5), #tabla-rachas td:nth-child(5) { width: 9%; }
+  #tabla-rachas th:nth-child(6), #tabla-rachas td:nth-child(6) { width: 7%; }
+  #tabla-rachas th:nth-child(7), #tabla-rachas td:nth-child(7) { width: 7%; }
+  #tabla-rachas th:nth-child(8), #tabla-rachas td:nth-child(8) { width: 6%; }
+  #tabla-rachas th:nth-child(9), #tabla-rachas td:nth-child(9) { width: 8%; }
+  #tabla-rachas th:nth-child(10), #tabla-rachas td:nth-child(10) { width: 8%; }
+
+  .sel-novedad {
+    width: 100%; max-width: 100%; font: inherit; font-size: 12px; font-weight: 600; padding: 5px 6px;
+    border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .sel-novedad:hover { border-color: var(--accent); color: var(--accent); }
+  .sel-novedad:disabled { opacity: 0.5; cursor: wait; }
 
   .load-more-row td { text-align: center; padding: 14px; background: var(--paper) !important; }
   .load-more-btn {
@@ -220,6 +249,7 @@
   .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
   .chip.pendiente { background: var(--warn-soft); color: var(--warn); }
   .chip.injustificada { background: var(--critical-soft); color: var(--critical); }
+  .chip.justificada { background: var(--accent-soft); color: var(--accent); }
   .btn-small {
     font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px;
     border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
@@ -308,7 +338,7 @@
       <p class="rachas-hint">Más de 3 días hábiles seguidos sin marcar y sin una novedad que lo explique (domingos y festivos no cortan la racha). Para que RRHH y Nómina tomen medidas.</p>
       <div class="rachas-chips" id="rachas-chips" style="margin:10px 0"></div>
       <div class="table-scroll rachas-tabla">
-        <table>
+        <table id="tabla-rachas">
           <thead>
             <tr>
               <th>Colaborador</th><th>Cédula</th><th>Área</th><th>Jefe</th><th>Teléfono</th>
@@ -351,7 +381,7 @@
   </section>
 
   <div class="table-scroll">
-    <table>
+    <table id="tabla-aus">
       <thead>
         <tr>
           <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
@@ -423,38 +453,7 @@ AUTH_READY.then(async function () {
     const filasCod = await respCod.json();
     if (respCod.ok && Array.isArray(filasCod)) codigosAusencia = filasCod;
   } catch {}
-  const codigoInjustificada = codigosAusencia.find(c => (c.descripcion || "").toUpperCase().includes("INJUSTIFICADA"));
   const OPCIONES_NOVEDAD = [...new Set([NOVEDAD_PENDIENTE, ...codigosAusencia.map(c => c.descripcion)])];
-
-  let horasEsperadasDia = {};
-  try {
-    const respHoras = await fetch(`${SUPABASE_URL}/rest/v1/horas_esperadas_dia?select=dia_semana,horas`, { headers: authHeaders() });
-    const filasHoras = await respHoras.json();
-    if (respHoras.ok && Array.isArray(filasHoras)) filasHoras.forEach(f => { horasEsperadasDia[f.dia_semana] = f.horas; });
-  } catch {}
-
-  const DIAS_ES = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
-  function diaSemana(fechaStr) {
-    const [y, m, d] = fechaStr.split("-").map(Number);
-    return DIAS_ES[new Date(y, m - 1, d).getDay()];
-  }
-  function isoWeekNum(fechaStr) {
-    const [y, m, d] = fechaStr.split("-").map(Number);
-    const dt = new Date(Date.UTC(y, m - 1, d));
-    const dayNum = (dt.getUTCDay() + 6) % 7;
-    dt.setUTCDate(dt.getUTCDate() - dayNum + 3);
-    const primerJueves = new Date(Date.UTC(dt.getUTCFullYear(), 0, 4));
-    const diff = dt - primerJueves;
-    return 1 + Math.round(diff / (7 * 24 * 3600 * 1000));
-  }
-  function ahoraNaive() {
-    const d = new Date();
-    const pad = (n) => String(n).padStart(2, "0");
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-  }
-  function idUnico() {
-    return (crypto.randomUUID ? crypto.randomUUID() : Date.now() + "-" + Math.random().toString(16).slice(2));
-  }
 
   function crearMultiselect(containerId, opciones, etiquetaTodos, onChange) {
     const el = document.getElementById(containerId);
@@ -542,13 +541,28 @@ AUTH_READY.then(async function () {
     params.set("order", `${sortKey}.${sortDir === 1 ? "asc" : "desc"}`);
   }
 
+  // Todas las novedades de tipo Ausencia habilitadas (menos "pendiente por definir",
+  // que es el estado por defecto, no una novedad que se elija). "Injustificada" primero.
+  const NOVEDADES_ELEGIBLES = codigosAusencia
+    .filter((c) => c.codigo !== "APD")
+    .sort((a, b) => {
+      const ai = (a.descripcion || "").toUpperCase().includes("INJUSTIFICADA") ? 0 : 1;
+      const bi = (b.descripcion || "").toUpperCase().includes("INJUSTIFICADA") ? 0 : 1;
+      return ai - bi || (a.descripcion || "").localeCompare(b.descripcion || "", "es");
+    });
+  const escAttr = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+
   function filaHTML(r) {
     const pendiente = r.novedad === NOVEDAD_PENDIENTE;
+    const injustificada = String(r.novedad || "").toUpperCase().includes("INJUSTIFICADA");
     const chip = pendiente
       ? `<span class="chip pendiente">${NOVEDAD_PENDIENTE}</span>`
-      : `<span class="chip injustificada">${r.novedad}</span>`;
-    const accion = (puedeEditar && pendiente && codigoInjustificada)
-      ? `<button type="button" class="btn-small fila-marcar" data-id="${r.id}" data-cedula="${r.cedula}" data-fecha="${r.fecha}" data-nombre="${r.nombre}" data-area="${r.area}">Marcar injustificada</button>`
+      : `<span class="chip ${injustificada ? "injustificada" : "justificada"}">${r.novedad}</span>`;
+    const accion = (puedeEditar && NOVEDADES_ELEGIBLES.length)
+      ? `<select class="sel-novedad" data-cedula="${r.cedula}" data-fecha="${r.fecha}" data-nombre="${escAttr(r.nombre)}" data-actual="${escAttr(r.novedad)}" aria-label="Cambiar novedad">
+           <option value="">${pendiente ? "Definir novedad…" : "Cambiar novedad…"}</option>
+           ${NOVEDADES_ELEGIBLES.map((c) => `<option value="${escAttr(c.codigo)}"${(c.descripcion || "") === r.novedad ? " disabled" : ""}>${escAttr(c.descripcion)}</option>`).join("")}
+         </select>`
       : "";
     return `<tr data-id="${r.id}">
       <td class="num">${fmtFecha(r.fecha)}</td>
@@ -614,57 +628,34 @@ AUTH_READY.then(async function () {
     });
   });
 
+  // Cambiar la novedad de una ausencia por cualquiera de tipo Ausencia. La escritura la hace
+  // la funcion cambiar_novedad_ausencia (schema_cambiar_novedad_ausencia.sql): actualiza la
+  // novedad del dia si ya existe (no la duplica) o la crea, y valida el rol en la base de datos.
   if (puedeEditar) {
-    elBody.addEventListener("click", async (e) => {
-      if (!e.target.classList.contains("fila-marcar")) return;
-      if (!codigoInjustificada) { alert("No se encontró un código de novedad tipo Ausencia con \"injustificada\" en la descripción. Créalo en Configuraciones."); return; }
-      const { cedula, fecha, nombre, area } = e.target.dataset;
-      if (!confirm(`¿Registrar "${codigoInjustificada.descripcion}" para ${nombre} el ${fmtFecha(fecha)}? Esto crea la novedad en el módulo Novedades.`)) return;
-
-      e.target.disabled = true;
+    elBody.addEventListener("change", async (e) => {
+      const sel = e.target.closest(".sel-novedad");
+      if (!sel || !sel.value) return;
+      const { cedula, fecha, nombre, actual } = sel.dataset;
+      const elegida = NOVEDADES_ELEGIBLES.find((c) => c.codigo === sel.value);
+      const desde = actual && actual !== NOVEDAD_PENDIENTE ? ` (hoy: "${actual}")` : "";
+      if (!elegida || !confirm(`¿Registrar "${elegida.descripcion}" para ${nombre} el ${fmtFecha(fecha)}${desde}? Esto crea o actualiza la novedad en el módulo Novedades y Nómina.`)) {
+        sel.value = "";
+        return;
+      }
+      sel.disabled = true;
       try {
-        let emp = { sede: null, nombre_jefe: null, email_jefe: null, administrativo: false };
-        try {
-          const respEmp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?cedula=eq.${cedula}&select=sede,nombre_jefe,email_jefe,administrativo`, { headers: authHeaders() });
-          const filasEmp = await respEmp.json();
-          if (respEmp.ok && Array.isArray(filasEmp) && filasEmp[0]) emp = filasEmp[0];
-        } catch {}
-
-        const [anio, mes, diaNum] = fecha.split("-").map(Number);
-        const diaSemanaNum = new Date(anio, mes - 1, diaNum).getDay();
-        const horas = horasEsperadasDia[diaSemanaNum] ?? 0;
-
-        const registro = {
-          id_nomina: idUnico(),
-          cedula: Number(cedula),
-          nombre_colaborador: nombre,
-          area,
-          nombre_jefe: emp.nombre_jefe,
-          email_jefe: emp.email_jefe,
-          finca: emp.sede,
-          administrativo: emp.administrativo,
-          codigo_descripcion: codigoInjustificada.codigo_descripcion,
-          codigo_novedad: codigoInjustificada.codigo,
-          descripcion_novedad: codigoInjustificada.descripcion,
-          tipo_novedad: codigoInjustificada.tipo,
-          codigo: codigoInjustificada.codigo_nomina,
-          fecha_novedad: fecha + "T00:00:00",
-          dia: diaSemana(fecha),
-          semana: isoWeekNum(fecha),
-          hora: horas,
-          fecha_creacion: ahoraNaive(),
-        };
-
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/novedades_nomina`, {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/cambiar_novedad_ausencia`, {
           method: "POST",
-          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
-          body: JSON.stringify([registro]),
+          headers: { ...authHeaders(), "Content-Type": "application/json" },
+          body: JSON.stringify({ p_cedula: Number(cedula), p_fecha: fecha, p_codigo: elegida.codigo }),
         });
-        if (!resp.ok) throw new Error(await resp.text());
+        const datos = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(datos.message || `HTTP ${resp.status}`);
         cargar();
       } catch (err) {
         alert("No se pudo registrar la novedad: " + (err.message || err));
-        e.target.disabled = false;
+        sel.value = "";
+        sel.disabled = false;
       }
     });
   }
