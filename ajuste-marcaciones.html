@@ -400,9 +400,10 @@
     </div>
     <div id="maj-campos">
       <div class="filters">
-        <div class="field grow"><label for="maj-entrada">Entrada</label><input type="datetime-local" id="maj-entrada" step="1"></div>
-        <div class="field grow"><label for="maj-salida">Salida</label><input type="datetime-local" id="maj-salida" step="1"></div>
+        <div class="field grow"><label for="maj-entrada">Hora de entrada</label><input type="time" id="maj-entrada" step="1"></div>
+        <div class="field grow"><label for="maj-salida">Hora de salida</label><input type="time" id="maj-salida" step="1"></div>
       </div>
+      <p class="sub" id="maj-hint" style="margin-top:8px">Solo se corrigen las horas; el día del registro no cambia. Si la salida es menor o igual a la entrada se toma como salida del día siguiente (turno nocturno).</p>
       <div class="preview" id="maj-preview" style="margin-top:10px"></div>
     </div>
     <div class="field">
@@ -558,24 +559,39 @@ AUTH_READY.then(async function () {
 
   // ---------- modal (editar / crear / revertir) ----------
   let ctx = null;
-  const dtLocal = (naive) => naive ? String(naive).slice(0, 19) : "";
+  // Solo se editan HORAS: el dia es el del registro y no se puede cambiar.
+  const horaDe = (naive) => naive ? String(naive).slice(11, 19) : "";
+  const normHora = (t) => !t ? "" : (t.length === 5 ? t + ":00" : t);
+  const sumarDia = (fecha, n) => { const d = new Date(fecha + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+  function calcularMarcas() {
+    const orig = ctx && ctx.modo === "editar" ? ctx.reg : null;
+    const fecha = orig ? String(orig.fecha).slice(0, 10) : $("maj-fecha").value;
+    const te = normHora($("maj-entrada").value), ts = normHora($("maj-salida").value);
+    // si la hora no se toco, se conserva el valor original tal cual (incluida su fecha)
+    let entrada = te && fecha ? `${fecha}T${te}` : null;
+    if (te && orig && orig.hora_entrada && horaDe(orig.hora_entrada) === te) entrada = String(orig.hora_entrada).slice(0, 19);
+    let salida = null;
+    if (ts && fecha) {
+      if (orig && orig.hora_salida && horaDe(orig.hora_salida) === ts) salida = String(orig.hora_salida).slice(0, 19);
+      else salida = `${te && ts <= te ? sumarDia(fecha, 1) : fecha}T${ts}`;
+    }
+    return { entrada, salida, fecha, diaSiguiente: !!(salida && fecha && salida.slice(0, 10) !== fecha) };
+  }
   function previewHoras() {
-    const e = $("maj-entrada").value, s = $("maj-salida").value;
+    const { entrada: e, salida: s, diaSiguiente } = calcularMarcas();
     const esperadas = ctx && ctx.reg ? ctx.reg.horas_esperadas : null;
     let t;
     if (e && s) {
       const h = (new Date(s) - new Date(e)) / 3600000;
-      if (h <= 0) t = "⚠ La salida debe ser posterior a la entrada.";
-      else {
-        t = `Horas trabajadas: <strong>${h.toFixed(2)}</strong>`;
-        if (esperadas != null) { const d = h - Number(esperadas); t += ` · Esperadas: ${Number(esperadas).toFixed(2)} · Diferencia: <strong>${d > 0 ? "+" : ""}${d.toFixed(2)}</strong>`; }
-        else t += " · la diferencia se calcula al guardar con las horas esperadas de ese día";
-      }
+      t = `Horas trabajadas: <strong>${h.toFixed(2)}</strong>${diaSiguiente ? " (salida al día siguiente)" : ""}`;
+      if (esperadas != null) { const d = h - Number(esperadas); t += ` · Esperadas: ${Number(esperadas).toFixed(2)} · Diferencia: <strong>${d > 0 ? "+" : ""}${d.toFixed(2)}</strong>`; }
+      else t += " · la diferencia se calcula al guardar con las horas esperadas de ese día";
+      if (h > 16) t += `<br>⚠ Más de 16 horas: revisa que las horas estén bien digitadas.`;
     } else if (e || s) t = `Estado resultante: <strong>${e ? "sin_salida" : "sin_entrada"}</strong> (no se calculan horas).`;
-    else t = "Indica al menos la entrada o la salida.";
+    else t = "Indica al menos la hora de entrada o la de salida.";
     $("maj-preview").innerHTML = t;
   }
-  ["maj-entrada", "maj-salida"].forEach((id) => $(id).addEventListener("input", previewHoras));
+  ["maj-entrada", "maj-salida", "maj-fecha"].forEach((id) => $(id).addEventListener("input", previewHoras));
 
   let tEmp;
   $("maj-cedula").addEventListener("input", () => {
@@ -599,8 +615,8 @@ AUTH_READY.then(async function () {
     $("maj-guardar").classList.toggle("btn-peligro", c.modo === "revertir");
     if (c.modo === "editar") {
       $("maj-titulo").textContent = "Ajustar marcación";
-      $("maj-sub").textContent = `${c.reg.nombre} (${c.reg.cedula}) · ${fmtFecha(c.reg.fecha)} · estado actual: ${c.reg.estado}`;
-      $("maj-entrada").value = dtLocal(c.reg.hora_entrada); $("maj-salida").value = dtLocal(c.reg.hora_salida);
+      $("maj-sub").textContent = `${c.reg.nombre} (${c.reg.cedula}) · día ${fmtFecha(c.reg.fecha)} (fijo) · estado actual: ${c.reg.estado}`;
+      $("maj-entrada").value = horaDe(c.reg.hora_entrada); $("maj-salida").value = horaDe(c.reg.hora_salida);
       $("maj-guardar").textContent = "Guardar ajuste";
     } else if (c.modo === "crear") {
       $("maj-titulo").textContent = "Crear registro de un día sin marcación";
@@ -636,15 +652,14 @@ AUTH_READY.then(async function () {
         toast("Ajuste revertido.");
         cargarHistorial();
       } else {
-        const entrada = $("maj-entrada").value || null, salida = $("maj-salida").value || null;
         let cedula, fecha;
-        if (ctx.modo === "editar") { cedula = ctx.reg.cedula; fecha = ctx.reg.fecha; }
+        if (ctx.modo === "editar") { cedula = ctx.reg.cedula; fecha = String(ctx.reg.fecha).slice(0, 10); }
         else {
           cedula = $("maj-cedula").value.trim(); fecha = $("maj-fecha").value;
           if (!/^\d+$/.test(cedula) || !fecha) { $("maj-guardar").disabled = false; return falla("Indica la cédula y el día."); }
         }
-        if (!entrada && !salida) { $("maj-guardar").disabled = false; return falla("Indica al menos la entrada o la salida."); }
-        if (entrada && salida && new Date(salida) <= new Date(entrada)) { $("maj-guardar").disabled = false; return falla("La salida debe ser posterior a la entrada."); }
+        const { entrada, salida } = calcularMarcas();
+        if (!entrada && !salida) { $("maj-guardar").disabled = false; return falla("Indica al menos la hora de entrada o la de salida."); }
         await rpc("ajustar_registro_horas", { p_cedula: Number(cedula), p_fecha: fecha, p_entrada: entrada, p_salida: salida, p_motivo: motivo });
         toast(ctx.modo === "crear" ? "Registro creado." : "Ajuste guardado.");
         if (ctx.modo === "crear") { $("f-texto").value = cedula; $("f-desde").value = fecha; $("f-hasta").value = fecha; }
