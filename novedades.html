@@ -1362,12 +1362,8 @@ AUTH_READY.then(async function () {
   const msSemanaNovedad = crearMultiselect("ln-semana", "Todas", () => cargarListaNovedades());
   msSemanaNovedad.establecerOpciones(Array.from({ length: 53 }, (_, i) => [String(i + 1), String(i + 1)]));
 
-  // Predeterminado: semana actual seleccionada.
-  const lnSemanaActualChk = document.querySelector(`#ln-semana input[value="${isoWeekNum(fechaHoy())}"]`);
-  if (lnSemanaActualChk) {
-    lnSemanaActualChk.checked = true;
-    lnSemanaActualChk.dispatchEvent(new Event("change"));
-  }
+  // Sin filtro de semana por defecto: la lista de Novedades registradas abre mostrando
+  // todas las semanas (las mas recientes primero); el filtro es opcional.
 
   async function cargarListaNovedades() {
     const params = new URLSearchParams();
