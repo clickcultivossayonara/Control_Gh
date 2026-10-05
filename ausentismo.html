@@ -209,21 +209,22 @@
   #tabla-aus th:nth-child(8), #tabla-aus td:nth-child(8) { width: 19%; overflow: visible; }
   /* Texto largo: se parte en dos lineas en vez de cortarse con "..." (se debe ver toda la informacion). */
   #tabla-aus td:nth-child(4), #tabla-aus td:nth-child(5), #tabla-aus td:nth-child(6),
-  #tabla-rachas td:nth-child(1) {
+  #tabla-rachas td:nth-child(1), #tabla-rachas td:nth-child(3) {
     white-space: normal; overflow: visible; text-overflow: clip; line-height: 1.3; word-break: break-word;
   }
   #tabla-aus .chip { white-space: normal; line-height: 1.25; border-radius: 12px; }
 
-  /* Tabla de la alerta de ausencias seguidas (7 columnas, suman 100%). */
-  #tabla-rachas { min-width: 760px; }
+  /* Tabla de la alerta de ausencias seguidas (8 columnas, suman 100%). */
+  #tabla-rachas { min-width: 900px; }
   #tabla-rachas thead th { white-space: normal; line-height: 1.25; vertical-align: bottom; }
-  #tabla-rachas th:nth-child(1), #tabla-rachas td:nth-child(1) { width: 32%; }
-  #tabla-rachas th:nth-child(2), #tabla-rachas td:nth-child(2) { width: 14%; }
-  #tabla-rachas th:nth-child(3), #tabla-rachas td:nth-child(3) { width: 12%; }
-  #tabla-rachas th:nth-child(4), #tabla-rachas td:nth-child(4) { width: 12%; }
+  #tabla-rachas th:nth-child(1), #tabla-rachas td:nth-child(1) { width: 25%; }
+  #tabla-rachas th:nth-child(2), #tabla-rachas td:nth-child(2) { width: 11%; }
+  #tabla-rachas th:nth-child(3), #tabla-rachas td:nth-child(3) { width: 17%; }
+  #tabla-rachas th:nth-child(4), #tabla-rachas td:nth-child(4) { width: 10%; }
   #tabla-rachas th:nth-child(5), #tabla-rachas td:nth-child(5) { width: 10%; }
-  #tabla-rachas th:nth-child(6), #tabla-rachas td:nth-child(6) { width: 11%; }
-  #tabla-rachas th:nth-child(7), #tabla-rachas td:nth-child(7) { width: 9%; }
+  #tabla-rachas th:nth-child(6), #tabla-rachas td:nth-child(6) { width: 8%; }
+  #tabla-rachas th:nth-child(7), #tabla-rachas td:nth-child(7) { width: 11%; }
+  #tabla-rachas th:nth-child(8), #tabla-rachas td:nth-child(8) { width: 8%; }
 
   .sel-novedad {
     width: 100%; max-width: 100%; font: inherit; font-size: 12px; font-weight: 600; padding: 5px 6px;
@@ -338,7 +339,7 @@
         <table id="tabla-rachas">
           <thead>
             <tr>
-              <th>Colaborador</th><th>Cédula</th><th>Desde</th><th>Hasta</th>
+              <th>Colaborador</th><th>Cédula</th><th>Área</th><th>Desde</th><th>Hasta</th>
               <th>Días seguidos</th><th>Última marcación</th><th>Estado</th>
             </tr>
           </thead>
@@ -736,10 +737,11 @@ AUTH_READY.then(async function () {
       `<button type="button" class="rachas-chip${k === grupoRachas ? " activo" : ""}" data-grupo="${k}">${g.etiqueta} (${cuenta(k)})</button>`).join("");
     const filas = rachas.filter(GRUPOS_RACHAS[grupoRachas].filtro);
     document.getElementById("rachas-tbody").innerHTML = filas.length === 0
-      ? `<tr><td colspan="7"><div class="empty-state">Ninguno en este grupo.</div></td></tr>`
+      ? `<tr><td colspan="8"><div class="empty-state">Ninguno en este grupo.</div></td></tr>`
       : filas.map((r) => `<tr>
           <td class="nombre" title="${escRach(r.nombre)}">${escRach(r.nombre)}</td>
           <td class="cedula">${r.cedula}</td>
+          <td title="${escRach(r.area)}">${escRach(r.area || "—")}</td>
           <td class="num">${fmtFecha(r.desde)}</td>
           <td class="num">${fmtFecha(r.hasta)}</td>
           <td class="num dias">${r.dias}</td>
@@ -782,14 +784,11 @@ AUTH_READY.then(async function () {
     });
     document.getElementById("btn-rachas-excel").addEventListener("click", () => {
       const filas = rachas.map((r) => ({
-        "Grupo": r.en_curso ? (r.sin_marcaciones ? "Sin marcaciones en 90 días" : "Siguen ausentes") : "Ya regresaron / terminaron",
-        "Colaborador": r.nombre, "Cédula": r.cedula, "Área": r.area || "", "Jefe": r.nombre_jefe || "",
-        "Teléfono": r.telefono || "", "Desde": r.desde, "Hasta": r.hasta, "Días seguidos": r.dias,
-        "Injustificadas": r.injustificadas, "Pendientes por definir": r.pendientes,
-        "Última marcación": r.ultima_marcacion || "Nunca", "Estado": r.en_curso ? "En curso" : "Terminada",
+        "Colaborador": r.nombre, "Cédula": r.cedula, "Área": r.area || "", "Desde": r.desde, "Hasta": r.hasta,
+        "Días seguidos": r.dias, "Última marcación": r.ultima_marcacion || "Nunca", "Estado": r.en_curso ? "En curso" : "Terminada",
       }));
       const ws = XLSX.utils.json_to_sheet(filas);
-      ws["!cols"] = [{ wch: 26 }, { wch: 32 }, { wch: 12 }, { wch: 20 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 13 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 10 }];
+      ws["!cols"] = [{ wch: 36 }, { wch: 13 }, { wch: 28 }, { wch: 12 }, { wch: 12 }, { wch: 13 }, { wch: 17 }, { wch: 10 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Ausencias consecutivas");
       XLSX.writeFile(wb, `ausencias_consecutivas_${new Date().toISOString().slice(0, 10)}.xlsx`);
