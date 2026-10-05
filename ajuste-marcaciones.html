@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ajuste de marcaciones — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; align-items: stretch; }
+
+  /* ---------------- menu lateral ---------------- */
+  .sidebar {
+    width: 264px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    transition: width 0.16s ease;
+  }
+  .sidebar.colapsado { width: 64px; }
+  .sidebar-top { display: flex; align-items: center; gap: 10px; padding: 16px 14px; border-bottom: 1px solid var(--line); min-height: 28px; }
+  .sidebar.colapsado .sidebar-top { justify-content: center; padding: 16px 10px; }
+  .sidebar-logo { height: 26px; width: auto; flex-shrink: 0; border-radius: 4px; }
+  .sidebar-brand { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-toggle {
+    margin-left: auto; background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 6px;
+    display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0;
+  }
+  .sidebar.colapsado .sidebar-toggle { margin-left: 0; }
+  .sidebar-toggle:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-toggle svg { width: 18px; height: 18px; }
+
+  .sidebar-nav { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; text-decoration: none;
+    color: var(--ink-soft); font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden;
+  }
+  .sidebar-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-link span { overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-link:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-link.activo { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .sidebar.colapsado .sidebar-link { justify-content: center; padding: 9px; }
+  .sidebar.colapsado .sidebar-link span { display: none; }
+
+  .sidebar-footer { border-top: 1px solid var(--line); padding: 10px 10px; }
+  .sidebar.colapsado .sidebar-footer { padding: 10px 6px; }
+  .sidebar-footer .sesion-box {
+    display: flex !important; flex-direction: column !important; align-items: flex-start !important;
+    gap: 8px !important; justify-content: flex-start !important; margin-top: 0 !important;
+  }
+  .sidebar.colapsado .sidebar-footer .sesion-usuario { display: none; }
+  .sidebar-footer .sesion-usuario { white-space: normal; line-height: 1.4; }
+  .sidebar.colapsado .sidebar-footer .sesion-salir { width: 100%; padding: 8px 0; }
+
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(20, 24, 15, 0.45); z-index: 40; }
+  .sidebar-backdrop.visible { display: block; }
+  .menu-toggle-movil {
+    display: none; position: fixed; top: 14px; left: 14px; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer;
+    color: var(--ink-soft); padding: 8px; align-items: center; justify-content: center; box-shadow: var(--shadow);
+  }
+  .menu-toggle-movil:hover { border-color: var(--accent); color: var(--accent); }
+  .menu-toggle-movil svg { width: 20px; height: 20px; }
+
+  .page-content { flex: 1; min-width: 0; display: flex; justify-content: center; }
+  .wrap { width: 100%; max-width: 1240px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 16px; }
+  .page-header { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+  .page-header .page-logo { height: 36px; width: auto; }
+  .page-header .page-brand { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+  .page-header h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(24px, 3.4vw, 32px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; }
+
+  /* ---------------- responsive: tablet y celular ---------------- */
+  @media (max-width: 880px) {
+    body { display: block; }
+    .sidebar {
+      position: fixed; left: 0; top: 0; width: 270px !important; height: 100vh;
+      transform: translateX(-100%); transition: transform 0.2s ease; z-index: 50;
+    }
+    .sidebar.abierto-movil { transform: translateX(0); }
+    .sidebar.colapsado .sidebar-link span,
+    .sidebar.colapsado .sidebar-brand,
+    .sidebar.colapsado .sesion-usuario { display: initial; }
+    .sidebar.colapsado .sidebar-top { justify-content: flex-start; padding: 16px 14px; }
+    .sidebar.colapsado .sidebar-link { justify-content: flex-start; padding: 9px 10px; }
+    .sidebar-toggle { display: none; }
+    .menu-toggle-movil { display: flex; }
+    .page-content { display: block; }
+    .wrap { max-width: none; padding-top: 64px; }
+  }
+  @media (max-width: 520px) {
+    .page-header h1 { font-size: 21px; }
+    .filters { flex-direction: column; align-items: stretch; }
+    .filters .field, .filters .multiselect, .ms-trigger, .field input { width: 100%; min-width: 0; }
+    .result-count { margin-left: 0; }
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; }
+  .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 14px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field input[type=text], .field input[type=date] {
+    font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); cursor: pointer; min-width: 150px; text-align: left;
+  }
+  .ms-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--shadow); max-height: 260px; overflow-y: auto;
+    min-width: 240px; padding: 6px; }
+  .multiselect.open .ms-panel { display: block; }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 8px;
+    margin-bottom: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink);
+  }
+  .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .ms-option { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { accent-color: var(--accent); }
+
+  .clear-btn, .btn-export {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 7px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover, .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-export:disabled { opacity: 0.5; cursor: wait; }
+
+  .rachas-alerta {
+    border: 1px solid var(--critical-soft); border-left: 4px solid var(--critical); border-radius: var(--radius);
+    background: var(--surface); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .rachas-alerta[hidden] { display: none; }
+  .rachas-alerta.ok { border-left-color: var(--accent); border-color: var(--accent-soft); }
+  .rachas-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; cursor: pointer; user-select: none; }
+  .rachas-icono { font-size: 15px; line-height: 1; }
+  .rachas-titulo { font-weight: 700; font-size: 14px; flex: 1; min-width: 200px; color: var(--critical); }
+  .rachas-alerta.ok .rachas-titulo { color: var(--accent); }
+  .rachas-toggle { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+  .rachas-hint { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
+  .rachas-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rachas-chip {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 20px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .rachas-chip.activo { background: var(--critical); border-color: var(--critical); color: #fff; }
+  .rachas-tabla { max-height: 320px; overflow: auto; }
+  .rachas-tabla table { min-width: 980px; }
+  .rachas-tabla .estado-curso { color: var(--critical); font-weight: 700; }
+  .rachas-tabla .estado-fin { color: var(--ink-faint); }
+  .rachas-tabla .dias { font-weight: 700; }
+
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 1100px; table-layout: fixed; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 8px;
+    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+    cursor: pointer; user-select: none; border-bottom: 1px solid var(--ink);
+  }
+  thead th:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 10px; margin-left: 4px; }
+  thead th.sorted .arrow { opacity: 1; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
+  tbody tr:hover td { background: var(--accent-soft); }
+
+
+  .load-more-row td { text-align: center; padding: 14px; background: var(--paper) !important; }
+  .load-more-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 7px;
+    border: 1px solid var(--accent-soft-line); background: var(--accent-soft); color: var(--accent); cursor: pointer;
+  }
+  .load-more-btn:hover { border-color: var(--accent); }
+
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
+  .nombre { font-weight: 500; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.pendiente { background: var(--warn-soft); color: var(--warn); }
+  .chip.injustificada { background: var(--critical-soft); color: var(--critical); }
+  .btn-small {
+    font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-small:disabled { opacity: 0.5; cursor: wait; }
+  .empty-state, .error-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+
+  .aviso-super { background: var(--accent-soft); border: 1px solid var(--accent-soft-line); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; line-height: 1.45; color: var(--ink); }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tab-btn { font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .tab-btn.activo { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  section[hidden] { display: none; }
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
+  .field.grow { flex: 1; min-width: 220px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
+  .field input, .field textarea, .field select { font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--ink); }
+  .field input:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .btn-primary { font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 7px; border: none; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+  .btn-peligro { background: var(--critical); }
+  .form-msg { font-size: 13px; font-weight: 500; min-height: 18px; margin: 0; }
+  .form-msg.error { color: var(--critical); }
+  .form-msg.ok { color: var(--accent); }
+  .tabla-aj { min-width: 1080px; table-layout: auto; }
+  .tabla-aj td { white-space: nowrap; }
+  .tabla-aj td.motivo { white-space: normal; min-width: 220px; max-width: 320px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; }
+  .badge.ajustado { background: var(--warn-soft); color: var(--warn); }
+  .badge.t-AJUSTE { background: var(--warn-soft); color: var(--warn); }
+  .badge.t-CREACION { background: var(--accent-soft); color: var(--accent); }
+  .badge.t-REVERSION { background: var(--critical-soft); color: var(--critical); }
+  .badge.revertido { background: var(--line); color: var(--ink-faint); }
+  .dif-neg { color: var(--critical); font-weight: 500; }
+  .dif-pos { color: var(--accent); font-weight: 500; }
+  .modal-ov { position: fixed; inset: 0; background: rgba(20, 24, 15, 0.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 60; }
+  .modal-ov[hidden] { display: none; }
+  .modal-caja { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .modal-caja h3 { margin: 0; font-size: 17px; }
+  .modal-caja .sub { margin: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+  .preview { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13px; line-height: 1.5; }
+  .acciones-modal { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 70; box-shadow: var(--shadow); }
+  .toast[hidden] { display: none; }
+</style>
+</head>
+<body>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+<button type="button" class="menu-toggle-movil" id="menu-toggle-movil" aria-label="Abrir menú">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+</button>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="sidebar-logo">
+    <span class="sidebar-brand">Cultivos Sayonara</span>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Colapsar menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+  </div>
+
+  <div class="sidebar-nav" id="sidebar-nav">
+    <a class="sidebar-link" href="index.html" data-pagina="inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-6h6v6"></path></svg>
+      <span>Inicio</span>
+    </a>
+    <a class="sidebar-link" href="empleados.html" data-pagina="empleados">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Empleados</span>
+    </a>
+    <a class="sidebar-link" href="registro-biometrico.html" data-pagina="registro_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+      <span>Registro Biométrico</span>
+    </a>
+    <a class="sidebar-link" href="novedades.html" data-pagina="novedades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
+      <span>Novedades</span>
+    </a>
+    <a class="sidebar-link" href="ausentismo.html" data-pagina="ausentismo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.17 9.17a3 3 0 1 1 4.24 4.24M12 8v1M15 15l6 6"></path></svg>
+      <span>Ausentismo</span>
+    </a>
+    <a class="sidebar-link" href="nomina.html" data-pagina="nomina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg>
+      <span>Nómina</span>
+    </a>
+    <a class="sidebar-link" href="configuraciones.html" data-pagina="configuraciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span>Configuraciones</span>
+    </a>
+    <a class="sidebar-link" href="usuarios.html" data-pagina="usuarios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="5"></circle></svg>
+      <span>Usuarios</span>
+    </a>
+    <a class="sidebar-link activo" href="ajuste-marcaciones.html" data-pagina="ajuste_marcaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>
+      <span>Ajuste de marcaciones</span>
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+</nav>
+
+<div class="page-content">
+<div class="wrap">
+  <div class="page-header">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="page-logo">
+    <span class="page-brand">Cultivos Sayonara</span>
+    <h1>Ajuste de marcaciones</h1>
+  </div>
+
+  <div class="aviso-super">
+    <strong>Módulo exclusivo de Super Admin.</strong> Corrige la hora de entrada/salida de un día en el Registro Biométrico.
+    Cada cambio exige un motivo y queda en el historial con tu usuario y la fecha. Las marcaciones originales del dispositivo
+    no se modifican, y el sincronizador no sobrescribe un registro ajustado.
+  </div>
+
+  <div class="tabs" id="tabs-aj">
+    <button type="button" class="tab-btn activo" data-tab="registros">Registros</button>
+    <button type="button" class="tab-btn" data-tab="historial">Historial de ajustes</button>
+  </div>
+
+  <section id="sec-registros" class="card">
+    <div class="filters">
+      <div class="field grow">
+        <label for="f-texto">Cédula o nombre</label>
+        <input type="text" id="f-texto" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off">
+      </div>
+      <div class="field"><label for="f-desde">Desde</label><input type="date" id="f-desde"></div>
+      <div class="field"><label for="f-hasta">Hasta</label><input type="date" id="f-hasta"></div>
+      <button type="button" class="btn-primary" id="btn-buscar">Buscar</button>
+      <button type="button" class="clear-btn" id="btn-crear">Crear registro de un día sin marcación</button>
+      <span class="result-count" id="reg-count"></span>
+    </div>
+    <p class="form-msg" id="reg-msg" style="margin-top:8px"></p>
+    <div class="table-scroll" style="margin-top:8px">
+      <table class="tabla-aj">
+        <thead><tr>
+          <th>Fecha</th><th>Cédula</th><th>Nombre</th><th>Área</th><th>Entrada</th><th>Salida</th>
+          <th>Horas</th><th>Esperadas</th><th>Diferencia</th><th>Estado</th><th>Acción</th>
+        </tr></thead>
+        <tbody id="reg-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="sec-historial" class="card" hidden>
+    <div class="filters">
+      <div class="field"><label for="h-cedula">Cédula (opcional)</label><input type="text" id="h-cedula" inputmode="numeric" autocomplete="off"></div>
+      <button type="button" class="btn-primary" id="btn-historial">Ver historial</button>
+      <span class="result-count" id="his-count"></span>
+    </div>
+    <p class="form-msg" id="his-msg" style="margin-top:8px"></p>
+    <div class="table-scroll" style="margin-top:8px">
+      <table class="tabla-aj">
+        <thead><tr>
+          <th>Cuándo</th><th>Tipo</th><th>Día del registro</th><th>Colaborador</th><th>Antes</th><th>Después</th>
+          <th>Motivo</th><th>Usuario</th><th>Acción</th>
+        </tr></thead>
+        <tbody id="his-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer style="font-size:12px;color:var(--ink-faint);text-align:center">Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
+</div>
+</div>
+
+<div class="modal-ov" id="modal-aj" hidden role="dialog" aria-modal="true" aria-labelledby="maj-titulo">
+  <div class="modal-caja">
+    <h3 id="maj-titulo"></h3>
+    <p class="sub" id="maj-sub"></p>
+    <div id="maj-crear" hidden>
+      <div class="filters">
+        <div class="field"><label for="maj-cedula">Cédula</label><input type="text" id="maj-cedula" inputmode="numeric" autocomplete="off"></div>
+        <div class="field"><label for="maj-fecha">Día</label><input type="date" id="maj-fecha"></div>
+      </div>
+      <p class="sub" id="maj-emp" style="margin-top:6px"></p>
+    </div>
+    <div id="maj-campos">
+      <div class="filters">
+        <div class="field grow"><label for="maj-entrada">Entrada</label><input type="datetime-local" id="maj-entrada" step="1"></div>
+        <div class="field grow"><label for="maj-salida">Salida</label><input type="datetime-local" id="maj-salida" step="1"></div>
+      </div>
+      <div class="preview" id="maj-preview" style="margin-top:10px"></div>
+    </div>
+    <div class="field">
+      <label for="maj-motivo">Motivo (obligatorio)</label>
+      <textarea id="maj-motivo" rows="3" placeholder="Ej. El biométrico no registró la salida; el jefe confirmó que salió a las 3:30 p. m."></textarea>
+    </div>
+    <p class="form-msg" id="maj-msg"></p>
+    <div class="acciones-modal">
+      <button type="button" class="clear-btn" id="maj-cancelar">Cancelar</button>
+      <button type="button" class="btn-primary" id="maj-guardar">Guardar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+AUTH_READY.then(async function () {
+  if (!requierePagina("ajuste_marcaciones")) return;
+  // doble candado en la pagina; el candado real esta en la base de datos (auth_rol_real)
+  if (window.SESION.rol !== "super_admin") { location.href = "index.html"; return; }
+  pintarSesion("sesion-box");
+  filtrarSidebar();
+
+  const sidebar = document.getElementById("sidebar");
+  const btnColapsar = document.getElementById("sidebar-toggle");
+  function aplicarColapso(colapsado) {
+    sidebar.classList.toggle("colapsado", colapsado);
+    try { localStorage.setItem("sidebar-colapsado", colapsado ? "1" : "0"); } catch {}
+  }
+  let colapsadoGuardado = null;
+  try { colapsadoGuardado = localStorage.getItem("sidebar-colapsado"); } catch {}
+  aplicarColapso(colapsadoGuardado === "1");
+  btnColapsar.addEventListener("click", () => aplicarColapso(!sidebar.classList.contains("colapsado")));
+  const backdrop = document.getElementById("sidebar-backdrop");
+  const btnMenuMovil = document.getElementById("menu-toggle-movil");
+  function abrirMenuMovil(abrir) {
+    sidebar.classList.toggle("abierto-movil", abrir);
+    backdrop.classList.toggle("visible", abrir);
+  }
+  btnMenuMovil.addEventListener("click", () => abrirMenuMovil(!sidebar.classList.contains("abierto-movil")));
+  backdrop.addEventListener("click", () => abrirMenuMovil(false));
+
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  async function rpc(fn, body) {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+      method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" }, body: JSON.stringify(body),
+    });
+    const datos = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(datos.message || `HTTP ${resp.status}`);
+    return datos;
+  }
+
+  const fmtFecha = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-"); return `${d}/${m}/${y.slice(2)}`; };
+  const fmtHora = (naive) => naive ? new Date(naive).toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", second: "2-digit", hour12: true }) : null;
+  const fmtCuando = (naive) => { const d = new Date(naive); return d.toLocaleDateString("es-CO") + " " + d.toLocaleTimeString("es-CO", { hour: "numeric", minute: "2-digit", hour12: true }); };
+  const rango = (j) => j ? `${fmtHora(j.hora_entrada) || "—"} – ${fmtHora(j.hora_salida) || "—"}` : "Sin registro";
+  const num2 = (v) => v == null ? "—" : Number(v).toFixed(2);
+  function toast(texto) { const t = $("toast"); t.textContent = texto; t.hidden = false; setTimeout(() => { t.hidden = true; }, 3500); }
+  const hoyISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  const hace = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+
+  // ---------- pestañas ----------
+  document.querySelectorAll("#tabs-aj .tab-btn").forEach((b) => b.addEventListener("click", () => {
+    document.querySelectorAll("#tabs-aj .tab-btn").forEach((x) => x.classList.toggle("activo", x === b));
+    $("sec-registros").hidden = b.dataset.tab !== "registros";
+    $("sec-historial").hidden = b.dataset.tab !== "historial";
+    if (b.dataset.tab === "historial") cargarHistorial();
+  }));
+
+  // ---------- registros ----------
+  let registros = [];
+  async function buscar() {
+    $("reg-msg").textContent = "Buscando..."; $("reg-msg").className = "form-msg";
+    try {
+      registros = await rpc("buscar_registros_ajuste", {
+        p_texto: $("f-texto").value.trim() || null, p_desde: $("f-desde").value || null,
+        p_hasta: $("f-hasta").value || null, p_limite: 500,
+      });
+      $("reg-msg").textContent = "";
+      $("reg-count").textContent = registros.length + " resultado" + (registros.length === 1 ? "" : "s") + (registros.length >= 500 ? " (tope 500, afina el filtro)" : "");
+      $("reg-tbody").innerHTML = registros.length === 0
+        ? `<tr><td colspan="11"><div class="empty-state">Sin registros para este filtro. Si la persona no marcó ese día, usa "Crear registro".</div></td></tr>`
+        : registros.map((r, i) => {
+            const dif = r.diferencia_tiempo == null ? "—" : `<span class="${Number(r.diferencia_tiempo) >= 0 ? "dif-pos" : "dif-neg"}">${Number(r.diferencia_tiempo) > 0 ? "+" : ""}${num2(r.diferencia_tiempo)}</span>`;
+            return `<tr>
+              <td class="num">${fmtFecha(r.fecha)}</td><td class="cedula">${r.cedula}</td>
+              <td class="nombre" title="${esc(r.nombre)}">${esc(r.nombre)}</td><td>${esc(r.area || "—")}</td>
+              <td class="num">${fmtHora(r.hora_entrada) || "—"}</td><td class="num">${fmtHora(r.hora_salida) || "—"}</td>
+              <td class="num">${num2(r.horas_trabajadas)}</td><td class="num">${num2(r.horas_esperadas)}</td><td class="num">${dif}</td>
+              <td>${esc(r.estado)}${r.ajuste_manual ? ' <span class="badge ajustado">AJUSTADO</span>' : ""}</td>
+              <td><button type="button" class="btn-small" data-editar="${i}">Editar</button></td></tr>`;
+          }).join("");
+    } catch (err) {
+      $("reg-msg").textContent = "No se pudo consultar: " + (err.message || err); $("reg-msg").className = "form-msg error";
+    }
+  }
+  $("btn-buscar").addEventListener("click", buscar);
+  $("f-texto").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); buscar(); } });
+  $("f-desde").value = hace(7); $("f-hasta").value = hoyISO();
+  $("reg-tbody").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-editar]");
+    if (b) abrirModal({ modo: "editar", reg: registros[Number(b.dataset.editar)] });
+  });
+  $("btn-crear").addEventListener("click", () => abrirModal({ modo: "crear" }));
+
+  // ---------- historial ----------
+  let ajustes = [];
+  async function cargarHistorial() {
+    $("his-msg").textContent = "Cargando..."; $("his-msg").className = "form-msg";
+    try {
+      const ced = $("h-cedula").value.trim();
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/registro_horas_ajustes?select=*&order=created_at.desc&limit=200${/^\d+$/.test(ced) ? "&cedula=eq." + ced : ""}`, { headers: authHeaders() });
+      const filas = await resp.json();
+      if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+      ajustes = filas;
+      $("his-msg").textContent = "";
+      $("his-count").textContent = filas.length + " ajuste" + (filas.length === 1 ? "" : "s");
+      const ultimo = {};
+      // el "mas reciente" revertible: ultimo ajuste/creacion del dia que no se ha revertido (las reversiones no cuentan)
+      filas.forEach((a) => {
+        if (a.tipo === "REVERSION" || a.revertido) return;
+        const k = a.cedula + "|" + a.fecha;
+        if (!ultimo[k] || a.id > ultimo[k]) ultimo[k] = a.id;
+      });
+      $("his-tbody").innerHTML = filas.length === 0
+        ? `<tr><td colspan="9"><div class="empty-state">Todavía no hay ajustes registrados.</div></td></tr>`
+        : filas.map((a) => {
+            const puedeRevertir = a.tipo !== "REVERSION" && !a.revertido && ultimo[a.cedula + "|" + a.fecha] === a.id;
+            return `<tr>
+              <td class="num">${fmtCuando(a.created_at)}</td>
+              <td><span class="badge t-${a.tipo}">${a.tipo}</span>${a.revertido ? ' <span class="badge revertido">REVERTIDO</span>' : ""}</td>
+              <td class="num">${fmtFecha(a.fecha)}</td>
+              <td class="nombre">${esc(a.nombre || "")}<br><span class="cedula">${a.cedula}</span></td>
+              <td class="num">${esc(rango(a.antes))}</td><td class="num">${esc(rango(a.despues))}</td>
+              <td class="motivo">${esc(a.motivo)}</td><td>${esc(a.usuario_email || "")}</td>
+              <td>${puedeRevertir ? `<button type="button" class="btn-small" data-revertir="${a.id}">Revertir</button>` : ""}</td></tr>`;
+          }).join("");
+    } catch (err) {
+      $("his-msg").textContent = "No se pudo cargar el historial: " + (err.message || err); $("his-msg").className = "form-msg error";
+    }
+  }
+  $("btn-historial").addEventListener("click", cargarHistorial);
+  $("h-cedula").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); cargarHistorial(); } });
+  $("his-tbody").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-revertir]");
+    if (b) abrirModal({ modo: "revertir", ajuste: ajustes.find((a) => String(a.id) === b.dataset.revertir) });
+  });
+
+  // ---------- modal (editar / crear / revertir) ----------
+  let ctx = null;
+  const dtLocal = (naive) => naive ? String(naive).slice(0, 19) : "";
+  function previewHoras() {
+    const e = $("maj-entrada").value, s = $("maj-salida").value;
+    const esperadas = ctx && ctx.reg ? ctx.reg.horas_esperadas : null;
+    let t;
+    if (e && s) {
+      const h = (new Date(s) - new Date(e)) / 3600000;
+      if (h <= 0) t = "⚠ La salida debe ser posterior a la entrada.";
+      else {
+        t = `Horas trabajadas: <strong>${h.toFixed(2)}</strong>`;
+        if (esperadas != null) { const d = h - Number(esperadas); t += ` · Esperadas: ${Number(esperadas).toFixed(2)} · Diferencia: <strong>${d > 0 ? "+" : ""}${d.toFixed(2)}</strong>`; }
+        else t += " · la diferencia se calcula al guardar con las horas esperadas de ese día";
+      }
+    } else if (e || s) t = `Estado resultante: <strong>${e ? "sin_salida" : "sin_entrada"}</strong> (no se calculan horas).`;
+    else t = "Indica al menos la entrada o la salida.";
+    $("maj-preview").innerHTML = t;
+  }
+  ["maj-entrada", "maj-salida"].forEach((id) => $(id).addEventListener("input", previewHoras));
+
+  let tEmp;
+  $("maj-cedula").addEventListener("input", () => {
+    clearTimeout(tEmp);
+    tEmp = setTimeout(async () => {
+      const c = $("maj-cedula").value.trim();
+      $("maj-emp").textContent = "";
+      if (!/^\d{4,}$/.test(c)) return;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=nombre,area&cedula=eq.${c}`, { headers: authHeaders() });
+        const f = await resp.json();
+        $("maj-emp").textContent = f[0] ? `${f[0].nombre} — ${f[0].area || "sin área"}` : "No existe un empleado con esa cédula.";
+      } catch {}
+    }, 350);
+  });
+
+  function abrirModal(c) {
+    ctx = c; $("maj-msg").textContent = ""; $("maj-msg").className = "form-msg"; $("maj-motivo").value = "";
+    $("maj-crear").hidden = c.modo !== "crear";
+    $("maj-campos").hidden = c.modo === "revertir";
+    $("maj-guardar").classList.toggle("btn-peligro", c.modo === "revertir");
+    if (c.modo === "editar") {
+      $("maj-titulo").textContent = "Ajustar marcación";
+      $("maj-sub").textContent = `${c.reg.nombre} (${c.reg.cedula}) · ${fmtFecha(c.reg.fecha)} · estado actual: ${c.reg.estado}`;
+      $("maj-entrada").value = dtLocal(c.reg.hora_entrada); $("maj-salida").value = dtLocal(c.reg.hora_salida);
+      $("maj-guardar").textContent = "Guardar ajuste";
+    } else if (c.modo === "crear") {
+      $("maj-titulo").textContent = "Crear registro de un día sin marcación";
+      $("maj-sub").textContent = "Para un día en el que la persona sí trabajó pero el biométrico no tiene ningún registro.";
+      $("maj-cedula").value = ""; $("maj-fecha").value = hace(1); $("maj-emp").textContent = "";
+      $("maj-entrada").value = ""; $("maj-salida").value = "";
+      $("maj-guardar").textContent = "Crear registro";
+    } else {
+      const a = c.ajuste;
+      $("maj-titulo").textContent = "Revertir ajuste";
+      $("maj-sub").textContent = `${a.nombre} (${a.cedula}) · ${fmtFecha(a.fecha)}. ` +
+        (a.antes ? `Se restaurará: ${rango(a.antes)}.` : "Como este ajuste creó el registro, al revertir se eliminará ese registro.");
+      $("maj-guardar").textContent = "Revertir";
+    }
+    previewHoras();
+    $("modal-aj").hidden = false;
+    $("maj-motivo").focus();
+  }
+  const cerrarModal = () => { $("modal-aj").hidden = true; ctx = null; };
+  $("maj-cancelar").addEventListener("click", cerrarModal);
+  $("modal-aj").addEventListener("click", (e) => { if (e.target === $("modal-aj")) cerrarModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("modal-aj").hidden) cerrarModal(); });
+
+  $("maj-guardar").addEventListener("click", async () => {
+    if (!ctx) return;
+    const motivo = $("maj-motivo").value.trim();
+    const falla = (t) => { $("maj-msg").textContent = t; $("maj-msg").className = "form-msg error"; };
+    if (motivo.length < 5) return falla("Escribe el motivo (mínimo 5 caracteres).");
+    $("maj-guardar").disabled = true; $("maj-msg").textContent = "Guardando..."; $("maj-msg").className = "form-msg";
+    try {
+      if (ctx.modo === "revertir") {
+        await rpc("revertir_ajuste_registro", { p_ajuste_id: ctx.ajuste.id, p_motivo: motivo });
+        toast("Ajuste revertido.");
+        cargarHistorial();
+      } else {
+        const entrada = $("maj-entrada").value || null, salida = $("maj-salida").value || null;
+        let cedula, fecha;
+        if (ctx.modo === "editar") { cedula = ctx.reg.cedula; fecha = ctx.reg.fecha; }
+        else {
+          cedula = $("maj-cedula").value.trim(); fecha = $("maj-fecha").value;
+          if (!/^\d+$/.test(cedula) || !fecha) { $("maj-guardar").disabled = false; return falla("Indica la cédula y el día."); }
+        }
+        if (!entrada && !salida) { $("maj-guardar").disabled = false; return falla("Indica al menos la entrada o la salida."); }
+        if (entrada && salida && new Date(salida) <= new Date(entrada)) { $("maj-guardar").disabled = false; return falla("La salida debe ser posterior a la entrada."); }
+        await rpc("ajustar_registro_horas", { p_cedula: Number(cedula), p_fecha: fecha, p_entrada: entrada, p_salida: salida, p_motivo: motivo });
+        toast(ctx.modo === "crear" ? "Registro creado." : "Ajuste guardado.");
+        if (ctx.modo === "crear") { $("f-texto").value = cedula; $("f-desde").value = fecha; $("f-hasta").value = fecha; }
+        buscar();
+      }
+      cerrarModal();
+    } catch (err) {
+      falla(err.message || String(err));
+    } finally {
+      $("maj-guardar").disabled = false;
+    }
+  });
+
+  buscar();
+});
+</script>
+</body>
+</html>

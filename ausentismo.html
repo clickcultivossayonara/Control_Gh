@@ -157,6 +157,30 @@
   .clear-btn:hover, .btn-export:hover { border-color: var(--accent); color: var(--accent); }
   .btn-export:disabled { opacity: 0.5; cursor: wait; }
 
+  .rachas-alerta {
+    border: 1px solid var(--critical-soft); border-left: 4px solid var(--critical); border-radius: var(--radius);
+    background: var(--surface); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .rachas-alerta[hidden] { display: none; }
+  .rachas-alerta.ok { border-left-color: var(--accent); border-color: var(--accent-soft); }
+  .rachas-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; cursor: pointer; user-select: none; }
+  .rachas-icono { font-size: 15px; line-height: 1; }
+  .rachas-titulo { font-weight: 700; font-size: 14px; flex: 1; min-width: 200px; color: var(--critical); }
+  .rachas-alerta.ok .rachas-titulo { color: var(--accent); }
+  .rachas-toggle { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+  .rachas-hint { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
+  .rachas-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rachas-chip {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 20px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .rachas-chip.activo { background: var(--critical); border-color: var(--critical); color: #fff; }
+  .rachas-tabla { max-height: 320px; overflow: auto; }
+  .rachas-tabla table { min-width: 980px; }
+  .rachas-tabla .estado-curso { color: var(--critical); font-weight: 700; }
+  .rachas-tabla .estado-fin { color: var(--ink-faint); }
+  .rachas-tabla .dias { font-weight: 700; }
+
   .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
@@ -254,6 +278,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="5"></circle></svg>
       <span>Usuarios</span>
     </a>
+    <a class="sidebar-link" href="ajuste-marcaciones.html" data-pagina="ajuste_marcaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>
+      <span>Ajuste de marcaciones</span>
+    </a>
   </div>
 
   <div class="sidebar-footer">
@@ -268,6 +296,30 @@
     <span class="page-brand">Cultivos Sayonara</span>
     <h1>Ausentismo</h1>
   </div>
+
+  <section class="rachas-alerta" id="rachas-alerta" hidden>
+    <div class="rachas-header" id="rachas-header">
+      <span class="rachas-icono" id="rachas-icono">⚠</span>
+      <span class="rachas-titulo" id="rachas-titulo">Revisando ausencias consecutivas…</span>
+      <button type="button" class="btn-export" id="btn-rachas-excel">Descargar Excel</button>
+      <span class="rachas-toggle" id="rachas-toggle">Ocultar ▾</span>
+    </div>
+    <div id="rachas-cuerpo">
+      <p class="rachas-hint">Más de 3 días hábiles seguidos sin marcar y sin una novedad que lo explique (domingos y festivos no cortan la racha). Para que RRHH y Nómina tomen medidas.</p>
+      <div class="rachas-chips" id="rachas-chips" style="margin:10px 0"></div>
+      <div class="table-scroll rachas-tabla">
+        <table>
+          <thead>
+            <tr>
+              <th>Colaborador</th><th>Cédula</th><th>Área</th><th>Jefe</th><th>Teléfono</th>
+              <th>Desde</th><th>Hasta</th><th>Días seguidos</th><th>Última marcación</th><th>Estado</th>
+            </tr>
+          </thead>
+          <tbody id="rachas-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
 
   <section class="card">
     <p class="card-hint">Empleados activos sin ninguna marcación (ni entrada ni salida) en un día, excluyendo los que ya tienen una novedad registrada esa fecha. Se recalcula automáticamente con cada sincronización del biométrico.</p>
@@ -675,6 +727,90 @@ AUTH_READY.then(async function () {
       btn.textContent = textoOriginal;
     }
   });
+
+  // ---------- Alerta: mas de 3 dias seguidos ausente (solo RRHH / Nomina / admin) ----------
+  // Calculo en la base de datos (ausentes_consecutivos, ver schema_ausentes_consecutivos.sql).
+  // Tres grupos: siguen ausentes (dejaron de venir), nunca/hace mucho no marcan
+  // (probable personal sin biometrico, se revisa distinto) y ya regresaron o terminaron.
+  const elRachas = document.getElementById("rachas-alerta");
+  const GRUPOS_RACHAS = {
+    siguen: { etiqueta: "Siguen ausentes", filtro: (r) => r.en_curso && !r.sin_marcaciones },
+    sinmarca: { etiqueta: "Sin marcaciones en 90 días", filtro: (r) => r.en_curso && r.sin_marcaciones },
+    terminadas: { etiqueta: "Ya regresaron / terminaron", filtro: (r) => !r.en_curso },
+  };
+  let rachas = [];
+  let grupoRachas = "siguen";
+  const escRach = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+  function pintarRachas() {
+    const cuenta = (k) => rachas.filter(GRUPOS_RACHAS[k].filtro).length;
+    document.getElementById("rachas-chips").innerHTML = Object.entries(GRUPOS_RACHAS).map(([k, g]) =>
+      `<button type="button" class="rachas-chip${k === grupoRachas ? " activo" : ""}" data-grupo="${k}">${g.etiqueta} (${cuenta(k)})</button>`).join("");
+    const filas = rachas.filter(GRUPOS_RACHAS[grupoRachas].filtro);
+    document.getElementById("rachas-tbody").innerHTML = filas.length === 0
+      ? `<tr><td colspan="10"><div class="empty-state">Ninguno en este grupo.</div></td></tr>`
+      : filas.map((r) => `<tr>
+          <td class="nombre" title="${escRach(r.nombre)}">${escRach(r.nombre)}</td>
+          <td class="cedula">${r.cedula}</td>
+          <td title="${escRach(r.area)}">${escRach(r.area || "—")}</td>
+          <td title="${escRach(r.nombre_jefe)}">${escRach(r.nombre_jefe || "—")}</td>
+          <td class="num">${escRach(r.telefono || "—")}</td>
+          <td class="num">${fmtFecha(r.desde)}</td>
+          <td class="num">${fmtFecha(r.hasta)}</td>
+          <td class="num dias">${r.dias}</td>
+          <td class="num">${r.ultima_marcacion ? fmtFecha(r.ultima_marcacion) : "Nunca"}</td>
+          <td class="${r.en_curso ? "estado-curso" : "estado-fin"}">${r.en_curso ? "En curso" : "Terminada"}</td>
+        </tr>`).join("");
+  }
+
+  async function cargarRachas() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ausentes_consecutivos`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" }, body: "{}",
+      });
+      if (!resp.ok) return; // sin permiso o la funcion aun no esta instalada: la tarjeta no se muestra
+      rachas = await resp.json();
+    } catch { return; }
+
+    const siguen = rachas.filter(GRUPOS_RACHAS.siguen.filtro).length;
+    elRachas.hidden = false;
+    elRachas.classList.toggle("ok", siguen === 0);
+    document.getElementById("rachas-icono").textContent = siguen === 0 ? "✓" : "⚠";
+    document.getElementById("rachas-titulo").textContent = siguen === 0
+      ? "Nadie lleva más de 3 días seguidos ausente"
+      : `${siguen} colaborador${siguen === 1 ? "" : "es"} ll${siguen === 1 ? "eva" : "evan"} más de 3 días seguidos sin venir`;
+    pintarRachas();
+  }
+
+  if (puedeEditar) {
+    document.getElementById("rachas-header").addEventListener("click", (e) => {
+      if (e.target.closest("#btn-rachas-excel")) return;
+      const cuerpo = document.getElementById("rachas-cuerpo");
+      cuerpo.hidden = !cuerpo.hidden;
+      document.getElementById("rachas-toggle").textContent = cuerpo.hidden ? "Mostrar ▸" : "Ocultar ▾";
+    });
+    document.getElementById("rachas-chips").addEventListener("click", (e) => {
+      const b = e.target.closest(".rachas-chip");
+      if (!b) return;
+      grupoRachas = b.dataset.grupo;
+      pintarRachas();
+    });
+    document.getElementById("btn-rachas-excel").addEventListener("click", () => {
+      const filas = rachas.map((r) => ({
+        "Grupo": r.en_curso ? (r.sin_marcaciones ? "Sin marcaciones en 90 días" : "Siguen ausentes") : "Ya regresaron / terminaron",
+        "Colaborador": r.nombre, "Cédula": r.cedula, "Área": r.area || "", "Jefe": r.nombre_jefe || "",
+        "Teléfono": r.telefono || "", "Desde": r.desde, "Hasta": r.hasta, "Días seguidos": r.dias,
+        "Injustificadas": r.injustificadas, "Pendientes por definir": r.pendientes,
+        "Última marcación": r.ultima_marcacion || "Nunca", "Estado": r.en_curso ? "En curso" : "Terminada",
+      }));
+      const ws = XLSX.utils.json_to_sheet(filas);
+      ws["!cols"] = [{ wch: 26 }, { wch: 32 }, { wch: 12 }, { wch: 20 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 13 }, { wch: 14 }, { wch: 18 }, { wch: 16 }, { wch: 10 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Ausencias consecutivas");
+      XLSX.writeFile(wb, `ausencias_consecutivas_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    });
+    cargarRachas();
+  }
 
   cargar();
 });
