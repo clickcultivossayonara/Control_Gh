@@ -122,6 +122,12 @@
     border-radius: 7px; background: var(--accent); color: var(--accent-ink); cursor: pointer;
   }
 
+  .popup-botones { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .popup-biometrico .btn-secundario {
+    font: inherit; font-weight: 600; font-size: 13.5px; padding: 9px 20px; border-radius: 7px; cursor: pointer;
+    background: transparent; color: var(--ink); border: 1px solid var(--ink-faint);
+  }
+
   .alerta-banner {
     display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; border-radius: 10px;
     background: var(--critical-soft); border: 1px solid var(--critical); color: var(--critical);
@@ -532,6 +538,19 @@
     <ul id="popup-bio-lista"></ul>
     <p id="popup-bio-pie" style="color:var(--ink-soft);font-size:12.5px"></p>
     <button type="button" class="btn-cerrar" id="popup-bio-cerrar">Entendido</button>
+  </div>
+</div>
+
+<div class="popup-biometrico" id="popup-existentes" hidden role="alertdialog" aria-modal="true" aria-labelledby="popup-ex-titulo">
+  <div class="caja">
+    <h3 id="popup-ex-titulo">Ya tiene novedad cargada</h3>
+    <p id="popup-ex-texto"></p>
+    <ul id="popup-ex-lista"></ul>
+    <p style="color:var(--ink-soft);font-size:12.5px">Una "Ausencia pendiente por definir" no genera esta alerta porque se reemplaza al definir la novedad.</p>
+    <div class="popup-botones">
+      <button type="button" class="btn-secundario" id="popup-ex-cancelar">Cancelar, no guardar</button>
+      <button type="button" class="btn-cerrar" id="popup-ex-seguir">Guardar de todas formas</button>
+    </div>
   </div>
 </div>
 
@@ -1013,7 +1032,12 @@ AUTH_READY.then(async function () {
   const popupBio = document.getElementById("popup-biometrico");
   document.getElementById("popup-bio-cerrar").addEventListener("click", () => { popupBio.hidden = true; });
   popupBio.addEventListener("click", (e) => { if (e.target === popupBio) popupBio.hidden = true; });
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") popupBio.hidden = true; });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    popupBio.hidden = true;
+    const ex = document.getElementById("popup-existentes");
+    if (ex && !ex.hidden) document.getElementById("popup-ex-cancelar").click();
+  });
 
   function mostrarPopupBiometrico(problemas, horas, cod, fecha) {
     const varios = problemas.length > 1;
@@ -1085,6 +1109,62 @@ AUTH_READY.then(async function () {
       }
     });
     return problemas;
+  }
+
+  // ---- Alerta: el colaborador ya tiene otra novedad ese dia ----
+  // "Ausencia pendiente por definir" (APD) se reemplaza al definir la novedad, asi que no alerta; "SN" (Sin
+  // Novedad) es solo el registro de que asistio normal. Cualquier otra novedad ya cargada para la misma
+  // fecha avisa, y quien carga decide si cancela o guarda igual (hay combinaciones validas, ej. HE + HN).
+  const CODIGOS_SIN_ALERTA = ["APD", "SN"];
+  const popupEx = document.getElementById("popup-existentes");
+
+  async function novedadesYaCargadas(cedulas, fechas) {
+    const fechasSet = new Set(fechas);
+    const ordenadas = [...fechas].sort();
+    const desde = ordenadas[0], hasta = restarDias(ordenadas[ordenadas.length - 1], -1);
+    const encontradas = [];
+    for (let i = 0; i < cedulas.length; i += 100) {
+      const lista = cedulas.slice(i, i + 100).join(",");
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?select=cedula,fecha_novedad,codigo_novedad,codigo_descripcion,hora` +
+        `&cedula=in.(${lista})&fecha_novedad=gte.${desde}T00:00:00&fecha_novedad=lt.${hasta}T00:00:00` +
+        `&codigo_novedad=not.in.(${CODIGOS_SIN_ALERTA.join(",")})&limit=5000`,
+        { headers: authHeaders() });
+      if (!resp.ok) throw new Error("No se pudieron consultar las novedades ya cargadas (HTTP " + resp.status + ").");
+      (await resp.json()).forEach((r) => { if (fechasSet.has(String(r.fecha_novedad).slice(0, 10))) encontradas.push(r); });
+    }
+    return encontradas;
+  }
+
+  // Resuelve true si quien carga decide guardar igual, false si cancela.
+  function preguntarNovedadesExistentes(encontradas, cod) {
+    const porPersona = {};
+    encontradas.forEach((r) => {
+      const k = r.cedula;
+      (porPersona[k] = porPersona[k] || []).push(`${String(r.fecha_novedad).slice(0, 10)}: ${r.codigo_descripcion || r.codigo_novedad}` +
+        (Number(r.hora) ? ` (${Number(r.hora)} h)` : ""));
+    });
+    const cedulas = Object.keys(porPersona);
+    document.getElementById("popup-ex-texto").textContent = cedulas.length > 1
+      ? `Estos colaboradores ya tienen una novedad cargada en la(s) fecha(s) donde vas a registrar "${cod.codigo_descripcion}".`
+      : `Este colaborador ya tiene una novedad cargada en la(s) fecha(s) donde vas a registrar "${cod.codigo_descripcion}".`;
+    document.getElementById("popup-ex-lista").innerHTML = cedulas.map((c) => {
+      const nombre = (empleadosPorCedula[c] || {}).nombre || c;
+      return `<li><strong>${escaparTexto(nombre)}</strong><span>${porPersona[c].map(escaparTexto).join("<br>")}</span></li>`;
+    }).join("");
+    popupEx.hidden = false;
+    document.getElementById("popup-ex-cancelar").focus();
+    return new Promise((resolver) => {
+      const cerrar = (valor) => {
+        popupEx.hidden = true;
+        document.getElementById("popup-ex-cancelar").onclick = document.getElementById("popup-ex-seguir").onclick = null;
+        popupEx.onclick = null;
+        resolver(valor);
+      };
+      document.getElementById("popup-ex-cancelar").onclick = () => cerrar(false);
+      document.getElementById("popup-ex-seguir").onclick = () => cerrar(true);
+      popupEx.onclick = (e) => { if (e.target === popupEx) cerrar(false); };
+    });
   }
 
   selCodigo.addEventListener("change", async () => {
@@ -1217,6 +1297,29 @@ AUTH_READY.then(async function () {
         return;
       }
     }
+
+    btnNovedad.disabled = true;
+    msgNovedad.textContent = "Verificando novedades ya cargadas...";
+    msgNovedad.className = "form-msg";
+    try {
+      const yaCargadas = await novedadesYaCargadas(cedulasSeleccionadas, fechas);
+      if (yaCargadas.length > 0) {
+        btnNovedad.disabled = false;
+        msgNovedad.textContent = "";
+        if (!(await preguntarNovedadesExistentes(yaCargadas, cod))) {
+          msgNovedad.textContent = "Cancelado: no se guardó nada.";
+          msgNovedad.className = "form-msg error";
+          return;
+        }
+      }
+    } catch (err) {
+      btnNovedad.disabled = false;
+      msgNovedad.textContent = "No se pudo verificar las novedades ya cargadas, no se guardó nada: " + (err.message || err);
+      msgNovedad.className = "form-msg error";
+      return;
+    }
+    btnNovedad.disabled = false;
+    msgNovedad.textContent = "";
 
     const registros = [];
     cedulasSeleccionadas.forEach((cedula) => {
