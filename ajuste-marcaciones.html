@@ -577,16 +577,18 @@ AUTH_READY.then(async function () {
     }
     return { entrada, salida, fecha, diaSiguiente: !!(salida && fecha && salida.slice(0, 10) !== fecha) };
   }
+  // Tiempo de alimentacion que se descuenta de las horas entre entrada y salida (igual que en la base y en la sincronizacion).
+  const ALMUERZO_HORAS = 0.5;
   function previewHoras() {
     const { entrada: e, salida: s, diaSiguiente } = calcularMarcas();
     const esperadas = ctx && ctx.reg ? ctx.reg.horas_esperadas : null;
     let t;
     if (e && s) {
-      const h = (new Date(s) - new Date(e)) / 3600000;
-      t = `Horas trabajadas: <strong>${h.toFixed(2)}</strong>${diaSiguiente ? " (salida al día siguiente)" : ""}`;
+      const h = Math.max(0, (new Date(s) - new Date(e)) / 3600000 - ALMUERZO_HORAS);
+      t = `Horas trabajadas: <strong>${h.toFixed(2)}</strong> (descontando ${ALMUERZO_HORAS} h de alimentación)${diaSiguiente ? " · salida al día siguiente" : ""}`;
       if (esperadas != null) { const d = h - Number(esperadas); t += ` · Esperadas: ${Number(esperadas).toFixed(2)} · Diferencia: <strong>${d > 0 ? "+" : ""}${d.toFixed(2)}</strong>`; }
       else t += " · la diferencia se calcula al guardar con las horas esperadas de ese día";
-      if (h > 16) t += `<br>⚠ Más de 16 horas: revisa que las horas estén bien digitadas.`;
+      if (h + ALMUERZO_HORAS > 16) t += `<br>⚠ Más de 16 horas: revisa que las horas estén bien digitadas.`;
     } else if (e || s) t = `Estado resultante: <strong>${e ? "sin_salida" : "sin_entrada"}</strong> (no se calculan horas).`;
     else t = "Indica al menos la hora de entrada o la de salida.";
     $("maj-preview").innerHTML = t;
