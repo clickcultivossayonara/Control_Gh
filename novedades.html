@@ -122,6 +122,17 @@
     border-radius: 7px; background: var(--accent); color: var(--accent-ink); cursor: pointer;
   }
 
+  .horas-habilitadas {
+    margin: 0 0 16px; padding: 12px 14px; border-radius: 10px; background: var(--surface-alt, #f4f6ef);
+    border: 1px solid var(--line, #dfe4d5); font-size: 13px;
+  }
+  .horas-habilitadas[hidden] { display: none; }
+  .horas-habilitadas > strong { display: block; margin-bottom: 8px; font-size: 13px; }
+  .horas-habilitadas ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px; }
+  .horas-habilitadas li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 7px; background: var(--surface, #fff); color: var(--ink-soft); }
+  .horas-habilitadas li.actual { outline: 2px solid var(--accent); color: var(--ink); font-weight: 600; }
+  .horas-habilitadas li b { white-space: nowrap; }
+  .horas-habilitadas li.sin b { color: var(--critical); }
   .popup-botones { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
   .popup-biometrico .btn-secundario {
     font: inherit; font-weight: 600; font-size: 13.5px; padding: 9px 20px; border-radius: 7px; cursor: pointer;
@@ -400,6 +411,7 @@
         </div>
       </div>
       <p class="card-hint" id="hint-hora-extra" hidden style="margin: 6px 0 16px;"></p>
+      <div class="horas-habilitadas" id="horas-habilitadas" hidden></div>
       <div class="form-actions">
         <button type="submit" class="btn-primary" id="btn-novedad">Guardar novedad</button>
         <span class="form-msg" id="msg-novedad"></span>
@@ -976,10 +988,40 @@ AUTH_READY.then(async function () {
   let presupuestoOK = true;
   let colaboradorBloqueadoPorPresupuesto = false;
 
+  // Muestra, para el area y la fecha elegidas, cuantas horas habilitadas (presupuesto de Presupuesto Horas
+  // Extra menos lo ya cargado) le quedan a cada novedad de horas extra; la que se esta registrando va resaltada.
+  const panelHoras = document.getElementById("horas-habilitadas");
+  const fmtH = (n) => `${Number(n.toFixed(2))} h`;
+  async function mostrarHorasHabilitadas(cod) {
+    const area = selArea.value, fecha = inFecha.value;
+    const mia = ++mostrarHorasHabilitadas.ultima;
+    panelHoras.hidden = false;
+    panelHoras.innerHTML = `<strong>Horas habilitadas · ${escaparTexto(area)} · ${fecha}</strong><span>Consultando…</span>`;
+    let valores;
+    try {
+      valores = await Promise.all(CODIGOS_PRESUPUESTO_EXTRA.map((c) => consultarHorasExtraDisponibles(fecha, area, c)));
+    } catch (err) {
+      if (mia === mostrarHorasHabilitadas.ultima) panelHoras.innerHTML = `<strong>Horas habilitadas · ${escaparTexto(area)} · ${fecha}</strong><span>No se pudieron consultar.</span>`;
+      return;
+    }
+    if (mia !== mostrarHorasHabilitadas.ultima) return;   // el usuario ya cambio area/fecha/codigo
+    const items = CODIGOS_PRESUPUESTO_EXTRA.map((c, i) => {
+      const v = valores[i];
+      const nombre = (codigosPorValor[c] || {}).codigo_descripcion || c;
+      const texto = v === null ? "sin presupuesto" : v > 0 ? `${fmtH(v)} disponibles` : v === 0 ? "0 h (agotadas)" : `excedido por ${fmtH(-v)}`;
+      const sin = v === null || v <= 0;
+      return `<li class="${c === cod.codigo ? "actual" : ""}${sin ? " sin" : ""}"><span>${escaparTexto(nombre)}</span><b>${texto}</b></li>`;
+    });
+    panelHoras.innerHTML = `<strong>Horas habilitadas · ${escaparTexto(area)} · ${fecha}</strong><ul>${items.join("")}</ul>`;
+  }
+  mostrarHorasHabilitadas.ultima = 0;
+
   async function verificarGatePresupuesto() {
     const cod = codigosPorValor[selCodigo.value];
     const esPresupuestable = cod && CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo);
     const aplica = esPresupuestable && selArea.value && inFecha.value;
+    if (aplica) mostrarHorasHabilitadas(cod);
+    else { mostrarHorasHabilitadas.ultima++; panelHoras.hidden = true; }
 
     if (!aplica) {
       presupuestoOK = true;
