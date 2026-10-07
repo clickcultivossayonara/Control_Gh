@@ -486,7 +486,7 @@ AUTH_READY.then(async function () {
   const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
   const ROL_AREA_LIMITADA = ["jefe_area", "supervisor", "auxiliar"];
 
-  const OPCIONES_SEDE = ["Ceja", "Union", "Desconocida"];
+  const OPCIONES_SEDE = ["Ceja", "Union", "Union 2", "Desconocida"];
   let TODAS_LAS_AREAS = ["No Registrado"];
   try {
     const respAreas = await fetch(`${SUPABASE_URL}/rest/v1/areas?select=nombre&activo=eq.true&order=nombre`, { headers: authHeaders() });
