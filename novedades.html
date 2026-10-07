@@ -128,11 +128,15 @@
   }
   .horas-habilitadas[hidden] { display: none; }
   .horas-habilitadas > strong { display: block; margin-bottom: 8px; font-size: 13px; }
-  .horas-habilitadas ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 6px; }
-  .horas-habilitadas li { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; border-radius: 7px; background: var(--surface, #fff); color: var(--ink-soft); }
-  .horas-habilitadas li.actual { outline: 2px solid var(--accent); color: var(--ink); font-weight: 600; }
-  .horas-habilitadas li b { white-space: nowrap; }
-  .horas-habilitadas li.sin b { color: var(--critical); }
+  .horas-habilitadas .hh-cifras { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .horas-habilitadas .hh-cifra { background: var(--surface, #fff); border-radius: 8px; padding: 8px 10px; }
+  .horas-habilitadas .hh-cifra span { display: block; font-size: 11.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .03em; }
+  .horas-habilitadas .hh-cifra b { font-size: 17px; }
+  .horas-habilitadas .hh-cifra.disp b { color: var(--accent); }
+  .horas-habilitadas .hh-cifra.disp.sin b { color: var(--critical); }
+  .horas-habilitadas .hh-carga { margin: 10px 0 0; color: var(--ink-soft); }
+  .horas-habilitadas .hh-error { margin: 8px 0 0; padding: 8px 10px; border-radius: 7px; background: var(--critical-soft); color: var(--critical); font-weight: 600; }
+  .horas-habilitadas .hh-error[hidden] { display: none; }
   .popup-botones { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
   .popup-biometrico .btn-secundario {
     font: inherit; font-weight: 600; font-size: 13.5px; padding: 9px 20px; border-radius: 7px; cursor: pointer;
@@ -816,7 +820,7 @@ AUTH_READY.then(async function () {
   }
 
   const selArea = document.getElementById("n-area");
-  const msColaborador = crearMultiselect("n-colaborador", "Primero selecciona el área…");
+  const msColaborador = crearMultiselect("n-colaborador", "Primero selecciona el área…", () => validarEnVivo());
   const selCodigo = document.getElementById("n-codigo");
   const inCodigoNovedad = document.getElementById("n-codigo-novedad");
   const inDescripcion = document.getElementById("n-descripcion");
@@ -988,40 +992,114 @@ AUTH_READY.then(async function () {
   let presupuestoOK = true;
   let colaboradorBloqueadoPorPresupuesto = false;
 
-  // Muestra, para el area y la fecha elegidas, cuantas horas habilitadas (presupuesto de Presupuesto Horas
-  // Extra menos lo ya cargado) le quedan a cada novedad de horas extra; la que se esta registrando va resaltada.
+  // Panel de horas habilitadas de la novedad elegida (solo esa) para el area y la fecha: asignadas (presupuesto
+  // de Presupuesto Horas Extra), usadas (ya cargadas) y disponibles. Ademas valida EN VIVO lo que se va escribiendo:
+  // horas por colaborador x colaboradores contra lo disponible, y el tope de MAX_HORAS_HORA_EXTRA por colaborador
+  // en el dia (sumando lo que ya tenga cargado). Mientras haya un error, el boton Guardar queda deshabilitado.
   const panelHoras = document.getElementById("horas-habilitadas");
-  const fmtH = (n) => `${Number(n.toFixed(2))} h`;
+  const fmtH = (n) => `${Number(Number(n).toFixed(2))} h`;
+  let resumenHoras = null;          // {asignadas, usadas, disponibles} de la novedad elegida; null = sin presupuesto / no aplica
+  let bloqueadoEnVivo = false;
+
+  async function cargarResumenHoras(fecha, area, codigo) {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/horas_extra_resumen`, {
+      method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
+      body: JSON.stringify({ p_fecha: fecha, p_area: area, p_codigo: codigo }),
+    });
+    if (resp.ok) {
+      const filas = await resp.json();
+      return filas.length ? { asignadas: Number(filas[0].asignadas), usadas: Number(filas[0].usadas), disponibles: Number(filas[0].disponibles) } : null;
+    }
+    // la funcion nueva aun no esta instalada en la base: se muestra solo lo disponible, como antes
+    const d = await consultarHorasExtraDisponibles(fecha, area, codigo);
+    return d === null ? null : { asignadas: null, usadas: null, disponibles: Number(d) };
+  }
+
   async function mostrarHorasHabilitadas(cod) {
     const area = selArea.value, fecha = inFecha.value;
     const mia = ++mostrarHorasHabilitadas.ultima;
+    const titulo = `<strong>Horas habilitadas · ${escaparTexto(cod.codigo_descripcion)} · ${escaparTexto(area)} · ${fecha}</strong>`;
     panelHoras.hidden = false;
-    panelHoras.innerHTML = `<strong>Horas habilitadas · ${escaparTexto(area)} · ${fecha}</strong><span>Consultando…</span>`;
-    let valores;
-    try {
-      valores = await Promise.all(CODIGOS_PRESUPUESTO_EXTRA.map((c) => consultarHorasExtraDisponibles(fecha, area, c)));
-    } catch (err) {
-      if (mia === mostrarHorasHabilitadas.ultima) panelHoras.innerHTML = `<strong>Horas habilitadas · ${escaparTexto(area)} · ${fecha}</strong><span>No se pudieron consultar.</span>`;
-      return;
-    }
-    if (mia !== mostrarHorasHabilitadas.ultima) return;   // el usuario ya cambio area/fecha/codigo
-    const items = CODIGOS_PRESUPUESTO_EXTRA.map((c, i) => {
-      const v = valores[i];
-      const nombre = (codigosPorValor[c] || {}).codigo_descripcion || c;
-      const texto = v === null ? "sin presupuesto" : v > 0 ? `${fmtH(v)} disponibles` : v === 0 ? "0 h (agotadas)" : `excedido por ${fmtH(-v)}`;
-      const sin = v === null || v <= 0;
-      return `<li class="${c === cod.codigo ? "actual" : ""}${sin ? " sin" : ""}"><span>${escaparTexto(nombre)}</span><b>${texto}</b></li>`;
-    });
-    panelHoras.innerHTML = `<strong>Horas habilitadas · ${escaparTexto(area)} · ${fecha}</strong><ul>${items.join("")}</ul>`;
+    panelHoras.innerHTML = titulo + "<span>Consultando…</span>";
+    let r;
+    try { r = await cargarResumenHoras(fecha, area, cod.codigo); }
+    catch { if (mia === mostrarHorasHabilitadas.ultima) panelHoras.innerHTML = titulo + "<span>No se pudieron consultar.</span>"; return; }
+    if (mia !== mostrarHorasHabilitadas.ultima) return;   // el usuario ya cambio area/fecha/novedad
+    resumenHoras = r;
+    const sin = !r || r.disponibles <= 0;
+    const cifra = (etq, v, cls = "") => `<div class="hh-cifra ${cls}"><span>${etq}</span><b>${v === null ? "—" : fmtH(v)}</b></div>`;
+    panelHoras.innerHTML = titulo + (r
+      ? `<div class="hh-cifras">${cifra("Asignadas", r.asignadas)}${cifra("Usadas", r.usadas)}${cifra("Disponibles", r.disponibles, "disp" + (sin ? " sin" : ""))}</div>`
+      : `<span style="color:var(--critical);font-weight:600">Sin presupuesto cargado para esta novedad, área y fecha.</span>`) +
+      `<p class="hh-carga" id="hh-carga"></p><div class="hh-error" id="hh-error" hidden></div>`;
+    validarEnVivo();
   }
   mostrarHorasHabilitadas.ultima = 0;
+
+  // Horas extra que cada colaborador ya tiene cargadas ese dia (todas las novedades de hora extra).
+  async function horasExtraYaCargadas(cedulas, fecha) {
+    const mapa = {};
+    if (cedulas.length === 0) return mapa;
+    const siguiente = restarDias(fecha, -1);
+    const resp = await fetch(
+      `${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?select=cedula,hora&cedula=in.(${cedulas.join(",")})` +
+      `&codigo_novedad=in.(${CODIGOS_HORA_EXTRA.join(",")})&fecha_novedad=gte.${fecha}T00:00:00&fecha_novedad=lt.${siguiente}T00:00:00&limit=5000`,
+      { headers: authHeaders() });
+    if (!resp.ok) throw new Error("No se pudieron consultar las horas extra ya cargadas (HTTP " + resp.status + ").");
+    (await resp.json()).forEach((r) => { mapa[r.cedula] = (mapa[r.cedula] || 0) + Number(r.hora || 0); });
+    return mapa;
+  }
+  // Colaboradores que con estas horas pasarian el tope diario.
+  async function colaboradoresSobreElTope(cedulas, fecha, horas) {
+    const ya = await horasExtraYaCargadas(cedulas, fecha);
+    return cedulas.filter((c) => (ya[c] || 0) + horas > MAX_HORAS_HORA_EXTRA + 1e-9).map((c) => ({
+      nombre: (empleadosPorCedula[c] || {}).nombre || String(c), previas: ya[c] || 0 }));
+  }
+
+  let tValidar, validarToken = 0;
+  function validarEnVivo() {
+    clearTimeout(tValidar);
+    tValidar = setTimeout(async () => {
+      const mia = ++validarToken;
+      const cod = codigosPorValor[selCodigo.value];
+      const esExtra = cod && CODIGOS_HORA_EXTRA.includes(cod.codigo);
+      const aplicaPanel = cod && CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo) && selArea.value && inFecha.value;
+      const eCarga = document.getElementById("hh-carga"), eError = document.getElementById("hh-error");
+      const errores = [];
+      const h = Number(inHora.value) || 0;
+      const cedulas = [...msColaborador.seleccion];
+      if (esExtra && h > MAX_HORAS_HORA_EXTRA) errores.push(`Máximo ${MAX_HORAS_HORA_EXTRA} horas por colaborador (escribiste ${fmtH(h)}).`);
+      if (aplicaPanel && eCarga) {
+        if (resumenHoras && h > 0 && cedulas.length > 0) {
+          const solicitadas = h * cedulas.length;
+          eCarga.textContent = `Esta carga: ${fmtH(h)} × ${cedulas.length} colaborador${cedulas.length === 1 ? "" : "es"} = ${fmtH(solicitadas)} · quedarían ${fmtH(resumenHoras.disponibles - solicitadas)}`;
+          if (solicitadas > resumenHoras.disponibles + 1e-9)
+            errores.push(`Esta carga (${fmtH(solicitadas)}) supera las horas disponibles (${fmtH(Math.max(0, resumenHoras.disponibles))}). Reduce las horas o los colaboradores.`);
+        } else eCarga.textContent = "";
+      }
+      if (esExtra && h > 0 && h <= MAX_HORAS_HORA_EXTRA && cedulas.length > 0 && inFecha.value) {
+        try {
+          const sobre = await colaboradoresSobreElTope(cedulas, inFecha.value, h);
+          if (mia !== validarToken) return;
+          if (sobre.length) errores.push(`Pasarían de ${MAX_HORAS_HORA_EXTRA} horas ese día: ` +
+            sobre.map((x) => `${x.nombre} (ya tiene ${fmtH(x.previas)})`).join(", ") + ".");
+        } catch { /* si no se puede consultar, lo vuelve a validar el guardado */ }
+      }
+      if (mia !== validarToken) return;
+      bloqueadoEnVivo = errores.length > 0;
+      btnNovedad.disabled = bloqueadoEnVivo;
+      if (eError) { eError.hidden = !bloqueadoEnVivo; eError.innerHTML = errores.map(escaparTexto).join("<br>"); }
+      else if (bloqueadoEnVivo) { msgNovedad.textContent = errores.join(" "); msgNovedad.className = "form-msg error"; }
+    }, 250);
+  }
+  inHora.addEventListener("input", validarEnVivo);
 
   async function verificarGatePresupuesto() {
     const cod = codigosPorValor[selCodigo.value];
     const esPresupuestable = cod && CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo);
     const aplica = esPresupuestable && selArea.value && inFecha.value;
     if (aplica) mostrarHorasHabilitadas(cod);
-    else { mostrarHorasHabilitadas.ultima++; panelHoras.hidden = true; }
+    else { mostrarHorasHabilitadas.ultima++; panelHoras.hidden = true; resumenHoras = null; validarEnVivo(); }
 
     if (!aplica) {
       presupuestoOK = true;
@@ -1281,6 +1359,19 @@ AUTH_READY.then(async function () {
       }
       if (Number(inHora.value) > MAX_HORAS_HORA_EXTRA) {
         msgNovedad.textContent = `"${cod.codigo_descripcion}" no puede superar ${MAX_HORAS_HORA_EXTRA} horas por colaborador.`;
+        msgNovedad.className = "form-msg error";
+        return;
+      }
+      try {
+        const sobre = await colaboradoresSobreElTope(cedulasSeleccionadas, inFecha.value, Number(inHora.value));
+        if (sobre.length) {
+          msgNovedad.textContent = `No se guardó nada: pasarían de ${MAX_HORAS_HORA_EXTRA} horas ese día — ` +
+            sobre.map((x) => `${x.nombre} (ya tiene ${fmtH(x.previas)})`).join(", ") + ".";
+          msgNovedad.className = "form-msg error";
+          return;
+        }
+      } catch (err) {
+        msgNovedad.textContent = "No se pudo verificar las horas ya cargadas, no se guardó nada: " + (err.message || err);
         msgNovedad.className = "form-msg error";
         return;
       }
