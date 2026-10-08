@@ -217,6 +217,8 @@
   .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
   .ms-option:hover { background: var(--accent-soft); }
+  .ms-option.ms-todos { font-weight: 600; border-bottom: 1px solid var(--line, #dfe4d5); border-radius: 5px 5px 0 0; margin-bottom: 2px; }
+  .ms-option .ms-contador { margin-left: auto; font-style: normal; font-weight: 400; font-size: 12px; color: var(--ink-faint); }
   .ms-option input { margin: 0; accent-color: var(--accent); }
 
   .form-actions { display: flex; align-items: center; gap: 14px; margin-top: 18px; }
@@ -668,7 +670,9 @@ AUTH_READY.then(async function () {
   });
 
   // ---------------- multiselect generico ----------------
-  function crearMultiselect(containerId, etiquetaTodos, onChange) {
+  // conSeleccionarTodos: agrega arriba la opcion "Seleccionar todos" (aplica a lo que muestre el buscador) para marcar
+  // a todos de una vez y luego quitar solo a quien no corresponde.
+  function crearMultiselect(containerId, etiquetaTodos, onChange, conSeleccionarTodos = false) {
     const el = document.getElementById(containerId);
     const seleccion = new Set();
     let etiquetaPorValor = {};
@@ -693,6 +697,7 @@ AUTH_READY.then(async function () {
       if (el.classList.contains("open") && buscar) {
         buscar.value = "";
         panel.querySelectorAll(".ms-option").forEach(o => { o.style.display = ""; });
+        buscar.dispatchEvent(new Event("input"));   // refresca el contador de "Seleccionar todos"
         buscar.focus();
       }
     });
@@ -711,25 +716,56 @@ AUTH_READY.then(async function () {
         trigger.disabled = false;
         panel.innerHTML = `<input type="text" class="ms-search" placeholder="Buscar…" autocomplete="off">`;
         const buscar = panel.querySelector(".ms-search");
+        const conTodos = conSeleccionarTodos && opciones.length > 1;
+        if (conTodos) panel.insertAdjacentHTML("beforeend", `<label class="ms-option ms-todos"><input type="checkbox"><span>Seleccionar todos</span><em class="ms-contador"></em></label>`);
         opciones.forEach(([valor, texto]) => {
           etiquetaPorValor[valor] = texto;
           panel.insertAdjacentHTML("beforeend", `<label class="ms-option" data-texto="${texto.toLowerCase()}"><input type="checkbox" value="${valor}"><span>${texto}</span></label>`);
         });
-        panel.querySelectorAll("input[type=checkbox]").forEach((chk, i) => {
+        const checks = [...panel.querySelectorAll(".ms-option:not(.ms-todos) input[type=checkbox]")];
+        const chkTodos = conTodos ? panel.querySelector(".ms-todos input") : null;
+        const contador = conTodos ? panel.querySelector(".ms-contador") : null;
+        const visibles = () => checks.filter((c) => c.closest(".ms-option").style.display !== "none");
+        // estado del "Seleccionar todos": marcado si todos los visibles lo estan, a medias si solo algunos
+        function sincronizarTodos() {
+          if (!chkTodos) return;
+          const v = visibles(), marcados = v.filter((c) => c.checked).length;
+          chkTodos.checked = v.length > 0 && marcados === v.length;
+          chkTodos.indeterminate = marcados > 0 && marcados < v.length;
+          contador.textContent = `${marcados} de ${v.length}`;
+        }
+        checks.forEach((chk, i) => {
           chk.addEventListener("change", () => {
             if (chk.checked) seleccion.add(opciones[i][0]);
             else seleccion.delete(opciones[i][0]);
             actualizarEtiqueta();
+            sincronizarTodos();
             if (onChange) onChange();
           });
         });
+        if (chkTodos) {
+          chkTodos.addEventListener("change", () => {
+            const marcar = chkTodos.checked;
+            checks.forEach((chk, i) => {
+              if (chk.closest(".ms-option").style.display === "none") return;
+              chk.checked = marcar;
+              if (marcar) seleccion.add(opciones[i][0]);
+              else seleccion.delete(opciones[i][0]);
+            });
+            actualizarEtiqueta();
+            sincronizarTodos();
+            if (onChange) onChange();
+          });
+        }
         buscar.addEventListener("click", (e) => e.stopPropagation());
         buscar.addEventListener("input", () => {
           const q = buscar.value.trim().toLowerCase();
-          panel.querySelectorAll(".ms-option").forEach((opt) => {
+          panel.querySelectorAll(".ms-option:not(.ms-todos)").forEach((opt) => {
             opt.style.display = opt.dataset.texto.includes(q) ? "" : "none";
           });
+          sincronizarTodos();
         });
+        sincronizarTodos();
         actualizarEtiqueta();
       },
       deshabilitar(etiqueta) {
@@ -740,7 +776,7 @@ AUTH_READY.then(async function () {
       },
       limpiar() {
         seleccion.clear();
-        panel.querySelectorAll("input").forEach((c) => { c.checked = false; });
+        panel.querySelectorAll("input").forEach((c) => { c.checked = false; c.indeterminate = false; });
         actualizarEtiqueta();
       },
     };
@@ -820,7 +856,7 @@ AUTH_READY.then(async function () {
   }
 
   const selArea = document.getElementById("n-area");
-  const msColaborador = crearMultiselect("n-colaborador", "Primero selecciona el área…", () => validarEnVivo());
+  const msColaborador = crearMultiselect("n-colaborador", "Primero selecciona el área…", () => validarEnVivo(), true);
   const selCodigo = document.getElementById("n-codigo");
   const inCodigoNovedad = document.getElementById("n-codigo-novedad");
   const inDescripcion = document.getElementById("n-descripcion");
