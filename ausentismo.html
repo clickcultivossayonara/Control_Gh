@@ -769,7 +769,13 @@ AUTH_READY.then(async function () {
     pintarRachas();
   }
 
-  if (puedeEditar) {
+  {
+    // Visible para admin/nomina/rrhh y tambien para jefes, supervisores y auxiliares (la base solo les entrega los
+    // colaboradores de sus areas). Para cualquier otro rol la base rechaza la consulta y la tarjeta no se muestra.
+    if (["jefe_area", "supervisor", "auxiliar"].includes(window.SESION.rol)) {
+      const hint = document.querySelector(".rachas-hint");
+      if (hint) hint.textContent = "Más de 3 días hábiles seguidos sin marcar y sin una novedad que lo explique, solo de tus áreas (domingos y festivos no cortan la racha).";
+    }
     document.getElementById("rachas-header").addEventListener("click", (e) => {
       if (e.target.closest("#btn-rachas-excel")) return;
       const cuerpo = document.getElementById("rachas-cuerpo");
