@@ -844,6 +844,15 @@ AUTH_READY.then(async function () {
   // de arriba). Se limitan a los ultimos 3 dias (hoy, ayer, antier) y a
   // maximo 2 horas por colaborador, sin excepcion de rol.
   const CODIGOS_HORA_EXTRA = ["HE", "HEC", "HEF", "HEFN", "HEN"];
+  // Conceptos que se validan contra el registro biometrico del dia al guardar, por colaborador:
+  //  - TRABAJADOS: exigen marcacion (entrada o salida) ese dia.
+  //  - FESTIVOS: el dia debe ser festivo o domingo.
+  //  - NOCTURNOS: la marcacion debe tocar el horario nocturno (de NOCHE_DESDE_HORA a NOCHE_HASTA_HORA del dia siguiente).
+  // El resto de conceptos (ausencias, permisos, compensatorios, HEC, HC75/HC100, HR, HO, B073, CAP...) no se comparan.
+  const CODIGOS_TRABAJADOS = ["HE", "HEF", "HEFN", "HEN", "HF", "HFN", "HN", "RNF"];
+  const CODIGOS_FESTIVOS = ["HF", "HFN", "HEF", "HEFN", "RNF"];
+  const CODIGOS_NOCTURNOS = ["HN", "HEN", "HEFN", "HFN", "RNF"];
+  const NOCHE_DESDE_HORA = 19, NOCHE_HASTA_HORA = 6;
   const DIAS_ATRAS_HORA_EXTRA = 2;
   const MAX_HORAS_HORA_EXTRA = 2;
 
@@ -1208,6 +1217,53 @@ AUTH_READY.then(async function () {
     popupBio.hidden = false;
     document.getElementById("popup-bio-cerrar").focus();
   }
+  function mostrarPopupConcepto(titulo, texto, problemas, pie) {
+    document.getElementById("popup-bio-titulo").textContent = titulo;
+    document.getElementById("popup-bio-texto").textContent = texto;
+    document.getElementById("popup-bio-lista").innerHTML = problemas.map((p) =>
+      `<li><strong>${escaparTexto(p.nombre)}</strong><span>${escaparTexto(p.detalle)}</span></li>`).join("");
+    document.getElementById("popup-bio-pie").textContent = pie;
+    popupBio.hidden = false;
+    document.getElementById("popup-bio-cerrar").focus();
+  }
+
+  const esFestivoODomingo = (fecha) => FESTIVOS.has(fecha) || new Date(fecha + "T00:00:00").getDay() === 0;
+  // La marcacion toca la noche si entra antes de las 6 a.m., sale despues de las 7 p.m. o cruza la medianoche.
+  function marcacionTocaNoche(fecha, entrada, salida) {
+    const hh = (h) => `${fecha}T${String(h).padStart(2, "0")}:00:00`;
+    const e = entrada ? String(entrada).slice(0, 19) : null, s = salida ? String(salida).slice(0, 19) : null;
+    if (e && (e < hh(NOCHE_HASTA_HORA) || e >= hh(NOCHE_DESDE_HORA))) return true;
+    if (s && (s > hh(NOCHE_DESDE_HORA) || s.slice(0, 10) > fecha)) return true;
+    return false;
+  }
+
+  // Colaboradores cuya marcacion de ese dia NO respalda el concepto (sin marcacion, o sin pasar por la noche en los nocturnos).
+  // Chile no tiene biometrico: se omite. Lanza error si no se puede consultar (no se guarda a ciegas).
+  async function colaboradoresSinRespaldoDelConcepto(cedulas, fecha, cod) {
+    const aVerificar = cedulas.filter((c) => {
+      const e = empleadosPorCedula[c] || {};
+      return String(e.area || "").toUpperCase() !== "CHILE" && String(e.sede || "").toUpperCase() !== "CHILE";
+    });
+    if (aVerificar.length === 0) return [];
+    const resp = await fetch(
+      `${SUPABASE_URL}/rest/v1/registro_horas_detalle?select=cedula,hora_entrada,hora_salida&fecha=eq.${fecha}&cedula=in.(${aVerificar.join(",")})`,
+      { headers: authHeaders() });
+    if (!resp.ok) throw new Error("No se pudo consultar el registro biométrico (HTTP " + resp.status + ").");
+    const marca = {};
+    (await resp.json()).forEach((r) => { marca[r.cedula] = r; });
+    const problemas = [];
+    aVerificar.forEach((c) => {
+      const nombre = (empleadosPorCedula[c] || {}).nombre || String(c);
+      const m = marca[c];
+      if (!m || (!m.hora_entrada && !m.hora_salida)) { problemas.push({ nombre, detalle: "Sin marcación en el biométrico ese día." }); return; }
+      if (CODIGOS_NOCTURNOS.includes(cod.codigo) && !marcacionTocaNoche(fecha, m.hora_entrada, m.hora_salida)) {
+        const h = (x) => (x ? String(x).slice(11, 16) : "—");
+        problemas.push({ nombre, detalle: `Su marcación (${h(m.hora_entrada)} a ${h(m.hora_salida)}) no toca el horario nocturno (${NOCHE_DESDE_HORA}:00 a ${String(NOCHE_HASTA_HORA).padStart(2, "0")}:00).` });
+      }
+    });
+    return problemas;
+  }
+
   function escaparTexto(s) {
     return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
@@ -1384,6 +1440,39 @@ AUTH_READY.then(async function () {
       msgNovedad.textContent = `No se puede cargar una novedad con vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minimaGeneral}).`;
       msgNovedad.className = "form-msg error";
       return;
+    }
+
+    // Conceptos que deben coincidir con el dia y con el registro biometrico de cada colaborador
+    if (!usaRango && (CODIGOS_FESTIVOS.includes(cod.codigo) || CODIGOS_TRABAJADOS.includes(cod.codigo))) {
+      if (CODIGOS_FESTIVOS.includes(cod.codigo) && !esFestivoODomingo(inFecha.value)) {
+        msgNovedad.textContent = `"${cod.codigo_descripcion}" solo se puede cargar en domingos o festivos; el ${inFecha.value} no lo es. No se guardó nada.`;
+        msgNovedad.className = "form-msg error";
+        mostrarPopupConcepto("El día no es festivo", `"${cod.codigo_descripcion}" solo aplica en domingos o festivos y el ${inFecha.value} no lo es.`, [],
+          "No se guardó nada. Cambia la fecha o elige otra novedad.");
+        return;
+      }
+      btnNovedad.disabled = true;
+      msgNovedad.textContent = "Verificando el registro biométrico...";
+      msgNovedad.className = "form-msg";
+      let sinRespaldo;
+      try {
+        sinRespaldo = await colaboradoresSinRespaldoDelConcepto(cedulasSeleccionadas, inFecha.value, cod);
+      } catch (err) {
+        btnNovedad.disabled = false;
+        msgNovedad.textContent = "No se pudo verificar el biométrico, no se guardó nada: " + (err.message || err);
+        msgNovedad.className = "form-msg error";
+        return;
+      }
+      btnNovedad.disabled = false;
+      if (sinRespaldo.length > 0) {
+        msgNovedad.textContent = `${sinRespaldo.length} colaborador(es) no coinciden con el registro biométrico para esta novedad. No se guardó nada.`;
+        msgNovedad.className = "form-msg error";
+        mostrarPopupConcepto("No coincide con el registro biométrico",
+          `Estos colaboradores no tienen respaldo en el biométrico para "${cod.codigo_descripcion}" el ${inFecha.value}.`,
+          sinRespaldo, "No se guardó nada. Quita a estos colaboradores de la selección y vuelve a guardar.");
+        return;
+      }
+      msgNovedad.textContent = "";
     }
 
     if (CODIGOS_HORA_EXTRA.includes(cod.codigo)) {
