@@ -841,6 +841,21 @@ AUTH_READY.then(async function () {
   // Excepciones: PCM (permiso por cita medica) se da por horas, asi que sigue pidiendolas; APD siempre es 0 h.
   const CODIGOS_HORAS_MANUALES = ["PCM"];
   const CODIGOS_SIN_HORAS = ["APD"];
+  // Una incapacidad o licencia que cae en dias de vacaciones los reemplaza y la base repone esos dias al final del periodo
+  // (ver schema_incapacidad_en_vacaciones.sql). Aqui solo se evita la alerta de "ya tiene novedad" y se informa el resultado.
+  const CODIGOS_INCAPACIDAD = ["IEG", "IAT", "INC", "LIN", "LIR", "LMA", "LPA", "LPL"];   // incapacidades y licencias
+  async function fechasDeVacaciones(cedulas, desde) {
+    const set = new Set();
+    for (let i = 0; i < cedulas.length; i += 100) {
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?select=cedula,fecha_novedad&codigo_novedad=eq.VAC` +
+        `&cedula=in.(${cedulas.slice(i, i + 100).join(",")})&fecha_novedad=gte.${desde}T00:00:00&limit=5000`,
+        { headers: authHeaders() });
+      if (!resp.ok) throw new Error("No se pudieron consultar las vacaciones (HTTP " + resp.status + ").");
+      (await resp.json()).forEach((r) => set.add(`${r.cedula}|${String(r.fecha_novedad).slice(0, 10)}`));
+    }
+    return set;
+  }
   const usaHorasDelSistema = (cod) => !!cod && TIPOS_RANGO_FECHA.includes(cod.tipo) && !CODIGOS_HORAS_MANUALES.includes(cod.codigo);
   let HORAS_ESPERADAS_DIA = null;      // {0..6: horas}, lunes = 0 (igual que Configuraciones)
   const TURNOS_AREA = {};              // {"area|turno": horas}
@@ -1655,12 +1670,19 @@ AUTH_READY.then(async function () {
       }
     }
 
+    let vacAntes = null;
+    const minFechaVac = [...fechas].sort()[0];
+    if (usaRango && CODIGOS_INCAPACIDAD.includes(cod.codigo)) {
+      try { vacAntes = await fechasDeVacaciones(cedulasSeleccionadas, minFechaVac); } catch { vacAntes = null; }
+    }
+
     btnNovedad.disabled = true;
     msgNovedad.textContent = "Verificando novedades ya cargadas...";
     msgNovedad.className = "form-msg";
     try {
       const yaCargadas = (await novedadesYaCargadas(cedulasSeleccionadas, fechas))
-        .filter((r) => !omitidos.has(`${r.cedula}|${String(r.fecha_novedad).slice(0, 10)}`));
+        .filter((r) => !omitidos.has(`${r.cedula}|${String(r.fecha_novedad).slice(0, 10)}`))
+        .filter((r) => !(CODIGOS_INCAPACIDAD.includes(cod.codigo) && r.codigo_novedad === "VAC"));   // la incapacidad o licencia reemplaza vacaciones
       if (yaCargadas.length > 0) {
         btnNovedad.disabled = false;
         msgNovedad.textContent = "";
@@ -1747,11 +1769,32 @@ AUTH_READY.then(async function () {
       await cargarColaboradores();
       await verificarGatePresupuesto();
       cargarListaNovedades();
-      if (revisionBio.length > 0) {
-        mostrarPopupConcepto("Revisión contra el biométrico",
-          omitidos.size > 0 ? "La novedad se cargó, pero algunos días ya estaban laborados. Esto fue lo que se decidió por cada día:"
-                            : "La novedad se cargó. Estos días tenían marcación en el biométrico:",
-          revisionBio, "Un día laborado completo toma la marcación; uno parcial o incompleto toma la novedad.");
+      // incapacidad o licencia dentro de vacaciones: cuantos dias de vacaciones reemplazo y cuales se repusieron
+      const itemsVac = [];
+      if (vacAntes !== null) {
+        try {
+          const reemplazados = {};
+          registros.forEach((r) => { if (vacAntes.has(`${r.cedula}|${r.fecha_novedad.slice(0, 10)}`)) reemplazados[r.cedula] = (reemplazados[r.cedula] || 0) + 1; });
+          if (Object.keys(reemplazados).length > 0) {
+            const despues = await fechasDeVacaciones(cedulasSeleccionadas, minFechaVac);
+            const nuevas = {};
+            [...despues].filter((k) => !vacAntes.has(k)).forEach((k) => { const [c, f] = k.split("|"); (nuevas[c] = nuevas[c] || []).push(f); });
+            Object.entries(reemplazados).forEach(([c, n]) => {
+              const f = (nuevas[c] || []).sort().map((x) => `${x.slice(8, 10)}/${x.slice(5, 7)}`);
+              itemsVac.push({ nombre: (empleadosPorCedula[c] || {}).nombre || String(c),
+                detalle: `${n} día(s) de vacaciones reemplazado(s) por la novedad. Vacaciones repuestas: ${f.length ? f.join(", ") : "—"}.` });
+            });
+          }
+        } catch { /* solo informativo */ }
+      }
+      if (revisionBio.length > 0 || itemsVac.length > 0) {
+        mostrarPopupConcepto(itemsVac.length > 0 ? "Incapacidad o licencia dentro de vacaciones" : "Revisión contra el biométrico",
+          itemsVac.length > 0 ? "La incapacidad o licencia reemplazó días de vacaciones y esos días se repusieron al final del periodo." +
+              (revisionBio.length > 0 ? " Además, esto fue lo que se decidió por cada día con marcación:" : "")
+            : omitidos.size > 0 ? "La novedad se cargó, pero algunos días ya estaban laborados. Esto fue lo que se decidió por cada día:"
+                                : "La novedad se cargó. Estos días tenían marcación en el biométrico:",
+          [...itemsVac, ...revisionBio],
+          revisionBio.length > 0 ? "Un día laborado completo toma la marcación; uno parcial o incompleto toma la novedad." : "");
       }
     } catch (err) {
       msgNovedad.textContent = "No se pudo guardar: " + (err.message || err);
