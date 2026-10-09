@@ -417,6 +417,7 @@
         </div>
       </div>
       <p class="card-hint" id="hint-hora-extra" hidden style="margin: 6px 0 16px;"></p>
+      <p class="card-hint" id="hint-horas-sistema" hidden style="margin: 6px 0 16px;">Las horas de cada día las asigna el sistema según las horas esperadas de ese día (Configuraciones) y el turno del área, por eso no se escriben.</p>
       <div class="horas-habilitadas" id="horas-habilitadas" hidden></div>
       <div class="form-actions">
         <button type="submit" class="btn-primary" id="btn-novedad">Guardar novedad</button>
@@ -835,6 +836,31 @@ AUTH_READY.then(async function () {
 
   // ---------------- formulario: novedad por colaborador ----------------
   const TIPOS_RANGO_FECHA = ["Ausencia", "Vacaciones"];
+  // En las novedades por rango (vacaciones, incapacidades, licencias...) las horas de cada dia las pone el sistema:
+  // las horas esperadas de ese dia (turno del area si el colaborador tiene turno, si no la tabla de Configuraciones).
+  // Excepciones: PCM (permiso por cita medica) se da por horas, asi que sigue pidiendolas; APD siempre es 0 h.
+  const CODIGOS_HORAS_MANUALES = ["PCM"];
+  const CODIGOS_SIN_HORAS = ["APD"];
+  const usaHorasDelSistema = (cod) => !!cod && TIPOS_RANGO_FECHA.includes(cod.tipo) && !CODIGOS_HORAS_MANUALES.includes(cod.codigo);
+  let HORAS_ESPERADAS_DIA = null;      // {0..6: horas}, lunes = 0 (igual que Configuraciones)
+  const TURNOS_AREA = {};              // {"area|turno": horas}
+  async function cargarHorasEsperadas() {
+    try {
+      const [a, b] = await Promise.all([
+        fetch(`${SUPABASE_URL}/rest/v1/horas_esperadas_dia?select=dia_semana,horas`, { headers: authHeaders() }),
+        fetch(`${SUPABASE_URL}/rest/v1/turnos_area?select=area,turno,horas&activo=eq.true`, { headers: authHeaders() }),
+      ]);
+      if (a.ok) { HORAS_ESPERADAS_DIA = {}; (await a.json()).forEach((f) => { HORAS_ESPERADAS_DIA[Number(f.dia_semana)] = Number(f.horas); }); }
+      if (b.ok) (await b.json()).forEach((f) => { TURNOS_AREA[`${f.area}|${f.turno}`] = Number(f.horas); });
+    } catch { /* si falla, el guardado de estas novedades avisa que no pudo leer las horas esperadas */ }
+  }
+  function horasDelDia(emp, fecha, cod) {
+    if (CODIGOS_SIN_HORAS.includes(cod.codigo)) return 0;
+    const t = emp.turno != null ? TURNOS_AREA[`${emp.area}|${emp.turno}`] : undefined;
+    if (t !== undefined) return t;
+    const dow = (new Date(fecha + "T00:00:00").getDay() + 6) % 7;
+    return HORAS_ESPERADAS_DIA ? HORAS_ESPERADAS_DIA[dow] : undefined;
+  }
 
   // Conceptos que se pueden presupuestar en "Presupuesto Horas extra".
   // Se omite HEC (tiempo compensado, no genera costo de horas extra).
@@ -966,6 +992,14 @@ AUTH_READY.then(async function () {
     inFechaInicio.required = usaRango;
     inFechaFinal.required = usaRango;
     if (!usaRango) { inFechaInicio.value = ""; inFechaFinal.value = ""; }
+    // las horas las pone el sistema: el campo se oculta y deja de ser obligatorio
+    const sistema = usaHorasDelSistema(cod);
+    const campoHora = inHora.closest(".field");
+    if (campoHora) campoHora.style.display = sistema ? "none" : "";
+    inHora.required = !sistema;
+    if (sistema) inHora.value = "";
+    const hintSis = document.getElementById("hint-horas-sistema");
+    if (hintSis) hintSis.hidden = !sistema;
   }
 
   const alertaPresupuesto = document.getElementById("alerta-presupuesto");
@@ -1007,6 +1041,7 @@ AUTH_READY.then(async function () {
   }
   cargarCodigos();
   cargarFestivos();
+  cargarHorasEsperadas();
 
   async function cargarColaboradores() {
     empleadosPorCedula = {};
@@ -1016,7 +1051,7 @@ AUTH_READY.then(async function () {
     }
     msColaborador.deshabilitar("Cargando…");
     const params = new URLSearchParams();
-    params.set("select", "cedula,nombre,area,sede,nombre_jefe,email_jefe,administrativo,activo");
+    params.set("select", "cedula,nombre,area,sede,nombre_jefe,email_jefe,administrativo,activo,turno");
     params.set("area", "eq." + selArea.value);
     params.set("activo", "eq.true");
     params.set("order", "nombre.asc");
@@ -1420,7 +1455,12 @@ AUTH_READY.then(async function () {
 
     if (cedulasSeleccionadas.length === 0) { msgNovedad.textContent = "Selecciona al menos un colaborador."; msgNovedad.className = "form-msg error"; return; }
     if (!cod) { msgNovedad.textContent = "Selecciona un código."; msgNovedad.className = "form-msg error"; return; }
-    if (!inHora.value) { msgNovedad.textContent = "Las horas son obligatorias."; msgNovedad.className = "form-msg error"; return; }
+    const horasSistema = usaHorasDelSistema(cod);
+    if (!horasSistema && !inHora.value) { msgNovedad.textContent = "Las horas son obligatorias."; msgNovedad.className = "form-msg error"; return; }
+    if (horasSistema && HORAS_ESPERADAS_DIA === null) {
+      await cargarHorasEsperadas();
+      if (HORAS_ESPERADAS_DIA === null) { msgNovedad.textContent = "No se pudieron leer las horas esperadas para asignar las horas de cada día. No se guardó nada."; msgNovedad.className = "form-msg error"; return; }
+    }
 
     let fechas;
     if (usaRango) {
@@ -1667,7 +1707,7 @@ AUTH_READY.then(async function () {
           fecha_novedad: fecha + "T00:00:00",
           dia: diaSemana(fecha),
           semana: isoWeekNum(fecha),
-          hora: Number(inHora.value),
+          hora: horasSistema ? horasDelDia(emp, fecha, cod) : Number(inHora.value),
           fecha_creacion: ahoraNaive(),
         });
       });
