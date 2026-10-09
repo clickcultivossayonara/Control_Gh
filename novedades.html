@@ -1264,6 +1264,21 @@ AUTH_READY.then(async function () {
     return problemas;
   }
 
+  // Jornadas registradas en el biometrico para estas cedulas dentro de las fechas elegidas: {"cedula|fecha": fila}.
+  async function jornadasDelRango(cedulas, fechas) {
+    const mapa = {}, fechasSet = new Set(fechas);
+    const ord = [...fechas].sort();
+    for (let i = 0; i < cedulas.length; i += 100) {
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/registro_horas_detalle?select=cedula,fecha,hora_entrada,hora_salida,horas_trabajadas,horas_esperadas,diferencia_tiempo` +
+        `&cedula=in.(${cedulas.slice(i, i + 100).join(",")})&fecha=gte.${ord[0]}&fecha=lte.${ord[ord.length - 1]}&limit=5000`,
+        { headers: authHeaders() });
+      if (!resp.ok) throw new Error("No se pudo consultar el registro biométrico (HTTP " + resp.status + ").");
+      (await resp.json()).forEach((r) => { const f = String(r.fecha).slice(0, 10); if (fechasSet.has(f)) mapa[`${r.cedula}|${f}`] = r; });
+    }
+    return mapa;
+  }
+
   function escaparTexto(s) {
     return String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   }
@@ -1556,11 +1571,56 @@ AUTH_READY.then(async function () {
       }
     }
 
+    // Ausencias / vacaciones por rango: un dia que el colaborador ya laboro COMPLETO (horas trabajadas >= esperadas, con la
+    // tolerancia del biometrico) toma la marcacion y NO se carga la novedad; un dia laborado parcial (o con marcacion
+    // incompleta) si recibe la novedad. Al terminar se muestra el detalle de lo que se decidio por cada dia.
+    const omitidos = new Set();
+    const revisionBio = [];
+    if (usaRango) {
+      btnNovedad.disabled = true;
+      msgNovedad.textContent = "Comparando con el registro biométrico...";
+      msgNovedad.className = "form-msg";
+      try {
+        const jornadas = await jornadasDelRango(cedulasSeleccionadas, fechas);
+        cedulasSeleccionadas.forEach((c) => {
+          const nombre = (empleadosPorCedula[c] || {}).nombre || String(c);
+          fechas.forEach((f) => {
+            const j = jornadas[`${c}|${f}`];
+            if (!j || (!j.hora_entrada && !j.hora_salida)) return;
+            const tieneDif = j.diferencia_tiempo != null;
+            if (tieneDif && Number(j.diferencia_tiempo) >= -TOLERANCIA_BIOMETRICO_H) {
+              omitidos.add(`${c}|${f}`);
+              revisionBio.push({ nombre, detalle: `${f}: jornada completa (${fmtH(j.horas_trabajadas)} de ${fmtH(j.horas_esperadas)}). Se toma la marcación y NO se carga la novedad.` });
+            } else {
+              revisionBio.push({ nombre, detalle: tieneDif
+                ? `${f}: jornada parcial (${fmtH(j.horas_trabajadas)} de ${fmtH(j.horas_esperadas)}). Sí se carga la novedad.`
+                : `${f}: marcación incompleta (falta entrada o salida). Sí se carga la novedad.` });
+            }
+          });
+        });
+      } catch (err) {
+        btnNovedad.disabled = false;
+        msgNovedad.textContent = "No se pudo verificar el biométrico, no se guardó nada: " + (err.message || err);
+        msgNovedad.className = "form-msg error";
+        return;
+      }
+      btnNovedad.disabled = false;
+      msgNovedad.textContent = "";
+      if (omitidos.size === cedulasSeleccionadas.length * fechas.length) {
+        msgNovedad.textContent = "No se guardó nada: en todos los días elegidos el colaborador ya laboró la jornada completa.";
+        msgNovedad.className = "form-msg error";
+        mostrarPopupConcepto("Días ya laborados", "Todos los días elegidos ya fueron laborados completos según el biométrico, por eso no se cargó la novedad.",
+          revisionBio, "Si de todas formas necesitas cargarla, cambia las fechas.");
+        return;
+      }
+    }
+
     btnNovedad.disabled = true;
     msgNovedad.textContent = "Verificando novedades ya cargadas...";
     msgNovedad.className = "form-msg";
     try {
-      const yaCargadas = await novedadesYaCargadas(cedulasSeleccionadas, fechas);
+      const yaCargadas = (await novedadesYaCargadas(cedulasSeleccionadas, fechas))
+        .filter((r) => !omitidos.has(`${r.cedula}|${String(r.fecha_novedad).slice(0, 10)}`));
       if (yaCargadas.length > 0) {
         btnNovedad.disabled = false;
         msgNovedad.textContent = "";
@@ -1579,7 +1639,8 @@ AUTH_READY.then(async function () {
     // Ausencias pendientes por definir (APD) de esos dias: la base las reemplaza por esta novedad (no se duplican).
     let reemplazadas = 0;
     if (cod.tipo === "Ausencia" && cod.codigo !== "APD") {
-      try { reemplazadas = (await novedadesYaCargadas(cedulasSeleccionadas, fechas, "codigo_novedad=eq.APD")).length; } catch { /* solo informativo */ }
+      try { reemplazadas = (await novedadesYaCargadas(cedulasSeleccionadas, fechas, "codigo_novedad=eq.APD"))
+        .filter((r) => !omitidos.has(`${r.cedula}|${String(r.fecha_novedad).slice(0, 10)}`)).length; } catch { /* solo informativo */ }
     }
     btnNovedad.disabled = false;
     msgNovedad.textContent = "";
@@ -1588,6 +1649,7 @@ AUTH_READY.then(async function () {
     cedulasSeleccionadas.forEach((cedula) => {
       const emp = empleadosPorCedula[cedula];
       fechas.forEach((fecha) => {
+        if (omitidos.has(`${cedula}|${fecha}`)) return;
         registros.push({
           id_nomina: idUnico(),
           cedula: emp.cedula,
@@ -1626,6 +1688,7 @@ AUTH_READY.then(async function () {
       msgNovedad.textContent = cedulasSeleccionadas.length === 1 && fechas.length === 1
         ? `Novedad guardada para ${registros[0].nombre_colaborador}.`
         : `${registros.length} novedad(es) guardada(s) para ${cedulasSeleccionadas.length} colaborador(es) y ${fechas.length} día(s).`;
+      if (omitidos.size > 0) msgNovedad.textContent += ` ${omitidos.size} día(s) ya laborado(s) completo(s) no se cargaron.`;
       if (reemplazadas > 0) {
         msgNovedad.textContent += ` ${reemplazadas === 1 ? "Reemplazó 1 ausencia pendiente por definir" : `Reemplazó ${reemplazadas} ausencias pendientes por definir`} (no se duplicó).`;
       }
@@ -1644,6 +1707,12 @@ AUTH_READY.then(async function () {
       await cargarColaboradores();
       await verificarGatePresupuesto();
       cargarListaNovedades();
+      if (revisionBio.length > 0) {
+        mostrarPopupConcepto("Revisión contra el biométrico",
+          omitidos.size > 0 ? "La novedad se cargó, pero algunos días ya estaban laborados. Esto fue lo que se decidió por cada día:"
+                            : "La novedad se cargó. Estos días tenían marcación en el biométrico:",
+          revisionBio, "Un día laborado completo toma la marcación; uno parcial o incompleto toma la novedad.");
+      }
     } catch (err) {
       msgNovedad.textContent = "No se pudo guardar: " + (err.message || err);
       msgNovedad.className = "form-msg error";
