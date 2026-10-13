@@ -1,0 +1,116 @@
+/*
+ * Ajustes para pantallas pequenas (celular, tablet) compartidos por todas las paginas.
+ * Se carga DESPUES del estilo propio de cada pagina. Las tablas se convierten en tarjetas (una por fila) cuando la
+ * pantalla es angosta; responsive.js agrega a cada celda data-label con el nombre de su columna.
+ *
+ *   > 900 px  : escritorio / tablet horizontal -> tabla normal con scroll lateral
+ *   <= 900 px : tablet vertical                -> tarjetas en 2 columnas
+ *   <= 600 px : celular                        -> tarjetas en 1 columna, formularios y botones a todo el ancho
+ * Para que una tabla NO se convierta en tarjetas: agregarle la clase "sin-tarjetas".
+ */
+
+html, body { max-width: 100%; overflow-x: hidden; }
+td, th, .field, .page-header { overflow-wrap: anywhere; }
+img, svg, canvas { max-width: 100%; }
+
+/* ---------------- tablet y menor (<= 1100 px) ---------------- */
+@media (max-width: 1100px) {
+  .wrap { padding-left: 18px; padding-right: 18px; }
+  .table-scroll { -webkit-overflow-scrolling: touch; }
+}
+
+/* ---------------- tablet vertical y menor (<= 900 px) ---------------- */
+@media (max-width: 900px) {
+  .page-header { flex-wrap: wrap; gap: 8px; }
+  .filters, .filters-stack .filters { flex-wrap: wrap; }
+  .filters > .field, .filters > .multiselect { flex: 1 1 180px; min-width: 0; }   /* hijos directos: el multiselect dentro de un campo no debe heredar el flex-basis */
+  .form-actions { flex-wrap: wrap; }
+  .tabs, .tab-bar, #tabs-empleado, .tabs-pagina { overflow-x: auto; flex-wrap: nowrap !important; justify-content: flex-start !important;
+    -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
+  .tabs > *, .tab-bar > *, #tabs-empleado > * { flex: 0 0 auto; white-space: nowrap; }
+  .rachas-chips { flex-wrap: wrap; }
+
+  /* ---- tablas -> tarjetas ---- */
+  .table-scroll { overflow: visible !important; max-height: none !important; border: 0 !important; background: transparent !important;
+    box-shadow: none !important; border-radius: 0 !important; }
+  table:not(.sin-tarjetas) { display: block; width: 100% !important; min-width: 0 !important; border: 0 !important; background: transparent !important; }
+  table:not(.sin-tarjetas) thead { position: absolute; left: -9999px; top: -9999px; }   /* queda para lectores de pantalla */
+  table:not(.sin-tarjetas) tbody { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  table:not(.sin-tarjetas) tr { display: block; border: 1px solid var(--line-strong, #d5dccb); border-radius: 12px; background: var(--surface, #fff);
+    box-shadow: var(--shadow, none); overflow: hidden; }
+  table:not(.sin-tarjetas) td {
+    display: flex !important; justify-content: space-between; align-items: baseline; gap: 12px;
+    width: auto !important; min-width: 0 !important; max-width: none !important; position: static !important; left: auto !important;
+    padding: 8px 12px !important; border: 0 !important; border-bottom: 1px dashed var(--line, #e3e8da) !important;
+    text-align: right !important; white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+    background: transparent !important; line-height: 1.35;
+  }
+  table:not(.sin-tarjetas) td:last-child { border-bottom: 0 !important; }
+  table:not(.sin-tarjetas) td::before {
+    content: attr(data-label); flex: 0 0 40%; max-width: 40%; text-align: left; font-weight: 600; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.04em; color: var(--ink-soft, #5b6657);
+  }
+  table:not(.sin-tarjetas) td[data-label=""]::before { display: none; }
+  table:not(.sin-tarjetas) td:first-child { background: var(--accent-soft, #e8efe4) !important; font-weight: 600; }
+  /* fila de "sin resultados" (celda con colspan): sin etiqueta, centrada */
+  table:not(.sin-tarjetas) td.td-vacia { display: block !important; text-align: center !important; border: 0 !important; background: transparent !important; }
+  table:not(.sin-tarjetas) td.td-vacia::before { display: none; }
+  table:not(.sin-tarjetas) tr:has(td.td-vacia) { grid-column: 1 / -1; border-style: dashed; box-shadow: none; }
+  /* controles dentro de una celda (selectores, campos, botones de accion) */
+  table:not(.sin-tarjetas) td select, table:not(.sin-tarjetas) td input:not([type=checkbox]):not([type=radio]) { flex: 1 1 auto; min-width: 0; max-width: 62%; }
+  table:not(.sin-tarjetas) td .chip, table:not(.sin-tarjetas) td .estado { text-align: right; }
+  table:not(.sin-tarjetas) td.nombre, table:not(.sin-tarjetas) td:nth-child(1) { text-align: right; }
+  table:not(.sin-tarjetas) tbody tr:hover td { background: transparent; }
+}
+
+/* ---------------- celular (<= 600 px) ---------------- */
+@media (max-width: 600px) {
+  .wrap { padding-left: 12px !important; padding-right: 12px !important; }
+  section.card, .card { padding: 16px 14px !important; }
+  .page-header h1, h1 { font-size: 21px !important; }
+  h2 { font-size: 17px !important; }
+  .card-hint { margin-bottom: 14px; }
+
+  table:not(.sin-tarjetas) tbody { grid-template-columns: minmax(0, 1fr); }
+
+  .form-grid, .form-grid.form-grid-novedad { grid-template-columns: minmax(0, 1fr) !important; }
+  .filters { flex-direction: column; align-items: stretch !important; }
+  .filters > .field, .filters > .multiselect, .filters > .btn, .filters > button { width: 100%; flex: 0 0 auto; min-width: 0 !important; }
+  .filters .field .multiselect { width: 100%; }
+  .form-actions { flex-direction: column; align-items: stretch; }
+  .form-actions button, .form-actions .btn, .btn-primary, .btn-export { width: 100%; }
+  .form-msg, .result-count { margin-left: 0 !important; }
+
+  /* campos comodos para el dedo; 16 px evita el zoom automatico de iOS */
+  input, select, textarea { font-size: 16px !important; }
+  input:not([type=checkbox]):not([type=radio]), select, button { min-height: 42px; }
+  .field input:not([type=checkbox]):not([type=radio]), .field select, .field textarea { width: 100%; }
+  .ms-trigger, .combobox input { min-height: 42px; }
+
+  /* ventanas emergentes */
+  .popup-biometrico, .modal-fondo, .modal-bg, [role=dialog] { padding: 10px !important; }
+  .popup-biometrico .caja, .modal, .modal-caja { max-width: 100% !important; width: 100% !important; max-height: 92vh; padding: 18px 16px !important; }
+  .popup-botones { flex-direction: column-reverse; }
+  .popup-botones button { width: 100%; }
+
+  /* paneles y avisos */
+  .horas-habilitadas .hh-cifras { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .horas-habilitadas .hh-cifra { padding: 6px 8px; }
+  .horas-habilitadas .hh-cifra b { font-size: 15px; }
+  .alerta-banner { flex-wrap: wrap; }
+  .rachas-header { flex-wrap: wrap; gap: 8px; }
+  .modulos { grid-template-columns: minmax(0, 1fr) !important; }
+}
+
+/* ---------------- celular pequeno (<= 380 px) ---------------- */
+@media (max-width: 380px) {
+  .horas-habilitadas .hh-cifras { grid-template-columns: minmax(0, 1fr); }
+  table:not(.sin-tarjetas) td::before { flex-basis: 45%; max-width: 45%; }
+}
+
+/* Imprimir / Excel no usan estas reglas */
+@media print {
+  table:not(.sin-tarjetas), table:not(.sin-tarjetas) tbody, table:not(.sin-tarjetas) tr, table:not(.sin-tarjetas) td { display: revert !important; }
+  table:not(.sin-tarjetas) thead { position: static; }
+  table:not(.sin-tarjetas) td::before { display: none; }
+}
