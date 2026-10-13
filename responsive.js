@@ -7,6 +7,10 @@
   "use strict";
   var QUITAR = /[↕↑↓▲▼⇅]/g;   // flechas de ordenamiento
 
+  function norm(t) {
+    return String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim();
+  }
+
   function encabezados(tabla) {
     var fila = tabla.querySelector("thead tr:last-child") || tabla.querySelector("tr");
     if (!fila) return [];
@@ -22,6 +26,11 @@
   function etiquetarTabla(tabla) {
     var cols = encabezados(tabla);
     if (cols.length === 0) return;
+    var principales = null;     // en celular solo se ven estas columnas; el resto al tocar la tarjeta (data-principales en la tabla)
+    if (tabla.hasAttribute("data-principales")) {
+      principales = {};
+      tabla.getAttribute("data-principales").split(",").forEach(function (n) { principales[norm(n)] = true; });
+    }
     Array.prototype.forEach.call(tabla.querySelectorAll("tbody tr"), function (tr) {
       var i = 0;
       Array.prototype.forEach.call(tr.cells, function (td) {
@@ -32,6 +41,7 @@
           td.setAttribute("data-label", cols[i] || "");
           td.setAttribute("data-auto", "1");
         }
+        if (principales && !td.classList.contains("td-vacia")) td.classList.toggle("principal", !!principales[norm(td.getAttribute("data-label") || "")]);
         i += span;
       });
     });
@@ -53,6 +63,15 @@
     etiquetarTodo();
     new MutationObserver(programar).observe(document.body, { childList: true, subtree: true, characterData: false });
   }
+  // Tocar una tarjeta (solo celular) muestra u oculta el resto de sus datos
+  document.addEventListener("click", function (e) {
+    if (!window.matchMedia("(max-width: 600px)").matches) return;
+    var tr = e.target.closest ? e.target.closest("tr") : null;
+    if (!tr || !tr.closest("table[data-principales]")) return;
+    if (e.target.closest("select, input, button, a, label, textarea")) return;
+    tr.classList.toggle("abierta");
+  });
+
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
   else iniciar();
 })();

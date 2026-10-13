@@ -1,0 +1,28 @@
+/*
+ * Tema claro forzado: la aplicacion siempre se muestra con fondo blanco, sin importar si el dispositivo o el
+ * navegador esta en modo oscuro. Se carga despues del estilo de cada pagina y reescribe la paleta en los mismos
+ * selectores que usaba el modo oscuro (media prefers-color-scheme y data-theme="dark").
+ */
+:root,
+:root:not([data-theme="light"]),
+:root[data-theme="light"],
+:root[data-theme="dark"] {
+  color-scheme: light only;
+  --paper: #ffffff;
+  --surface: #ffffff;
+  --ink: #1d2420;
+  --ink-soft: #57625b;
+  --ink-faint: #8a9089;
+  --line: #dbdfd4;
+  --line-strong: #c4cabb;
+  --accent: #2e6b4e;
+  --accent-ink: #ffffff;
+  --accent-soft: #e3eee6;
+  --accent-soft-line: #c3ddca;
+  --warn: #b3742f;
+  --warn-soft: #f6e9d7;
+  --critical: #a23d3d;
+  --critical-soft: #f6e0e0;
+  --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+}
+html, body { background: #ffffff !important; color: var(--ink); }

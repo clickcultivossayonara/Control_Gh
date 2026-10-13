@@ -261,6 +261,7 @@
 </style>
 <link rel="stylesheet" href="responsive.css">
 <script src="responsive.js" defer></script>
+<link rel="stylesheet" href="tema-claro.css">
 </head>
 <body>
 
@@ -357,7 +358,7 @@
     </div>
     <p class="form-msg" id="reg-msg" style="margin-top:8px"></p>
     <div class="table-scroll" style="margin-top:8px">
-      <table class="tabla-aj">
+      <table class="tabla-aj" data-principales="Fecha,Nombre,Entrada,Salida,Horas,Diferencia,Acción">
         <thead><tr>
           <th>Fecha</th><th>Cédula</th><th>Nombre</th><th>Área</th><th>Entrada</th><th>Salida</th>
           <th>Horas</th><th>Esperadas</th><th>Diferencia</th><th>Estado</th><th>Acción</th>
@@ -375,7 +376,7 @@
     </div>
     <p class="form-msg" id="his-msg" style="margin-top:8px"></p>
     <div class="table-scroll" style="margin-top:8px">
-      <table class="tabla-aj">
+      <table class="tabla-aj" data-principales="Cuándo,Tipo,Colaborador,Acción">
         <thead><tr>
           <th>Cuándo</th><th>Tipo</th><th>Día del registro</th><th>Colaborador</th><th>Antes</th><th>Después</th>
           <th>Motivo</th><th>Usuario</th><th>Acción</th>

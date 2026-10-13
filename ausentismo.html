@@ -258,6 +258,7 @@
 </style>
 <link rel="stylesheet" href="responsive.css">
 <script src="responsive.js" defer></script>
+<link rel="stylesheet" href="tema-claro.css">
 </head>
 <body>
 
@@ -338,7 +339,7 @@
       <p class="rachas-hint">Más de 3 días hábiles seguidos sin marcar y sin una novedad que lo explique (domingos y festivos no cortan la racha). Para que RRHH y Nómina tomen medidas.</p>
       <div class="rachas-chips" id="rachas-chips" style="margin:10px 0"></div>
       <div class="table-scroll rachas-tabla">
-        <table id="tabla-rachas">
+        <table id="tabla-rachas" data-principales="Colaborador,Días seguidos,Estado">
           <thead>
             <tr>
               <th>Colaborador</th><th>Cédula</th><th>Área</th><th>Desde</th><th>Hasta</th>
@@ -381,7 +382,7 @@
   </section>
 
   <div class="table-scroll">
-    <table id="tabla-aus">
+    <table id="tabla-aus" data-principales="Fecha,Nombre,Novedad,Acciones">
       <thead>
         <tr>
           <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
