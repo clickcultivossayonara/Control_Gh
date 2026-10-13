@@ -352,6 +352,7 @@
   <section class="card" id="card-novedad">
     <h2>Ingreso de Novedades</h2>
     <p class="card-hint">La diligencia el jefe del área. Nómina/RRHH revisa después.</p>
+    <p class="card-hint" id="aviso-dias-habilitados" hidden style="color:var(--accent);font-weight:600"></p>
 
     <div class="alerta-banner" id="alerta-presupuesto" hidden>
       <span class="alerta-icono">
@@ -929,14 +930,16 @@ AUTH_READY.then(async function () {
   // hoy, ayer y antier (DIAS_ATRAS_HORA_EXTRA dias hacia atras).
   function limiteFechaHoraExtra() {
     const hoy = fechaHoy();
-    return { minima: restarDias(hoy, DIAS_ATRAS_HORA_EXTRA), maxima: hoy };
+    return { minima: restarDias(hoy, Math.max(DIAS_ATRAS_HORA_EXTRA, DIAS_ATRAS_GENERAL)), maxima: hoy };
   }
 
   // Limite general para TODA novedad (de cualquier tipo): no se puede cargar
   // con vigencia de mas de DIAS_ATRAS_GENERAL dias atras (hoy, ayer y
   // antier). Hacia adelante no hay limite -- salvo hora extra, que ademas
   // nunca permite fecha futura (ver limiteFechaHoraExtra arriba).
-  const DIAS_ATRAS_GENERAL = 2;
+  const DIAS_ATRAS_GENERAL_BASE = 2;
+  // Sube solo si el Super Admin le habilito mas dias a ESTE usuario (Configuraciones -> Habilitar dias atras); ver cargarHabilitacionDiasAtras.
+  let DIAS_ATRAS_GENERAL = DIAS_ATRAS_GENERAL_BASE;
   function fechaMinimaGeneral() {
     return restarDias(fechaHoy(), DIAS_ATRAS_GENERAL);
   }
@@ -956,7 +959,7 @@ AUTH_READY.then(async function () {
       inFecha.min = minima;
       inFecha.max = maxima;
       inHora.max = String(MAX_HORAS_HORA_EXTRA);
-      hintHoraExtra.textContent = `"${cod.codigo_descripcion}" solo se puede cargar para hoy, ayer o antier (${minima} a ${maxima}), máximo ${MAX_HORAS_HORA_EXTRA} horas por colaborador.`;
+      hintHoraExtra.textContent = `"${cod.codigo_descripcion}" solo se puede cargar entre ${minima} y ${maxima}, máximo ${MAX_HORAS_HORA_EXTRA} horas por colaborador.`;
       hintHoraExtra.hidden = false;
     } else {
       inFecha.min = minimaGeneral;
@@ -1060,6 +1063,23 @@ AUTH_READY.then(async function () {
   cargarCodigos();
   cargarFestivos();
   cargarHorasEsperadas();
+  // Dias hacia atras habilitados por el Super Admin para este usuario (vacio si no tiene ninguno vigente)
+  (async function cargarHabilitacionDiasAtras() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/dias_atras_habilitados`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" }, body: "{}",
+      });
+      if (!resp.ok) return;
+      const filas = await resp.json();
+      const h = Array.isArray(filas) ? filas[0] : null;
+      if (!h || Number(h.dias) <= DIAS_ATRAS_GENERAL_BASE) return;
+      DIAS_ATRAS_GENERAL = Number(h.dias);
+      const av = document.getElementById("aviso-dias-habilitados");
+      av.textContent = `Tienes habilitados ${DIAS_ATRAS_GENERAL} días hacia atrás para cargar novedades, hasta el ${h.vigente_hasta}.`;
+      av.hidden = false;
+      actualizarLimitesHoraExtra();
+    } catch { /* sin habilitacion: rige la regla normal */ }
+  })();
 
   async function cargarColaboradores() {
     empleadosPorCedula = {};
@@ -1551,7 +1571,7 @@ AUTH_READY.then(async function () {
     if (CODIGOS_HORA_EXTRA.includes(cod.codigo)) {
       const { minima, maxima } = limiteFechaHoraExtra();
       if (inFecha.value < minima || inFecha.value > maxima) {
-        msgNovedad.textContent = `"${cod.codigo_descripcion}" solo se puede cargar para hoy, ayer o antier (entre ${minima} y ${maxima}).`;
+        msgNovedad.textContent = `"${cod.codigo_descripcion}" solo se puede cargar entre ${minima} y ${maxima}.`;
         msgNovedad.className = "form-msg error";
         return;
       }

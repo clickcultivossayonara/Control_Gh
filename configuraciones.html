@@ -259,6 +259,7 @@
     <button class="tab-btn" id="tab-relacion-nomina" type="button">Relación Conceptos Nómina</button>
     <button class="tab-btn" id="tab-tipo-ausencia" type="button">Relación Tipo Ausencia</button>
     <button class="tab-btn" id="tab-festivos" type="button">Festivos</button>
+    <button class="tab-btn" id="tab-habilitar-dias" type="button" style="display:none">Habilitar días atrás</button>
   </div>
 
   <section class="card" id="card-area">
@@ -572,6 +573,63 @@
     </div>
   </section>
 
+  <section class="card" id="card-habilitar-dias" hidden>
+    <h2>Habilitar días atrás</h2>
+    <p class="card-hint">Por regla, las novedades solo se pueden cargar con vigencia de hoy hasta 2 días atrás. Aquí autorizas a <strong>un usuario</strong> a cargar novedades más atrás, por un tiempo limitado y con el motivo registrado. Pasada la fecha de vigencia vuelve solo a la regla normal. Solo lo ve y lo gestiona el Super Admin.</p>
+    <form id="form-habilitar-dias">
+      <div class="form-grid">
+        <div class="field">
+          <label for="hd-usuario">Usuario <span class="req">*</span></label>
+          <select id="hd-usuario" required><option value="">Cargando…</option></select>
+        </div>
+        <div class="field">
+          <label for="hd-dias">Días hacia atrás permitidos <span class="req">*</span></label>
+          <input type="number" id="hd-dias" min="3" max="365" step="1" required placeholder="Ej. 10">
+        </div>
+        <div class="field">
+          <label for="hd-hasta">Vigente hasta <span class="req">*</span></label>
+          <input type="date" id="hd-hasta" required>
+        </div>
+        <div class="field">
+          <label for="hd-motivo">Motivo <span class="req">*</span></label>
+          <input type="text" id="hd-motivo" required autocomplete="off" placeholder="Ej. Falla del biométrico el 5 al 8 de octubre">
+        </div>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" id="btn-habilitar-dias">Habilitar</button>
+        <span class="form-msg" id="msg-habilitar-dias"></span>
+      </div>
+    </form>
+
+    <p class="card-hint" style="margin-top:24px">Habilitaciones</p>
+    <div class="filters">
+      <div class="field">
+        <label for="hd-filtro">Mostrar</label>
+        <select id="hd-filtro">
+          <option value="vigentes">Solo vigentes</option>
+          <option value="todas">Todas (con vencidas y revocadas)</option>
+        </select>
+      </div>
+      <span class="result-count" id="hd-count"></span>
+    </div>
+    <div class="table-scroll">
+      <table data-principales="Usuario,Días atrás,Vigente hasta,Estado,Acciones">
+        <thead>
+          <tr>
+            <th>Usuario</th>
+            <th>Días atrás</th>
+            <th>Vigente hasta</th>
+            <th>Estado</th>
+            <th>Motivo</th>
+            <th>Habilitada por</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="hd-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
   <section class="card" id="card-festivos" hidden>
     <h2>Agregar festivo</h2>
     <p class="card-hint">Calendario de festivos de Colombia. Se usa para que el conteo de "días hábiles" (columna Conteo de días en Código-Descripción) omita domingos y festivos al registrar novedades de varios días. Ya viene cargado 2026; agrega aquí los festivos de años siguientes cuando los necesites.</p>
@@ -659,6 +717,14 @@ AUTH_READY.then(async function () {
     { btn: "tab-tipo-ausencia", card: "card-tipo-ausencia" },
     { btn: "tab-festivos", card: "card-festivos" },
   ];
+  // Habilitar dias atras: solo Super Admin (el boton queda oculto y la seccion fuera de las pestanas para los demas roles)
+  if (window.SESION.rol === "super_admin") {
+    document.getElementById("tab-habilitar-dias").style.display = "";
+    tabs.push({ btn: "tab-habilitar-dias", card: "card-habilitar-dias" });
+  } else {
+    const c = document.getElementById("card-habilitar-dias");
+    if (c) c.remove();
+  }
   tabs.forEach(({ btn, card }) => {
     document.getElementById(btn).addEventListener("click", () => {
       tabs.forEach(({ btn: b2, card: c2 }) => {
@@ -1837,6 +1903,156 @@ AUTH_READY.then(async function () {
       }
     }
   });
+
+  // ---------------- seccion: habilitar dias atras (solo Super Admin) ----------------
+  if (window.SESION.rol === "super_admin") {
+    const formHd = document.getElementById("form-habilitar-dias");
+    const selHdUsuario = document.getElementById("hd-usuario");
+    const inHdDias = document.getElementById("hd-dias");
+    const inHdHasta = document.getElementById("hd-hasta");
+    const inHdMotivo = document.getElementById("hd-motivo");
+    const btnHd = document.getElementById("btn-habilitar-dias");
+    const msgHd = document.getElementById("msg-habilitar-dias");
+    const selHdFiltro = document.getElementById("hd-filtro");
+    const hdTbody = document.getElementById("hd-tbody");
+    const hdCount = document.getElementById("hd-count");
+
+    const hoyLocal = () => new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+    const sumarDiasHd = (f, n) => { const d = new Date(f + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+    const escHd = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    const ROL_ETQ = { super_admin: "Super Admin", admin: "Administrador", nomina: "Nómina", rrhh: "RRHH", jefe_area: "Jefe de área", supervisor: "Supervisor", auxiliar: "Auxiliar" };
+
+    inHdHasta.min = hoyLocal();
+    inHdHasta.max = sumarDiasHd(hoyLocal(), 90);
+    inHdHasta.value = sumarDiasHd(hoyLocal(), 7);
+
+    let usuariosHd = {};
+    let habilitaciones = [];
+
+    async function cargarUsuariosHd() {
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/usuarios_perfil?select=id,nombre,email,rol,activo&order=nombre.asc`, { headers: authHeaders() });
+        const filas = await resp.json();
+        if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+        usuariosHd = {};
+        filas.forEach((u) => { usuariosHd[u.id] = u; });
+        selHdUsuario.innerHTML = `<option value="">Selecciona un usuario…</option>` + filas
+          .filter((u) => u.activo !== false)
+          .map((u) => `<option value="${u.id}">${escHd(u.nombre)} · ${escHd(ROL_ETQ[u.rol] || u.rol)}${u.email ? " · " + escHd(u.email) : ""}</option>`).join("");
+      } catch (err) {
+        selHdUsuario.innerHTML = `<option value="">No se pudo cargar: ${escHd(err.message || err)}</option>`;
+      }
+    }
+
+    function estadoHd(h) {
+      if (h.revocada) return { clave: "revocada", chip: '<span class="chip off">Revocada</span>' };
+      if (h.vigente_hasta < hoyLocal()) return { clave: "vencida", chip: '<span class="chip off">Vencida</span>' };
+      return { clave: "vigente", chip: '<span class="chip ok">Vigente</span>' };
+    }
+
+    function renderizarHd() {
+      const soloVigentes = selHdFiltro.value === "vigentes";
+      const filas = habilitaciones.filter((h) => !soloVigentes || estadoHd(h).clave === "vigente");
+      hdTbody.innerHTML = filas.length === 0
+        ? `<tr><td colspan="7"><div class="empty-state">${soloVigentes ? "No hay habilitaciones vigentes." : "Aún no hay habilitaciones."}</div></td></tr>`
+        : filas.map((h) => {
+            const u = usuariosHd[h.usuario_id] || {};
+            const est = estadoHd(h);
+            return `<tr data-id="${h.id}">
+              <td class="nombre">${escHd(u.nombre || h.usuario_id)}<br><span style="font-size:11.5px;color:var(--ink-faint)">${escHd(ROL_ETQ[u.rol] || u.rol || "")}</span></td>
+              <td class="num">${h.dias}</td>
+              <td class="num">${h.vigente_hasta}</td>
+              <td>${est.chip}</td>
+              <td>${escHd(h.motivo)}</td>
+              <td>${escHd(h.creado_por_nombre || "")}<br><span style="font-size:11.5px;color:var(--ink-faint)">${escHd(String(h.created_at || "").slice(0, 16).replace("T", " "))}</span></td>
+              <td>${est.clave === "vigente" ? '<div class="fila-acciones"><button type="button" class="btn-small critical hd-revocar">Revocar</button></div>' : ""}</td>
+            </tr>`;
+          }).join("");
+      hdCount.textContent = filas.length.toLocaleString("es-CO") + " habilitación" + (filas.length === 1 ? "" : "es");
+    }
+
+    async function cargarHabilitaciones() {
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/habilitaciones_dias_atras?select=*&order=created_at.desc&limit=500`, { headers: authHeaders() });
+        const filas = await resp.json();
+        if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
+        habilitaciones = filas;
+      } catch (err) {
+        const noInstalada = /habilitaciones_dias_atras|relation|PGRST205/i.test(String(err.message || err));
+        hdTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${noInstalada
+          ? "Falta instalar el módulo en la base de datos (schema_habilitar_dias_atras.sql)."
+          : "Error al cargar: " + escHd(err.message || err)}</div></td></tr>`;
+        hdCount.textContent = "";
+        return;
+      }
+      renderizarHd();
+    }
+
+    selHdFiltro.addEventListener("change", renderizarHd);
+
+    formHd.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const usuario_id = selHdUsuario.value;
+      const dias = Number(inHdDias.value);
+      const vigente_hasta = inHdHasta.value;
+      const motivo = inHdMotivo.value.trim();
+      const falla = (m) => { msgHd.textContent = m; msgHd.className = "form-msg error"; };
+      if (!usuario_id) return falla("Selecciona el usuario.");
+      if (!Number.isInteger(dias) || dias < 3 || dias > 365) return falla("Los días deben ser un número entero entre 3 y 365 (la regla normal ya permite 2).");
+      if (!vigente_hasta || vigente_hasta < hoyLocal()) return falla("La fecha de vigencia no puede ser anterior a hoy.");
+      if (vigente_hasta > sumarDiasHd(hoyLocal(), 90)) return falla("La vigencia no puede pasar de 90 días desde hoy.");
+      if (motivo.length < 5) return falla("El motivo es obligatorio (mínimo 5 caracteres).");
+
+      btnHd.disabled = true;
+      msgHd.textContent = "Guardando...";
+      msgHd.className = "form-msg";
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/habilitaciones_dias_atras`, {
+          method: "POST",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify([{ usuario_id, dias, vigente_hasta, motivo, creado_por: window.SESION.id || null, creado_por_nombre: window.SESION.nombre || null }]),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        const u = usuariosHd[usuario_id] || {};
+        msgHd.textContent = `Listo: ${u.nombre || "el usuario"} puede cargar novedades hasta ${dias} días atrás, hasta el ${vigente_hasta}.`;
+        msgHd.className = "form-msg ok";
+        inHdDias.value = "";
+        inHdMotivo.value = "";
+        selHdUsuario.value = "";
+        await cargarHabilitaciones();
+      } catch (err) {
+        msgHd.textContent = "No se pudo guardar: " + (err.message || err);
+        msgHd.className = "form-msg error";
+      } finally {
+        btnHd.disabled = false;
+      }
+    });
+
+    hdTbody.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".hd-revocar");
+      if (!btn) return;
+      const fila = btn.closest("tr");
+      const h = habilitaciones.find((x) => String(x.id) === fila.dataset.id);
+      if (!h) return;
+      const u = usuariosHd[h.usuario_id] || {};
+      if (!confirm(`¿Revocar la habilitación de ${h.dias} días de ${u.nombre || "este usuario"}? Vuelve a la regla normal (2 días atrás).`)) return;
+      btn.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/habilitaciones_dias_atras?id=eq.${h.id}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+          body: JSON.stringify({ revocada: true, revocada_en: new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 19), revocada_por_nombre: window.SESION.nombre || null }),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+        await cargarHabilitaciones();
+      } catch (err) {
+        alert("No se pudo revocar: " + (err.message || err));
+        btn.disabled = false;
+      }
+    });
+
+    cargarUsuariosHd().then(cargarHabilitaciones);
+  }
 
   seccionAreas.cargar();
   seccionLabores.cargar();
