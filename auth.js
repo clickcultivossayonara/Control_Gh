@@ -71,6 +71,15 @@ const AUTH_READY = (async () => {
     (filas || []).forEach((f) => { window.SESION.permisos[f.pagina] = f.puede_ver; });
   }
 
+  // Permisos de pagina dados a este usuario en particular (por correo): suman o quitan sobre los de su rol.
+  // Si la tabla aun no existe o falla, se ignora y quedan los del rol.
+  if (perfil.rol !== "super_admin") {
+    try {
+      const { data: propios } = await _sb.from("permisos_usuario").select("pagina,puede_ver");
+      (propios || []).forEach((f) => { window.SESION.permisos[f.pagina] = f.puede_ver; });
+    } catch (e) { /* sin permisos por usuario */ }
+  }
+
   return window.SESION;
 })();
 

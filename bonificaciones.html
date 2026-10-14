@@ -274,18 +274,30 @@
   .tabla-cruce { min-width: 880px; }
   .tabla-cruce td { white-space: normal; }
 
-  .barra-bono { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
-  .resumen-bono { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0 14px; }
+  .resumen-bono { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0 0 14px; }
   .cifra-bono { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
   .cifra-bono span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); font-weight: 600; }
   .cifra-bono b { font-size: 19px; }
-  .tabla-bono { min-width: 760px; }
+  .tabla-bono { min-width: 880px; }
   .tabla-bono td.valor, .tabla-bono th.valor { text-align: right; }
   .tabla-bono tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); background: var(--accent-soft); }
-  .titulo-seccion { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 4px; letter-spacing: 0.01em; }
+  .titulo-seccion { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 4px; }
+  .form-bono { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .form-bono .ancho2 { grid-column: span 2; }
+  .form-bono .ancho4 { grid-column: span 4; }
+  @media (max-width: 900px) { .form-bono { grid-template-columns: repeat(2, minmax(0, 1fr)); } .form-bono .ancho4 { grid-column: span 2; } }
+  @media (max-width: 520px) { .form-bono { grid-template-columns: minmax(0, 1fr); } .form-bono .ancho2, .form-bono .ancho4 { grid-column: span 1; } }
+  .sugerencias { position: relative; }
+  .sug-lista { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); max-height: 260px; overflow-y: auto; margin-top: 2px; }
+  .sug-lista[hidden] { display: none; }
+  .sug-item { padding: 8px 12px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; }
+  .sug-item:hover, .sug-item.sel { background: var(--accent-soft); }
+  .sug-item small { color: var(--ink-faint); }
+  .field input[readonly] { background: var(--accent-soft); color: var(--ink-soft); }
+  .btn-peq { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--critical); background: transparent; color: var(--critical); cursor: pointer; }
+  .btn-peq:hover { background: var(--critical-soft); }
   .valor-cero { color: var(--ink-faint); }
-  .adv { color: var(--warn); font-size: 12px; }
-  input[type=file].oculto { display: none; }
 </style>
 <link rel="stylesheet" href="responsive.css">
 <script src="responsive.js" defer></script>
@@ -368,60 +380,89 @@
   </div>
 
   <div class="aviso-super">
-    <strong>Información confidencial de pago.</strong> Solo la ven Administrador, Nómina y RRHH con su usuario y contraseña.
-    Es la bonificación prestacional de Poscosecha y Unique (valor quincenal por persona) y los viajes de acompañamiento de mula,
-    tal como vienen en el archivo de Excel de cada actualización.
+    <strong>Poscosecha Unión · información confidencial de pago.</strong> Registra aquí las bonificaciones (bono prestacional de Poscosecha y Unique
+    y acompañamiento de mula). Solo la ven los usuarios autorizados para este módulo.
   </div>
 
   <section class="card">
-    <div class="barra-bono">
-      <div class="field">
-        <label for="b-fecha">Fecha de actualización</label>
-        <select id="b-fecha"></select>
+    <p class="titulo-seccion">Registrar bonificación</p>
+    <form id="form-bono" autocomplete="off">
+      <div class="form-bono">
+        <div class="field">
+          <label for="f-fecha">Fecha <span class="req">*</span></label>
+          <input type="date" id="f-fecha" required>
+        </div>
+        <div class="field ancho2">
+          <label for="f-tipo">Tipo de bonificación <span class="req">*</span></label>
+          <select id="f-tipo" required>
+            <option value="BONO">Bono prestacional Poscosecha y Unique</option>
+            <option value="VIAJES_MULA">Acompañamiento de mula</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="f-cedula">Cédula <span class="req">*</span></label>
+          <div class="sugerencias">
+            <input type="text" id="f-cedula" inputmode="numeric" placeholder="Cédula o nombre…" required>
+            <div class="sug-lista" id="sug-lista" hidden></div>
+          </div>
+        </div>
+        <div class="field ancho2">
+          <label for="f-nombre">Nombre</label>
+          <input type="text" id="f-nombre" readonly placeholder="Se completa al elegir la persona">
+        </div>
+        <div class="field">
+          <label for="f-labor">Labor</label>
+          <input type="text" id="f-labor" readonly placeholder="Viene de la tabla de empleados">
+        </div>
+        <div class="field">
+          <label for="f-valor">Quincenal ($) <span class="req">*</span></label>
+          <input type="text" id="f-valor" inputmode="numeric" placeholder="$ 0" required>
+        </div>
+        <div class="field ancho4">
+          <label for="f-obs">Observaciones</label>
+          <input type="text" id="f-obs" maxlength="300">
+        </div>
       </div>
-      <button type="button" class="clear-btn" id="b-excel">Descargar Excel</button>
-      <button type="button" class="btn-primary" id="b-cargar" hidden>Cargar nueva actualización (Excel)</button>
-      <input type="file" id="b-archivo" class="oculto" accept=".xlsx,.xls">
-      <span class="form-msg" id="b-msg"></span>
-    </div>
+      <div class="form-actions" style="margin-top:14px">
+        <button type="submit" class="btn-primary" id="btn-guardar">Guardar bonificación</button>
+        <span class="form-msg" id="msg-form"></span>
+      </div>
+    </form>
   </section>
 
-  <section class="card" id="sec-bono">
-    <p class="titulo-seccion">EMPLEADOS QUE RECIBEN BONO PRESTACIONAL POSCOSECHA Y UNIQUE</p>
-    <p class="card-hint" style="margin:0" id="b-fecha-txt"></p>
+  <section class="card">
+    <p class="titulo-seccion">Bonificaciones registradas</p>
     <div class="resumen-bono">
-      <div class="cifra-bono"><span>Personas en la lista</span><b id="r-personas">—</b></div>
-      <div class="cifra-bono"><span>Con bono mayor a $0</span><b id="r-con">—</b></div>
-      <div class="cifra-bono"><span>Total quincenal</span><b id="r-total">—</b></div>
+      <div class="cifra-bono"><span>Registros</span><b id="r-reg">—</b></div>
+      <div class="cifra-bono"><span>Bono prestacional</span><b id="r-bono">—</b></div>
+      <div class="cifra-bono"><span>Acompañamiento de mula</span><b id="r-mula">—</b></div>
+      <div class="cifra-bono"><span>Total</span><b id="r-total">—</b></div>
     </div>
     <div class="filters">
-      <div class="field grow">
-        <label for="b-texto">Cédula o nombre</label>
-        <input type="text" id="b-texto" placeholder="Ej. 1001471007 o Cardona…" autocomplete="off">
-      </div>
+      <div class="field"><label for="l-desde">Desde</label><input type="date" id="l-desde"></div>
+      <div class="field"><label for="l-hasta">Hasta</label><input type="date" id="l-hasta"></div>
       <div class="field">
-        <label for="b-labor">Labor</label>
-        <select id="b-labor"><option value="">Todas</option></select>
+        <label for="l-tipo">Tipo</label>
+        <select id="l-tipo">
+          <option value="">Todos</option>
+          <option value="BONO">Bono prestacional</option>
+          <option value="VIAJES_MULA">Acompañamiento de mula</option>
+        </select>
       </div>
-      <span class="result-count" id="b-count"></span>
+      <div class="field grow">
+        <label for="l-texto">Cédula o nombre</label>
+        <input type="text" id="l-texto" placeholder="Ej. 1001471007 o Cardona…">
+      </div>
+      <button type="button" class="clear-btn" id="l-excel">Descargar Excel</button>
+      <span class="result-count" id="l-count"></span>
     </div>
+    <p class="form-msg" id="l-msg" style="margin-top:8px"></p>
     <div class="table-scroll" style="margin-top:10px">
-      <table class="tabla-bono" data-principales="Nombre Empleado,Labor,Quincenal">
+      <table class="tabla-bono" data-principales="Fecha,Tipo,Nombre,Quincenal,Acciones">
         <thead><tr>
-          <th>Nombre Empleado</th><th>Cédula</th><th>Labor</th><th class="valor">Quincenal</th><th>Observaciones</th>
+          <th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Cédula</th><th>Labor</th><th class="valor">Quincenal</th><th>Observaciones</th><th>Registró</th><th>Acciones</th>
         </tr></thead>
-        <tbody id="b-tbody"></tbody>
-        <tfoot><tr><td colspan="3">TOTAL</td><td class="valor" id="b-total-pie">—</td><td></td></tr></tfoot>
-      </table>
-    </div>
-  </section>
-
-  <section class="card" id="sec-viajes">
-    <p class="titulo-seccion">VIAJES PARA ACOMPAÑAMIENTO DE MULA</p>
-    <div class="table-scroll" style="margin-top:10px">
-      <table class="tabla-bono" data-principales="Nombre Empleado,Cant de viajes">
-        <thead><tr><th>Nombre Empleado</th><th>Cédula</th><th class="valor">Cant de viajes</th></tr></thead>
-        <tbody id="v-tbody"></tbody>
+        <tbody id="l-tbody"></tbody>
       </table>
     </div>
   </section>
@@ -461,12 +502,14 @@ AUTH_READY.then(async function () {
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const COP = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
-  const fmtFechaLarga = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
-  const puedeCargar = ["admin", "nomina", "rrhh", "super_admin"].includes(window.SESION.rol);
-  if (puedeCargar) $("b-cargar").hidden = false;
+  const TIPOS = { BONO: "Bono prestacional Poscosecha y Unique", VIAJES_MULA: "Acompañamiento de mula" };
+  const hoyISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  const haceISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
+  const fmtFecha = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-"); return `${d}/${m}/${y}`; };
 
-  let filas = [];          // filas de la actualizacion elegida
-  let fechas = [];
+  $("f-fecha").value = hoyISO();
+  $("l-desde").value = haceISO(45);
+  $("l-hasta").value = hoyISO();
 
   async function get(path) {
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: authHeaders() });
@@ -475,193 +518,181 @@ AUTH_READY.then(async function () {
     return datos;
   }
 
-  async function cargarFechas() {
-    const r = await get("bonificaciones?select=fecha_actualizacion&order=fecha_actualizacion.desc&limit=5000");
-    fechas = [...new Set(r.map((x) => x.fecha_actualizacion))];
-    $("b-fecha").innerHTML = fechas.length
-      ? fechas.map((f, i) => `<option value="${f}">${fmtFechaLarga(f)}${i === 0 ? " (la más reciente)" : ""}</option>`).join("")
-      : `<option value="">Sin actualizaciones</option>`;
+  // ---------- Quincenal en pesos ----------
+  const soloDigitos = (s) => String(s || "").replace(/\D/g, "");
+  function valorNumerico() { const d = soloDigitos($("f-valor").value); return d === "" ? null : Number(d); }
+  $("f-valor").addEventListener("input", () => {
+    const n = valorNumerico();
+    $("f-valor").value = n === null ? "" : COP.format(n);
+  });
+
+  // ---------- Persona: se busca en la tabla de empleados; nombre y labor vienen de ahi ----------
+  let elegido = null;   // {cedula, nombre, labor}
+  let tBusca = null;
+  const lista = $("sug-lista");
+  function limpiarPersona() { elegido = null; $("f-nombre").value = ""; $("f-labor").value = ""; }
+  function elegir(p) {
+    elegido = p;
+    $("f-cedula").value = p.cedula;
+    $("f-nombre").value = p.nombre || "";
+    $("f-labor").value = p.labor || "";
+    lista.hidden = true;
   }
-
-  async function cargarFilas() {
-    const f = $("b-fecha").value;
-    if (!f) { filas = []; pintar(); return; }
-    filas = await get(`bonificaciones?select=*&fecha_actualizacion=eq.${f}&order=grupo.asc,orden.asc&limit=5000`);
-    pintar();
+  async function buscarPersonas(q) {
+    const params = new URLSearchParams();
+    params.set("select", "cedula,nombre,labor,area,activo");
+    params.set("activo", "eq.true");
+    params.set("order", "nombre.asc");
+    params.set("limit", "8");
+    if (/^\d+$/.test(q)) params.set("cedula_texto", "ilike.*" + q + "*");
+    else params.set("nombre", "ilike.*" + q.replace(/[,()*]/g, "") + "*");
+    return get("employees_detalle?" + params.toString());
   }
+  $("f-cedula").addEventListener("input", () => {
+    limpiarPersona();
+    clearTimeout(tBusca);
+    const q = $("f-cedula").value.trim();
+    if (q.length < 3) { lista.hidden = true; return; }
+    tBusca = setTimeout(async () => {
+      try {
+        const r = await buscarPersonas(q);
+        lista.innerHTML = r.length
+          ? r.map((p, i) => `<div class="sug-item" data-i="${i}"><span>${esc(p.nombre)}</span><small>${p.cedula} · ${esc(p.labor || p.area || "")}</small></div>`).join("")
+          : `<div class="sug-item"><small>Sin coincidencias entre los empleados activos de tus áreas.</small></div>`;
+        lista._datos = r;
+        lista.hidden = false;
+      } catch (err) { lista.innerHTML = `<div class="sug-item"><small>${esc(err.message || err)}</small></div>`; lista.hidden = false; }
+    }, 250);
+  });
+  lista.addEventListener("mousedown", (e) => {
+    const it = e.target.closest(".sug-item[data-i]");
+    if (it && lista._datos) elegir(lista._datos[Number(it.dataset.i)]);
+  });
+  document.addEventListener("click", (e) => { if (!e.target.closest(".sugerencias")) lista.hidden = true; });
 
-  const bonos = () => filas.filter((x) => x.grupo === "BONO");
-  const viajes = () => filas.filter((x) => x.grupo === "VIAJES_MULA");
+  // ---------- Guardar ----------
+  $("form-bono").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("msg-form");
+    const falla = (m) => { msg.textContent = m; msg.className = "form-msg error"; };
+    const fecha = $("f-fecha").value;
+    const valor = valorNumerico();
+    if (!fecha) return falla("La fecha es obligatoria.");
+    if (!elegido) return falla("Elige a la persona de la lista (busca por cédula o nombre).");
+    if (valor === null) return falla("El valor quincenal es obligatorio.");
+    $("btn-guardar").disabled = true;
+    msg.textContent = "Guardando…";
+    msg.className = "form-msg";
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify([{
+          fecha_actualizacion: fecha, grupo: $("f-tipo").value, nombre: elegido.nombre, cedula: Number(elegido.cedula),
+          labor: elegido.labor || null, valor, observaciones: $("f-obs").value.trim() || null, creado_por: window.SESION.nombre || null,
+        }]),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      msg.textContent = `Guardado: ${elegido.nombre} · ${COP.format(valor)} (${TIPOS[$("f-tipo").value]}).`;
+      msg.className = "form-msg ok";
+      limpiarPersona();
+      $("f-cedula").value = "";
+      $("f-valor").value = "";
+      $("f-obs").value = "";
+      $("f-cedula").focus();
+      await cargarLista();
+    } catch (err) {
+      falla("No se pudo guardar: " + (err.message || err));
+    } finally {
+      $("btn-guardar").disabled = false;
+    }
+  });
 
-  function pintar() {
-    const b = bonos();
-    const total = b.reduce((s, x) => s + Number(x.valor || 0), 0);
-    $("r-personas").textContent = b.length.toLocaleString("es-CO");
-    $("r-con").textContent = b.filter((x) => Number(x.valor) > 0).length.toLocaleString("es-CO");
-    $("r-total").textContent = COP.format(total);
-    $("b-fecha-txt").textContent = $("b-fecha").value ? `Fecha de actualización: ${fmtFechaLarga($("b-fecha").value)}` : "";
-    // labores
-    const prev = $("b-labor").value;
-    const labores = [...new Set(b.map((x) => x.labor).filter(Boolean))].sort();
-    $("b-labor").innerHTML = `<option value="">Todas</option>` + labores.map((l) => `<option value="${esc(l)}">${esc(l)}</option>`).join("");
-    if (labores.includes(prev)) $("b-labor").value = prev;
-    pintarBono();
-    $("v-tbody").innerHTML = viajes().length === 0
-      ? `<tr><td colspan="3"><div class="empty-state">Sin viajes en esta actualización.</div></td></tr>`
-      : viajes().map((x) => `<tr><td class="nombre">${esc(x.nombre)}</td><td class="cedula">${x.cedula ?? ""}</td><td class="valor num">${Number(x.cantidad)}</td></tr>`).join("");
+  // ---------- Lista ----------
+  let filas = [];
+  async function cargarLista() {
+    $("l-msg").textContent = "";
+    const params = new URLSearchParams();
+    params.set("select", "id,fecha_actualizacion,grupo,nombre,cedula,labor,valor,observaciones,creado_por,created_at");
+    if ($("l-desde").value) params.append("fecha_actualizacion", "gte." + $("l-desde").value);
+    if ($("l-hasta").value) params.append("fecha_actualizacion", "lte." + $("l-hasta").value);
+    if ($("l-tipo").value) params.set("grupo", "eq." + $("l-tipo").value);
+    params.set("order", "fecha_actualizacion.desc,created_at.desc");
+    params.set("limit", "2000");
+    try {
+      filas = await get("bonificaciones?" + params.toString());
+    } catch (err) {
+      const m = String(err.message || err);
+      $("l-msg").className = "form-msg error";
+      $("l-msg").textContent = /bonificaciones|PGRST205|relation/i.test(m) ? "Falta instalar el módulo en la base de datos (schema_bonificaciones.sql y schema_bonificaciones_formulario.sql)." : m;
+      filas = [];
+    }
+    pintarLista();
   }
 
   function filtradas() {
-    const q = $("b-texto").value.trim().toLowerCase();
-    const labor = $("b-labor").value;
-    return bonos().filter((x) => (!labor || x.labor === labor) && (!q || String(x.cedula || "").includes(q) || String(x.nombre).toLowerCase().includes(q)));
+    const q = $("l-texto").value.trim().toLowerCase();
+    return filas.filter((x) => !q || String(x.cedula || "").includes(q) || String(x.nombre || "").toLowerCase().includes(q));
   }
 
-  function pintarBono() {
+  function pintarLista() {
     const l = filtradas();
-    $("b-tbody").innerHTML = l.length === 0
-      ? `<tr><td colspan="5"><div class="empty-state">Sin registros.</div></td></tr>`
-      : l.map((x) => `<tr>
+    const suma = (arr) => arr.reduce((s, x) => s + Number(x.valor || 0), 0);
+    $("r-reg").textContent = l.length.toLocaleString("es-CO");
+    $("r-bono").textContent = COP.format(suma(l.filter((x) => x.grupo === "BONO")));
+    $("r-mula").textContent = COP.format(suma(l.filter((x) => x.grupo === "VIAJES_MULA")));
+    $("r-total").textContent = COP.format(suma(l));
+    $("l-count").textContent = l.length.toLocaleString("es-CO") + " registro" + (l.length === 1 ? "" : "s");
+    $("l-tbody").innerHTML = l.length === 0
+      ? `<tr><td colspan="9"><div class="empty-state">Sin bonificaciones para estos filtros.</div></td></tr>`
+      : l.map((x) => `<tr data-id="${x.id}">
+          <td class="num">${fmtFecha(x.fecha_actualizacion)}</td>
+          <td>${esc(TIPOS[x.grupo] || x.grupo)}</td>
           <td class="nombre">${esc(x.nombre)}</td>
           <td class="cedula">${x.cedula ?? ""}</td>
           <td>${esc(x.labor || "")}</td>
-          <td class="valor num${Number(x.valor) === 0 ? " valor-cero" : ""}">${COP.format(Number(x.valor || 0))}</td>
+          <td class="valor num${Number(x.valor || 0) === 0 ? " valor-cero" : ""}">${x.valor === null ? "—" : COP.format(Number(x.valor))}</td>
           <td>${esc(x.observaciones || "")}</td>
+          <td>${esc(x.creado_por || "")}</td>
+          <td><button type="button" class="btn-peq l-eliminar">Eliminar</button></td>
         </tr>`).join("");
-    $("b-total-pie").textContent = COP.format(l.reduce((s, x) => s + Number(x.valor || 0), 0));
-    $("b-count").textContent = l.length.toLocaleString("es-CO") + " persona" + (l.length === 1 ? "" : "s");
   }
 
-  $("b-fecha").addEventListener("change", cargarFilas);
-  $("b-texto").addEventListener("input", pintarBono);
-  $("b-labor").addEventListener("change", pintarBono);
-
-  // ---- descargar Excel con la misma forma que el archivo original ----
-  $("b-excel").addEventListener("click", () => {
-    const f = $("b-fecha").value;
-    if (!f) return;
-    const aoa = [["Fecha Actualización"], [new Date(f + "T00:00:00")], [],
-      ["EMPLEADOS QUE RECIBEN BONO PRESTACIONAL POSCOSECHA Y UNIQUE"],
-      ["Nombre Empleado", "Cédula", "Labor", "Quincenal", "Observaciones"]];
-    bonos().forEach((x) => aoa.push([x.nombre, x.cedula, x.labor || "", Number(x.valor || 0), x.observaciones || ""]));
-    aoa.push(["TOTAL", "", "", bonos().reduce((s, x) => s + Number(x.valor || 0), 0)]);
-    aoa.push([], [], ["VIAJES PARA ACOMPAÑAMIENTO DE MULA"], ["Nombre Empleado", "Cédula", "CANT DE VIAJES"]);
-    viajes().forEach((x) => aoa.push([x.nombre, x.cedula, Number(x.cantidad || 0)]));
-    const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
-    ws["!cols"] = [{ wch: 42 }, { wch: 15 }, { wch: 28 }, { wch: 14 }, { wch: 30 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Bonificación");
-    XLSX.writeFile(wb, `Bonificacion Prestacional ${f}.xlsx`);
-  });
-
-  // ---- cargar una actualizacion nueva desde el mismo formato de Excel ----
-  const aTexto = (v) => (v == null ? "" : String(v).trim());
-  const aNumero = (v) => { const n = Number(String(v ?? "").replace(/[^\d.,-]/g, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
-  function aFechaISO(v) {
-    if (v instanceof Date) {   // +12 h: SheetJS devuelve las fechas con un pequeno desfase y a veces caen en el dia anterior
-      const d = new Date(v.getTime() + 12 * 3600 * 1000);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-    }
-    if (typeof v === "number") { const d = new Date(Math.round((v - 25569) * 86400000)); return d.toISOString().slice(0, 10); }
-    const m = String(v || "").match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
-    return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : null;
-  }
-
-  function leerExcel(buf) {
-    const wb = XLSX.read(buf, { type: "array", cellDates: true });
-    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
-    const norm = (s) => aTexto(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
-    let fecha = null;
-    for (let i = 0; i < rows.length; i++) {
-      if (norm(rows[i][0]).startsWith("fecha actualiz")) { fecha = aFechaISO(rows[i + 1] && rows[i + 1][0]); break; }
-    }
-    const hBono = rows.findIndex((r) => r.some((c) => norm(c) === "cedula") && r.some((c) => norm(c) === "quincenal"));
-    if (!fecha) throw new Error('No encontré la "Fecha Actualización" en el archivo.');
-    if (hBono < 0) throw new Error('No encontré la tabla de bonos (columnas "Cédula" y "Quincenal").');
-    const cols = rows[hBono].map(norm);
-    const ix = (n) => cols.indexOf(n);
-    const iN = ix("nombre empleado"), iC = ix("cedula"), iL = ix("labor"), iQ = ix("quincenal"), iO = ix("observaciones");
-    const out = [];
-    let orden = 0;
-    let i = hBono + 1;
-    for (; i < rows.length; i++) {
-      const r = rows[i];
-      const nombre = aTexto(r[iN]);
-      if (norm(nombre) === "total") break;
-      if (!nombre && !r[iC]) { if (out.length) break; else continue; }
-      out.push({ fecha_actualizacion: fecha, grupo: "BONO", nombre, cedula: r[iC] == null || r[iC] === "" ? null : Math.round(Number(r[iC])),
-        labor: aTexto(r[iL]) || null, valor: aNumero(r[iQ]), cantidad: null, observaciones: iO >= 0 ? (aTexto(r[iO]) || null) : null, orden: ++orden });
-    }
-    // viajes de mula
-    const hV = rows.findIndex((r, k) => k > i && norm(r[0]).includes("viajes"));
-    if (hV >= 0) {
-      let h = hV + 1;
-      const cabV = (rows[h] || []).map(norm);
-      const vN = cabV.indexOf("nombre empleado"), vC = cabV.indexOf("cedula"), vQ = cabV.findIndex((c) => c.startsWith("cant"));
-      let ordV = 0;
-      for (let k = h + 1; k < rows.length; k++) {
-        const r = rows[k];
-        const nombre = aTexto(r[vN < 0 ? 0 : vN]);
-        if (!nombre) continue;
-        out.push({ fecha_actualizacion: fecha, grupo: "VIAJES_MULA", nombre, cedula: r[vC < 0 ? 1 : vC] == null ? null : Math.round(Number(r[vC < 0 ? 1 : vC])),
-          labor: null, valor: null, cantidad: aNumero(r[vQ < 0 ? 2 : vQ]), observaciones: null, orden: ++ordV });
-      }
-    }
-    return { fecha, filas: out };
-  }
-
-  $("b-cargar").addEventListener("click", () => $("b-archivo").click());
-  $("b-archivo").addEventListener("change", async () => {
-    const f = $("b-archivo").files[0];
-    $("b-archivo").value = "";
-    if (!f) return;
-    const msg = $("b-msg");
-    msg.className = "form-msg";
-    msg.textContent = "Leyendo el archivo…";
+  $("l-tbody").addEventListener("click", async (e) => {
+    const b = e.target.closest(".l-eliminar");
+    if (!b) return;
+    const tr = b.closest("tr");
+    const x = filas.find((f) => String(f.id) === tr.dataset.id);
+    if (!x) return;
+    if (!confirm(`¿Eliminar la bonificación de ${x.nombre} (${COP.format(Number(x.valor || 0))}) del ${fmtFecha(x.fecha_actualizacion)}?`)) return;
+    b.disabled = true;
     try {
-      const { fecha, filas: nuevas } = leerExcel(await f.arrayBuffer());
-      const nb = nuevas.filter((x) => x.grupo === "BONO").length, nv = nuevas.length - nb;
-      if (nb === 0) throw new Error("El archivo no trae filas de bonos.");
-      const existe = fechas.includes(fecha);
-      const total = nuevas.filter((x) => x.grupo === "BONO").reduce((s, x) => s + x.valor, 0);
-      if (!confirm(`Actualización del ${fmtFechaLarga(fecha)}: ${nb} personas con bono (total ${COP.format(total)}) y ${nv} de viajes de mula.` +
-          (existe ? "\n\nYa existe una actualización con esa fecha: se REEMPLAZARÁ." : "") + "\n\n¿Cargarla?")) { msg.textContent = ""; return; }
-      msg.textContent = "Guardando…";
-      if (existe) {
-        const d = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones?fecha_actualizacion=eq.${fecha}`, { method: "DELETE", headers: { ...authHeaders(), Prefer: "return=minimal" } });
-        if (!d.ok) throw new Error(await d.text());
-      }
-      const quien = window.SESION.nombre || null;
-      for (let i = 0; i < nuevas.length; i += 500) {
-        const lote = nuevas.slice(i, i + 500).map((x) => ({ ...x, creado_por: quien }));
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones`, {
-          method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(lote),
-        });
-        if (!resp.ok) throw new Error(await resp.text());
-      }
-      msg.className = "form-msg ok";
-      msg.textContent = `Actualización del ${fmtFechaLarga(fecha)} cargada: ${nb} personas con bono y ${nv} de viajes.`;
-      await cargarFechas();
-      $("b-fecha").value = fecha;
-      await cargarFilas();
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones?id=eq.${x.id}`, { method: "DELETE", headers: { ...authHeaders(), Prefer: "return=minimal" } });
+      if (!resp.ok) throw new Error(await resp.text());
+      await cargarLista();
     } catch (err) {
-      msg.className = "form-msg error";
-      msg.textContent = "No se pudo cargar: " + (err.message || err);
+      alert("No se pudo eliminar: " + (err.message || err));
+      b.disabled = false;
     }
   });
 
-  try {
-    await cargarFechas();
-    await cargarFilas();
-    if (fechas.length === 0) {
-      $("b-msg").className = "form-msg";
-      $("b-msg").textContent = puedeCargar ? "Aún no hay actualizaciones. Carga el Excel de Bonificación Prestacional." : "Aún no hay actualizaciones cargadas.";
-    }
-  } catch (err) {
-    const m = String(err.message || err);
-    $("b-msg").className = "form-msg error";
-    $("b-msg").textContent = /bonificaciones|PGRST205|relation/i.test(m) ? "Falta instalar el módulo en la base de datos (schema_bonificaciones.sql)." : m;
-  }
+  ["l-desde", "l-hasta", "l-tipo"].forEach((id) => $(id).addEventListener("change", cargarLista));
+  $("l-texto").addEventListener("input", pintarLista);
+
+  $("l-excel").addEventListener("click", () => {
+    const l = filtradas();
+    if (!l.length) return;
+    const ws = XLSX.utils.json_to_sheet(l.map((x) => ({
+      "Fecha": x.fecha_actualizacion, "Tipo": TIPOS[x.grupo] || x.grupo, "Nombre": x.nombre, "Cédula": x.cedula, "Labor": x.labor || "",
+      "Quincenal": Number(x.valor || 0), "Observaciones": x.observaciones || "", "Registró": x.creado_por || "",
+    })));
+    ws["!cols"] = [{ wch: 12 }, { wch: 38 }, { wch: 38 }, { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 32 }, { wch: 24 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bonificaciones");
+    XLSX.writeFile(wb, `Bonificaciones ${$("l-desde").value || "inicio"} a ${$("l-hasta").value || "hoy"}.xlsx`);
+  });
+
+  cargarLista();
 });
 </script>
 </body>
