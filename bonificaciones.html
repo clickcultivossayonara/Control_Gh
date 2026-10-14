@@ -381,7 +381,7 @@
 
   <div class="aviso-super">
     <strong>Poscosecha Unión · información confidencial de pago.</strong> Registra aquí las bonificaciones (bono prestacional de Poscosecha y Unique
-    y acompañamiento de mula). Solo la ven los usuarios autorizados para este módulo.
+    y acompañamiento de mula). Solo la ven Super Admin, Administrador, Nómina y los usuarios autorizados para este módulo.
   </div>
 
   <section class="card">
@@ -544,6 +544,7 @@ AUTH_READY.then(async function () {
     params.set("activo", "eq.true");
     params.set("order", "nombre.asc");
     params.set("limit", "8");
+    params.set("area", 'in.("POSTCOSECHA","UNIQUE CREATION")');   // este modulo es solo de Poscosecha Union
     if (/^\d+$/.test(q)) params.set("cedula_texto", "ilike.*" + q + "*");
     else params.set("nombre", "ilike.*" + q.replace(/[,()*]/g, "") + "*");
     return get("employees_detalle?" + params.toString());
