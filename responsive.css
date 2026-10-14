@@ -126,3 +126,25 @@ img, svg, canvas { max-width: 100%; }
   table:not(.sin-tarjetas) thead { position: static; }
   table:not(.sin-tarjetas) td::before { display: none; }
 }
+
+/* ---------------- escritorio: menu lateral oculto; aparece al pasar el mouse por el icono del menu ----------------
+ * Aplica en todas las paginas con menu salvo Inicio (responsive.js agrega la clase menu-hover al body). En celular y
+ * tablet vertical sigue funcionando el menu tipo cajon de siempre. */
+@media (min-width: 881px) {
+  body.menu-hover { display: block !important; }
+  body.menu-hover .sidebar {
+    position: fixed !important; left: 0; top: 0; height: 100vh !important; width: 270px !important;
+    transform: translateX(-100%); transition: transform 0.18s ease; z-index: 50;
+  }
+  body.menu-hover .sidebar.abierto-movil { transform: translateX(0); box-shadow: 6px 0 24px rgba(20, 24, 15, 0.18); }
+  /* aunque el menu se hubiera guardado "colapsado", al abrirlo se ve completo */
+  body.menu-hover .sidebar.colapsado .sidebar-link span,
+  body.menu-hover .sidebar.colapsado .sidebar-brand,
+  body.menu-hover .sidebar.colapsado .sesion-usuario { display: initial !important; }
+  body.menu-hover .sidebar.colapsado .sidebar-top { justify-content: flex-start; padding: 16px 14px; }
+  body.menu-hover .sidebar.colapsado .sidebar-link { justify-content: flex-start; padding: 9px 10px; }
+  body.menu-hover .sidebar-toggle { display: none !important; }
+  body.menu-hover .menu-toggle-movil { display: flex !important; z-index: 60; }
+  body.menu-hover .page-content { display: flex; width: 100%; }
+  body.menu-hover .wrap { padding-top: 60px; }
+}

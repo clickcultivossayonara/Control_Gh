@@ -62,6 +62,7 @@
   function iniciar() {
     etiquetarTodo();
     new MutationObserver(programar).observe(document.body, { childList: true, subtree: true, characterData: false });
+    iniciarMenuHover();
   }
   // Tocar una tarjeta (solo celular) muestra u oculta el resto de sus datos
   document.addEventListener("click", function (e) {
@@ -71,6 +72,26 @@
     if (e.target.closest("select, input, button, a, label, textarea")) return;
     tr.classList.toggle("abierta");
   });
+
+  // Escritorio: el menu lateral queda oculto y se abre al pasar el mouse por el icono del menu (en Inicio se deja visible).
+  function iniciarMenuHover() {
+    var enInicio = /(^|\/)(index\.html)?$/.test(location.pathname);
+    var btn = document.getElementById("menu-toggle-movil"), sb = document.getElementById("sidebar");
+    if (enInicio || !btn || !sb) return;
+    document.body.classList.add("menu-hover");
+    var esc = function () { return window.matchMedia("(min-width: 881px)").matches; };
+    var timer = null;
+    function abrir() { clearTimeout(timer); sb.classList.add("abierto-movil"); }
+    function cerrar() { clearTimeout(timer); timer = setTimeout(function () { sb.classList.remove("abierto-movil"); }, 250); }
+    btn.addEventListener("mouseenter", function () { if (esc()) abrir(); });
+    btn.addEventListener("mouseleave", function () { if (esc()) cerrar(); });
+    sb.addEventListener("mouseenter", function () { if (esc()) clearTimeout(timer); });
+    sb.addEventListener("mouseleave", function () { if (esc()) cerrar(); });
+    // el clic del icono en escritorio solo abre (el menu ya se abre con el mouse); no lo cierra
+    btn.addEventListener("click", function (e) { if (esc()) { e.stopImmediatePropagation(); abrir(); } }, true);
+    // al elegir un enlace o con Escape se cierra
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && esc()) sb.classList.remove("abierto-movil"); });
+  }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar);
   else iniciar();
