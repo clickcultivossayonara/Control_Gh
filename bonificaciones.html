@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bonificaciones — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; align-items: stretch; }
+
+  /* ---------------- menu lateral ---------------- */
+  .sidebar {
+    width: 264px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    transition: width 0.16s ease;
+  }
+  .sidebar.colapsado { width: 64px; }
+  .sidebar-top { display: flex; align-items: center; gap: 10px; padding: 16px 14px; border-bottom: 1px solid var(--line); min-height: 28px; }
+  .sidebar.colapsado .sidebar-top { justify-content: center; padding: 16px 10px; }
+  .sidebar-logo { height: 26px; width: auto; flex-shrink: 0; border-radius: 4px; }
+  .sidebar-brand { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-toggle {
+    margin-left: auto; background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 6px;
+    display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0;
+  }
+  .sidebar.colapsado .sidebar-toggle { margin-left: 0; }
+  .sidebar-toggle:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-toggle svg { width: 18px; height: 18px; }
+
+  .sidebar-nav { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; text-decoration: none;
+    color: var(--ink-soft); font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden;
+  }
+  .sidebar-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-link span { overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-link:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-link.activo { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .sidebar.colapsado .sidebar-link { justify-content: center; padding: 9px; }
+  .sidebar.colapsado .sidebar-link span { display: none; }
+
+  .sidebar-footer { border-top: 1px solid var(--line); padding: 10px 10px; }
+  .sidebar.colapsado .sidebar-footer { padding: 10px 6px; }
+  .sidebar-footer .sesion-box {
+    display: flex !important; flex-direction: column !important; align-items: flex-start !important;
+    gap: 8px !important; justify-content: flex-start !important; margin-top: 0 !important;
+  }
+  .sidebar.colapsado .sidebar-footer .sesion-usuario { display: none; }
+  .sidebar-footer .sesion-usuario { white-space: normal; line-height: 1.4; }
+  .sidebar.colapsado .sidebar-footer .sesion-salir { width: 100%; padding: 8px 0; }
+
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(20, 24, 15, 0.45); z-index: 40; }
+  .sidebar-backdrop.visible { display: block; }
+  .menu-toggle-movil {
+    display: none; position: fixed; top: 14px; left: 14px; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer;
+    color: var(--ink-soft); padding: 8px; align-items: center; justify-content: center; box-shadow: var(--shadow);
+  }
+  .menu-toggle-movil:hover { border-color: var(--accent); color: var(--accent); }
+  .menu-toggle-movil svg { width: 20px; height: 20px; }
+
+  .page-content { flex: 1; min-width: 0; display: flex; justify-content: center; }
+  .wrap { width: 100%; max-width: 1240px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 16px; }
+  .page-header { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+  .page-header .page-logo { height: 36px; width: auto; }
+  .page-header .page-brand { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+  .page-header h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(24px, 3.4vw, 32px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; }
+
+  /* ---------------- responsive: tablet y celular ---------------- */
+  @media (max-width: 880px) {
+    body { display: block; }
+    .sidebar {
+      position: fixed; left: 0; top: 0; width: 270px !important; height: 100vh;
+      transform: translateX(-100%); transition: transform 0.2s ease; z-index: 50;
+    }
+    .sidebar.abierto-movil { transform: translateX(0); }
+    .sidebar.colapsado .sidebar-link span,
+    .sidebar.colapsado .sidebar-brand,
+    .sidebar.colapsado .sesion-usuario { display: initial; }
+    .sidebar.colapsado .sidebar-top { justify-content: flex-start; padding: 16px 14px; }
+    .sidebar.colapsado .sidebar-link { justify-content: flex-start; padding: 9px 10px; }
+    .sidebar-toggle { display: none; }
+    .menu-toggle-movil { display: flex; }
+    .page-content { display: block; }
+    .wrap { max-width: none; padding-top: 64px; }
+  }
+  @media (max-width: 520px) {
+    .page-header h1 { font-size: 21px; }
+    .filters { flex-direction: column; align-items: stretch; }
+    .filters .field, .filters .multiselect, .ms-trigger, .field input { width: 100%; min-width: 0; }
+    .result-count { margin-left: 0; }
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; }
+  .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 14px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field input[type=text], .field input[type=date] {
+    font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); cursor: pointer; min-width: 150px; text-align: left;
+  }
+  .ms-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--shadow); max-height: 260px; overflow-y: auto;
+    min-width: 240px; padding: 6px; }
+  .multiselect.open .ms-panel { display: block; }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 8px;
+    margin-bottom: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink);
+  }
+  .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .ms-option { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { accent-color: var(--accent); }
+
+  .clear-btn, .btn-export {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 7px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover, .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-export:disabled { opacity: 0.5; cursor: wait; }
+
+  .rachas-alerta {
+    border: 1px solid var(--critical-soft); border-left: 4px solid var(--critical); border-radius: var(--radius);
+    background: var(--surface); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .rachas-alerta[hidden] { display: none; }
+  .rachas-alerta.ok { border-left-color: var(--accent); border-color: var(--accent-soft); }
+  .rachas-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; cursor: pointer; user-select: none; }
+  .rachas-icono { font-size: 15px; line-height: 1; }
+  .rachas-titulo { font-weight: 700; font-size: 14px; flex: 1; min-width: 200px; color: var(--critical); }
+  .rachas-alerta.ok .rachas-titulo { color: var(--accent); }
+  .rachas-toggle { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+  .rachas-hint { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
+  .rachas-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rachas-chip {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 20px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .rachas-chip.activo { background: var(--critical); border-color: var(--critical); color: #fff; }
+  .rachas-tabla { max-height: 320px; overflow: auto; }
+  .rachas-tabla table { min-width: 980px; }
+  .rachas-tabla .estado-curso { color: var(--critical); font-weight: 700; }
+  .rachas-tabla .estado-fin { color: var(--ink-faint); }
+  .rachas-tabla .dias { font-weight: 700; }
+
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 1100px; table-layout: fixed; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 8px;
+    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+    cursor: pointer; user-select: none; border-bottom: 1px solid var(--ink);
+  }
+  thead th:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 10px; margin-left: 4px; }
+  thead th.sorted .arrow { opacity: 1; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
+  tbody tr:hover td { background: var(--accent-soft); }
+
+
+  .load-more-row td { text-align: center; padding: 14px; background: var(--paper) !important; }
+  .load-more-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 7px;
+    border: 1px solid var(--accent-soft-line); background: var(--accent-soft); color: var(--accent); cursor: pointer;
+  }
+  .load-more-btn:hover { border-color: var(--accent); }
+
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
+  .nombre { font-weight: 500; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.pendiente { background: var(--warn-soft); color: var(--warn); }
+  .chip.injustificada { background: var(--critical-soft); color: var(--critical); }
+  .btn-small {
+    font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-small:disabled { opacity: 0.5; cursor: wait; }
+  .empty-state, .error-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+
+  .aviso-super { background: var(--accent-soft); border: 1px solid var(--accent-soft-line); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; line-height: 1.45; color: var(--ink); }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tab-btn { font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .tab-btn.activo { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  section[hidden] { display: none; }
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
+  .field.grow { flex: 1; min-width: 220px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
+  .field input, .field textarea, .field select { font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--ink); }
+  .field input:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .btn-primary { font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 7px; border: none; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+  .btn-peligro { background: var(--critical); }
+  .form-msg { font-size: 13px; font-weight: 500; min-height: 18px; margin: 0; }
+  .form-msg.error { color: var(--critical); }
+  .form-msg.ok { color: var(--accent); }
+  .tabla-aj { min-width: 1080px; table-layout: auto; }
+  .tabla-aj td { white-space: nowrap; }
+  .tabla-aj td.motivo { white-space: normal; min-width: 220px; max-width: 320px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; }
+  .badge.ajustado { background: var(--warn-soft); color: var(--warn); }
+  .badge.t-AJUSTE { background: var(--warn-soft); color: var(--warn); }
+  .badge.t-CREACION { background: var(--accent-soft); color: var(--accent); }
+  .badge.t-REVERSION { background: var(--critical-soft); color: var(--critical); }
+  .badge.revertido { background: var(--line); color: var(--ink-faint); }
+  .dif-neg { color: var(--critical); font-weight: 500; }
+  .dif-pos { color: var(--accent); font-weight: 500; }
+  .modal-ov { position: fixed; inset: 0; background: rgba(20, 24, 15, 0.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 60; }
+  .modal-ov[hidden] { display: none; }
+  .modal-caja { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .modal-caja h3 { margin: 0; font-size: 17px; }
+  .modal-caja .sub { margin: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+  .preview { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13px; line-height: 1.5; }
+  .acciones-modal { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 70; box-shadow: var(--shadow); }
+  .toast[hidden] { display: none; }
+
+  .chips-cruce { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip-cruce { font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .chip-cruce.activo { background: var(--critical); color: #fff; border-color: var(--critical); }
+  .chip-cruce.activo.suave { background: var(--accent); border-color: var(--accent); }
+  .equipos-estado { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .equipo { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; background: var(--surface); }
+  .equipo strong { display: block; font-size: 14px; margin-bottom: 2px; }
+  .equipo .sub { color: var(--ink-faint); font-size: 12px; }
+  .equipo.alerta { border-color: var(--warn); background: var(--warn-soft); }
+  .banner-cruce { border-radius: 10px; padding: 12px 14px; font-size: 14px; font-weight: 600; margin: 0; }
+  .banner-cruce.mal { background: var(--critical-soft); color: var(--critical); border: 1px solid var(--critical); }
+  .banner-cruce.bien { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-soft-line); }
+  .tabla-cruce { min-width: 880px; }
+  .tabla-cruce td { white-space: normal; }
+
+  .barra-bono { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .resumen-bono { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; margin: 12px 0 14px; }
+  .cifra-bono { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+  .cifra-bono span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); font-weight: 600; }
+  .cifra-bono b { font-size: 19px; }
+  .tabla-bono { min-width: 760px; }
+  .tabla-bono td.valor, .tabla-bono th.valor { text-align: right; }
+  .tabla-bono tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); background: var(--accent-soft); }
+  .titulo-seccion { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 4px; letter-spacing: 0.01em; }
+  .valor-cero { color: var(--ink-faint); }
+  .adv { color: var(--warn); font-size: 12px; }
+  input[type=file].oculto { display: none; }
+</style>
+<link rel="stylesheet" href="responsive.css">
+<script src="responsive.js" defer></script>
+<link rel="stylesheet" href="tema-claro.css">
+</head>
+<body>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+<button type="button" class="menu-toggle-movil" id="menu-toggle-movil" aria-label="Abrir menú">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+</button>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="sidebar-logo">
+    <span class="sidebar-brand">Cultivos Sayonara</span>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Colapsar menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+  </div>
+
+  <div class="sidebar-nav" id="sidebar-nav">
+    <a class="sidebar-link" href="index.html" data-pagina="inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-6h6v6"></path></svg>
+      <span>Inicio</span>
+    </a>
+    <a class="sidebar-link" href="empleados.html" data-pagina="empleados">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Empleados</span>
+    </a>
+    <a class="sidebar-link" href="registro-biometrico.html" data-pagina="registro_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+      <span>Registro Biométrico</span>
+    </a>
+    <a class="sidebar-link" href="novedades.html" data-pagina="novedades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
+      <span>Novedades</span>
+    </a>
+    <a class="sidebar-link" href="ausentismo.html" data-pagina="ausentismo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.17 9.17a3 3 0 1 1 4.24 4.24M12 8v1M15 15l6 6"></path></svg>
+      <span>Ausentismo</span>
+    </a>
+    <a class="sidebar-link" href="nomina.html" data-pagina="nomina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg>
+      <span>Nómina</span>
+    </a>
+    <a class="sidebar-link" href="configuraciones.html" data-pagina="configuraciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span>Configuraciones</span>
+    </a>
+    <a class="sidebar-link" href="usuarios.html" data-pagina="usuarios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="5"></circle></svg>
+      <span>Usuarios</span>
+    </a>
+    <a class="sidebar-link" href="ajuste-marcaciones.html" data-pagina="ajuste_marcaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>
+      <span>Ajuste de marcaciones</span>
+    </a>
+    <a class="sidebar-link" href="cruce-biometrico.html" data-pagina="cruce_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M1 21a8 8 0 0 1 16 0"></path><path d="M17 11l2 2 4-4"></path></svg>
+      <span>Cruce con el biométrico</span>
+    </a>
+    <a class="sidebar-link" href="bonificaciones.html" data-pagina="bonificaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M14.8 9.2a3 3 0 0 0-2.8-1.7c-1.7 0-3 .9-3 2.1 0 3 5.9 1.4 5.9 4.5 0 1.2-1.3 2.1-2.9 2.1a3 3 0 0 1-2.9-1.7M12 6v1.5M12 16.5V18"></path></svg>
+      <span>Bonificaciones</span>
+    </a>
+    <a class="sidebar-link activo" href="bonificaciones.html" data-pagina="bonificaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M14.8 9.2a3 3 0 0 0-2.8-1.7c-1.7 0-3 .9-3 2.1 0 3 5.9 1.4 5.9 4.5 0 1.2-1.3 2.1-2.9 2.1a3 3 0 0 1-2.9-1.7M12 6v1.5M12 16.5V18"></path></svg>
+      <span>Bonificaciones</span>
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+</nav>
+
+<div class="page-content">
+<div class="wrap">
+  <div class="page-header">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="page-logo">
+    <span class="page-brand">Cultivos Sayonara</span>
+    <h1>Bonificaciones</h1>
+  </div>
+
+  <div class="aviso-super">
+    <strong>Información confidencial de pago.</strong> Solo la ven Administrador, Nómina y RRHH con su usuario y contraseña.
+    Es la bonificación prestacional de Poscosecha y Unique (valor quincenal por persona) y los viajes de acompañamiento de mula,
+    tal como vienen en el archivo de Excel de cada actualización.
+  </div>
+
+  <section class="card">
+    <div class="barra-bono">
+      <div class="field">
+        <label for="b-fecha">Fecha de actualización</label>
+        <select id="b-fecha"></select>
+      </div>
+      <button type="button" class="clear-btn" id="b-excel">Descargar Excel</button>
+      <button type="button" class="btn-primary" id="b-cargar" hidden>Cargar nueva actualización (Excel)</button>
+      <input type="file" id="b-archivo" class="oculto" accept=".xlsx,.xls">
+      <span class="form-msg" id="b-msg"></span>
+    </div>
+  </section>
+
+  <section class="card" id="sec-bono">
+    <p class="titulo-seccion">EMPLEADOS QUE RECIBEN BONO PRESTACIONAL POSCOSECHA Y UNIQUE</p>
+    <p class="card-hint" style="margin:0" id="b-fecha-txt"></p>
+    <div class="resumen-bono">
+      <div class="cifra-bono"><span>Personas en la lista</span><b id="r-personas">—</b></div>
+      <div class="cifra-bono"><span>Con bono mayor a $0</span><b id="r-con">—</b></div>
+      <div class="cifra-bono"><span>Total quincenal</span><b id="r-total">—</b></div>
+    </div>
+    <div class="filters">
+      <div class="field grow">
+        <label for="b-texto">Cédula o nombre</label>
+        <input type="text" id="b-texto" placeholder="Ej. 1001471007 o Cardona…" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="b-labor">Labor</label>
+        <select id="b-labor"><option value="">Todas</option></select>
+      </div>
+      <span class="result-count" id="b-count"></span>
+    </div>
+    <div class="table-scroll" style="margin-top:10px">
+      <table class="tabla-bono" data-principales="Nombre Empleado,Labor,Quincenal">
+        <thead><tr>
+          <th>Nombre Empleado</th><th>Cédula</th><th>Labor</th><th class="valor">Quincenal</th><th>Observaciones</th>
+        </tr></thead>
+        <tbody id="b-tbody"></tbody>
+        <tfoot><tr><td colspan="3">TOTAL</td><td class="valor" id="b-total-pie">—</td><td></td></tr></tfoot>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="sec-viajes">
+    <p class="titulo-seccion">VIAJES PARA ACOMPAÑAMIENTO DE MULA</p>
+    <div class="table-scroll" style="margin-top:10px">
+      <table class="tabla-bono" data-principales="Nombre Empleado,Cant de viajes">
+        <thead><tr><th>Nombre Empleado</th><th>Cédula</th><th class="valor">Cant de viajes</th></tr></thead>
+        <tbody id="v-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer style="font-size:12px;color:var(--ink-faint);text-align:center">Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+AUTH_READY.then(async function () {
+  if (!requierePagina("bonificaciones")) return;
+  pintarSesion("sesion-box");
+  filtrarSidebar();
+
+  const sidebar = document.getElementById("sidebar");
+  const btnColapsar = document.getElementById("sidebar-toggle");
+  function aplicarColapso(colapsado) {
+    sidebar.classList.toggle("colapsado", colapsado);
+    try { localStorage.setItem("sidebar-colapsado", colapsado ? "1" : "0"); } catch {}
+  }
+  let colapsadoGuardado = null;
+  try { colapsadoGuardado = localStorage.getItem("sidebar-colapsado"); } catch {}
+  aplicarColapso(colapsadoGuardado === "1");
+  btnColapsar.addEventListener("click", () => aplicarColapso(!sidebar.classList.contains("colapsado")));
+  const backdrop = document.getElementById("sidebar-backdrop");
+  const btnMenuMovil = document.getElementById("menu-toggle-movil");
+  function abrirMenuMovil(abrir) {
+    sidebar.classList.toggle("abierto-movil", abrir);
+    backdrop.classList.toggle("visible", abrir);
+  }
+  btnMenuMovil.addEventListener("click", () => abrirMenuMovil(!sidebar.classList.contains("abierto-movil")));
+  backdrop.addEventListener("click", () => abrirMenuMovil(false));
+
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const COP = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+  const fmtFechaLarga = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y}`; };
+  const puedeCargar = ["admin", "nomina", "rrhh", "super_admin"].includes(window.SESION.rol);
+  if (puedeCargar) $("b-cargar").hidden = false;
+
+  let filas = [];          // filas de la actualizacion elegida
+  let fechas = [];
+
+  async function get(path) {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: authHeaders() });
+    const datos = await resp.json();
+    if (!resp.ok) throw new Error(datos.message || `HTTP ${resp.status}`);
+    return datos;
+  }
+
+  async function cargarFechas() {
+    const r = await get("bonificaciones?select=fecha_actualizacion&order=fecha_actualizacion.desc&limit=5000");
+    fechas = [...new Set(r.map((x) => x.fecha_actualizacion))];
+    $("b-fecha").innerHTML = fechas.length
+      ? fechas.map((f, i) => `<option value="${f}">${fmtFechaLarga(f)}${i === 0 ? " (la más reciente)" : ""}</option>`).join("")
+      : `<option value="">Sin actualizaciones</option>`;
+  }
+
+  async function cargarFilas() {
+    const f = $("b-fecha").value;
+    if (!f) { filas = []; pintar(); return; }
+    filas = await get(`bonificaciones?select=*&fecha_actualizacion=eq.${f}&order=grupo.asc,orden.asc&limit=5000`);
+    pintar();
+  }
+
+  const bonos = () => filas.filter((x) => x.grupo === "BONO");
+  const viajes = () => filas.filter((x) => x.grupo === "VIAJES_MULA");
+
+  function pintar() {
+    const b = bonos();
+    const total = b.reduce((s, x) => s + Number(x.valor || 0), 0);
+    $("r-personas").textContent = b.length.toLocaleString("es-CO");
+    $("r-con").textContent = b.filter((x) => Number(x.valor) > 0).length.toLocaleString("es-CO");
+    $("r-total").textContent = COP.format(total);
+    $("b-fecha-txt").textContent = $("b-fecha").value ? `Fecha de actualización: ${fmtFechaLarga($("b-fecha").value)}` : "";
+    // labores
+    const prev = $("b-labor").value;
+    const labores = [...new Set(b.map((x) => x.labor).filter(Boolean))].sort();
+    $("b-labor").innerHTML = `<option value="">Todas</option>` + labores.map((l) => `<option value="${esc(l)}">${esc(l)}</option>`).join("");
+    if (labores.includes(prev)) $("b-labor").value = prev;
+    pintarBono();
+    $("v-tbody").innerHTML = viajes().length === 0
+      ? `<tr><td colspan="3"><div class="empty-state">Sin viajes en esta actualización.</div></td></tr>`
+      : viajes().map((x) => `<tr><td class="nombre">${esc(x.nombre)}</td><td class="cedula">${x.cedula ?? ""}</td><td class="valor num">${Number(x.cantidad)}</td></tr>`).join("");
+  }
+
+  function filtradas() {
+    const q = $("b-texto").value.trim().toLowerCase();
+    const labor = $("b-labor").value;
+    return bonos().filter((x) => (!labor || x.labor === labor) && (!q || String(x.cedula || "").includes(q) || String(x.nombre).toLowerCase().includes(q)));
+  }
+
+  function pintarBono() {
+    const l = filtradas();
+    $("b-tbody").innerHTML = l.length === 0
+      ? `<tr><td colspan="5"><div class="empty-state">Sin registros.</div></td></tr>`
+      : l.map((x) => `<tr>
+          <td class="nombre">${esc(x.nombre)}</td>
+          <td class="cedula">${x.cedula ?? ""}</td>
+          <td>${esc(x.labor || "")}</td>
+          <td class="valor num${Number(x.valor) === 0 ? " valor-cero" : ""}">${COP.format(Number(x.valor || 0))}</td>
+          <td>${esc(x.observaciones || "")}</td>
+        </tr>`).join("");
+    $("b-total-pie").textContent = COP.format(l.reduce((s, x) => s + Number(x.valor || 0), 0));
+    $("b-count").textContent = l.length.toLocaleString("es-CO") + " persona" + (l.length === 1 ? "" : "s");
+  }
+
+  $("b-fecha").addEventListener("change", cargarFilas);
+  $("b-texto").addEventListener("input", pintarBono);
+  $("b-labor").addEventListener("change", pintarBono);
+
+  // ---- descargar Excel con la misma forma que el archivo original ----
+  $("b-excel").addEventListener("click", () => {
+    const f = $("b-fecha").value;
+    if (!f) return;
+    const aoa = [["Fecha Actualización"], [new Date(f + "T00:00:00")], [],
+      ["EMPLEADOS QUE RECIBEN BONO PRESTACIONAL POSCOSECHA Y UNIQUE"],
+      ["Nombre Empleado", "Cédula", "Labor", "Quincenal", "Observaciones"]];
+    bonos().forEach((x) => aoa.push([x.nombre, x.cedula, x.labor || "", Number(x.valor || 0), x.observaciones || ""]));
+    aoa.push(["TOTAL", "", "", bonos().reduce((s, x) => s + Number(x.valor || 0), 0)]);
+    aoa.push([], [], ["VIAJES PARA ACOMPAÑAMIENTO DE MULA"], ["Nombre Empleado", "Cédula", "CANT DE VIAJES"]);
+    viajes().forEach((x) => aoa.push([x.nombre, x.cedula, Number(x.cantidad || 0)]));
+    const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true });
+    ws["!cols"] = [{ wch: 42 }, { wch: 15 }, { wch: 28 }, { wch: 14 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Bonificación");
+    XLSX.writeFile(wb, `Bonificacion Prestacional ${f}.xlsx`);
+  });
+
+  // ---- cargar una actualizacion nueva desde el mismo formato de Excel ----
+  const aTexto = (v) => (v == null ? "" : String(v).trim());
+  const aNumero = (v) => { const n = Number(String(v ?? "").replace(/[^\d.,-]/g, "").replace(",", ".")); return Number.isFinite(n) ? n : 0; };
+  function aFechaISO(v) {
+    if (v instanceof Date) {   // +12 h: SheetJS devuelve las fechas con un pequeno desfase y a veces caen en el dia anterior
+      const d = new Date(v.getTime() + 12 * 3600 * 1000);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    }
+    if (typeof v === "number") { const d = new Date(Math.round((v - 25569) * 86400000)); return d.toISOString().slice(0, 10); }
+    const m = String(v || "").match(/(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+    return m ? `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}` : null;
+  }
+
+  function leerExcel(buf) {
+    const wb = XLSX.read(buf, { type: "array", cellDates: true });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
+    const norm = (s) => aTexto(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+    let fecha = null;
+    for (let i = 0; i < rows.length; i++) {
+      if (norm(rows[i][0]).startsWith("fecha actualiz")) { fecha = aFechaISO(rows[i + 1] && rows[i + 1][0]); break; }
+    }
+    const hBono = rows.findIndex((r) => r.some((c) => norm(c) === "cedula") && r.some((c) => norm(c) === "quincenal"));
+    if (!fecha) throw new Error('No encontré la "Fecha Actualización" en el archivo.');
+    if (hBono < 0) throw new Error('No encontré la tabla de bonos (columnas "Cédula" y "Quincenal").');
+    const cols = rows[hBono].map(norm);
+    const ix = (n) => cols.indexOf(n);
+    const iN = ix("nombre empleado"), iC = ix("cedula"), iL = ix("labor"), iQ = ix("quincenal"), iO = ix("observaciones");
+    const out = [];
+    let orden = 0;
+    let i = hBono + 1;
+    for (; i < rows.length; i++) {
+      const r = rows[i];
+      const nombre = aTexto(r[iN]);
+      if (norm(nombre) === "total") break;
+      if (!nombre && !r[iC]) { if (out.length) break; else continue; }
+      out.push({ fecha_actualizacion: fecha, grupo: "BONO", nombre, cedula: r[iC] == null || r[iC] === "" ? null : Math.round(Number(r[iC])),
+        labor: aTexto(r[iL]) || null, valor: aNumero(r[iQ]), cantidad: null, observaciones: iO >= 0 ? (aTexto(r[iO]) || null) : null, orden: ++orden });
+    }
+    // viajes de mula
+    const hV = rows.findIndex((r, k) => k > i && norm(r[0]).includes("viajes"));
+    if (hV >= 0) {
+      let h = hV + 1;
+      const cabV = (rows[h] || []).map(norm);
+      const vN = cabV.indexOf("nombre empleado"), vC = cabV.indexOf("cedula"), vQ = cabV.findIndex((c) => c.startsWith("cant"));
+      let ordV = 0;
+      for (let k = h + 1; k < rows.length; k++) {
+        const r = rows[k];
+        const nombre = aTexto(r[vN < 0 ? 0 : vN]);
+        if (!nombre) continue;
+        out.push({ fecha_actualizacion: fecha, grupo: "VIAJES_MULA", nombre, cedula: r[vC < 0 ? 1 : vC] == null ? null : Math.round(Number(r[vC < 0 ? 1 : vC])),
+          labor: null, valor: null, cantidad: aNumero(r[vQ < 0 ? 2 : vQ]), observaciones: null, orden: ++ordV });
+      }
+    }
+    return { fecha, filas: out };
+  }
+
+  $("b-cargar").addEventListener("click", () => $("b-archivo").click());
+  $("b-archivo").addEventListener("change", async () => {
+    const f = $("b-archivo").files[0];
+    $("b-archivo").value = "";
+    if (!f) return;
+    const msg = $("b-msg");
+    msg.className = "form-msg";
+    msg.textContent = "Leyendo el archivo…";
+    try {
+      const { fecha, filas: nuevas } = leerExcel(await f.arrayBuffer());
+      const nb = nuevas.filter((x) => x.grupo === "BONO").length, nv = nuevas.length - nb;
+      if (nb === 0) throw new Error("El archivo no trae filas de bonos.");
+      const existe = fechas.includes(fecha);
+      const total = nuevas.filter((x) => x.grupo === "BONO").reduce((s, x) => s + x.valor, 0);
+      if (!confirm(`Actualización del ${fmtFechaLarga(fecha)}: ${nb} personas con bono (total ${COP.format(total)}) y ${nv} de viajes de mula.` +
+          (existe ? "\n\nYa existe una actualización con esa fecha: se REEMPLAZARÁ." : "") + "\n\n¿Cargarla?")) { msg.textContent = ""; return; }
+      msg.textContent = "Guardando…";
+      if (existe) {
+        const d = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones?fecha_actualizacion=eq.${fecha}`, { method: "DELETE", headers: { ...authHeaders(), Prefer: "return=minimal" } });
+        if (!d.ok) throw new Error(await d.text());
+      }
+      const quien = window.SESION.nombre || null;
+      for (let i = 0; i < nuevas.length; i += 500) {
+        const lote = nuevas.slice(i, i + 500).map((x) => ({ ...x, creado_por: quien }));
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones`, {
+          method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" }, body: JSON.stringify(lote),
+        });
+        if (!resp.ok) throw new Error(await resp.text());
+      }
+      msg.className = "form-msg ok";
+      msg.textContent = `Actualización del ${fmtFechaLarga(fecha)} cargada: ${nb} personas con bono y ${nv} de viajes.`;
+      await cargarFechas();
+      $("b-fecha").value = fecha;
+      await cargarFilas();
+    } catch (err) {
+      msg.className = "form-msg error";
+      msg.textContent = "No se pudo cargar: " + (err.message || err);
+    }
+  });
+
+  try {
+    await cargarFechas();
+    await cargarFilas();
+    if (fechas.length === 0) {
+      $("b-msg").className = "form-msg";
+      $("b-msg").textContent = puedeCargar ? "Aún no hay actualizaciones. Carga el Excel de Bonificación Prestacional." : "Aún no hay actualizaciones cargadas.";
+    }
+  } catch (err) {
+    const m = String(err.message || err);
+    $("b-msg").className = "form-msg error";
+    $("b-msg").textContent = /bonificaciones|PGRST205|relation/i.test(m) ? "Falta instalar el módulo en la base de datos (schema_bonificaciones.sql)." : m;
+  }
+});
+</script>
+</body>
+</html>
