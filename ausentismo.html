@@ -462,7 +462,8 @@ AUTH_READY.then(async function () {
     const filasCod = await respCod.json();
     if (respCod.ok && Array.isArray(filasCod)) codigosAusencia = filasCod;
   } catch {}
-  const OPCIONES_NOVEDAD = [...new Set([NOVEDAD_PENDIENTE, ...codigosAusencia.map(c => c.descripcion)])];
+  // DOR no es elegible a mano (la crea el sistema) pero si se puede filtrar
+  const OPCIONES_NOVEDAD = [...new Set([NOVEDAD_PENDIENTE, ...codigosAusencia.map(c => c.descripcion), "DEDUCCIÓN POR OMISIÓN DE REGISTRO"])];
 
   function crearMultiselect(containerId, opciones, etiquetaTodos, onChange) {
     const el = document.getElementById(containerId);
