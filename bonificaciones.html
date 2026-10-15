@@ -298,6 +298,10 @@
   .btn-peq { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--critical); background: transparent; color: var(--critical); cursor: pointer; }
   .btn-peq:hover { background: var(--critical-soft); }
   .valor-cero { color: var(--ink-faint); }
+  .inp-valor { font: inherit; font-size: 13.5px; width: 130px; max-width: 100%; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 6px; text-align: right; background: var(--surface); color: var(--ink); }
+  .btn-ok { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: none; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+  .btn-neutro { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .btn-neutro:hover { border-color: var(--accent); color: var(--accent); }
 </style>
 <link rel="stylesheet" href="responsive.css">
 <script src="responsive.js" defer></script>
@@ -460,7 +464,7 @@
     <div class="table-scroll" style="margin-top:10px">
       <table class="tabla-bono" data-principales="Fecha,Tipo,Nombre,Quincenal,Acciones">
         <thead><tr>
-          <th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Cédula</th><th>Labor</th><th class="valor">Quincenal</th><th>Observaciones</th><th>Registró</th><th>Acciones</th>
+          <th>Fecha</th><th>Tipo</th><th>Nombre</th><th>Cédula</th><th>Labor</th><th class="valor">Quincenal</th><th>Observaciones</th><th>Acciones</th>
         </tr></thead>
         <tbody id="l-tbody"></tbody>
       </table>
@@ -611,6 +615,7 @@ AUTH_READY.then(async function () {
 
   // ---------- Lista ----------
   let filas = [];
+  let editandoId = null;   // fila cuyo quincenal se esta editando
   async function cargarLista() {
     $("l-msg").textContent = "";
     const params = new URLSearchParams();
@@ -645,36 +650,105 @@ AUTH_READY.then(async function () {
     $("r-total").textContent = COP.format(suma(l));
     $("l-count").textContent = l.length.toLocaleString("es-CO") + " registro" + (l.length === 1 ? "" : "s");
     $("l-tbody").innerHTML = l.length === 0
-      ? `<tr><td colspan="9"><div class="empty-state">Sin bonificaciones para estos filtros.</div></td></tr>`
-      : l.map((x) => `<tr data-id="${x.id}">
+      ? `<tr><td colspan="8"><div class="empty-state">Sin bonificaciones para estos filtros.</div></td></tr>`
+      : l.map((x) => {
+          const editando = x.id === editandoId;
+          const celdaValor = editando
+            ? `<td class="valor"><input type="text" class="inp-valor" inputmode="numeric" value="${x.valor === null ? "" : COP.format(Number(x.valor))}" aria-label="Quincenal"></td>`
+            : `<td class="valor num${Number(x.valor || 0) === 0 ? " valor-cero" : ""}">${x.valor === null ? "—" : COP.format(Number(x.valor))}</td>`;
+          const acciones = editando
+            ? `<button type="button" class="btn-ok l-guardar">Guardar</button> <button type="button" class="btn-neutro l-cancelar">Cancelar</button>`
+            : `<button type="button" class="btn-neutro l-editar">Editar</button> <button type="button" class="btn-peq l-eliminar">Eliminar</button>`;
+          return `<tr data-id="${x.id}">
           <td class="num">${fmtFecha(x.fecha_actualizacion)}</td>
           <td>${esc(TIPOS[x.grupo] || x.grupo)}</td>
           <td class="nombre">${esc(x.nombre)}</td>
           <td class="cedula">${x.cedula ?? ""}</td>
           <td>${esc(x.labor || "")}</td>
-          <td class="valor num${Number(x.valor || 0) === 0 ? " valor-cero" : ""}">${x.valor === null ? "—" : COP.format(Number(x.valor))}</td>
+          ${celdaValor}
           <td>${esc(x.observaciones || "")}</td>
-          <td>${esc(x.creado_por || "")}</td>
-          <td><button type="button" class="btn-peq l-eliminar">Eliminar</button></td>
-        </tr>`).join("");
+          <td>${acciones}</td>
+        </tr>`;
+        }).join("");
   }
 
   $("l-tbody").addEventListener("click", async (e) => {
-    const b = e.target.closest(".l-eliminar");
-    if (!b) return;
-    const tr = b.closest("tr");
-    const x = filas.find((f) => String(f.id) === tr.dataset.id);
+    const tr = e.target.closest("tr[data-id]");
+    if (!tr) return;
+    const id = Number(tr.dataset.id);
+    const x = filas.find((f) => f.id === id);
     if (!x) return;
-    if (!confirm(`¿Eliminar la bonificación de ${x.nombre} (${COP.format(Number(x.valor || 0))}) del ${fmtFecha(x.fecha_actualizacion)}?`)) return;
-    b.disabled = true;
-    try {
-      const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones?id=eq.${x.id}`, { method: "DELETE", headers: { ...authHeaders(), Prefer: "return=minimal" } });
-      if (!resp.ok) throw new Error(await resp.text());
-      await cargarLista();
-    } catch (err) {
-      alert("No se pudo eliminar: " + (err.message || err));
-      b.disabled = false;
+
+    if (e.target.closest(".l-editar")) {
+      editandoId = id;
+      $("l-msg").textContent = "";
+      pintarLista();
+      const inp = document.querySelector(`#l-tbody tr[data-id="${id}"] .inp-valor`);
+      if (inp) { inp.focus(); inp.select(); }
+      return;
     }
+    if (e.target.closest(".l-cancelar")) { editandoId = null; pintarLista(); return; }
+
+    if (e.target.closest(".l-guardar")) {
+      const inp = tr.querySelector(".inp-valor");
+      const d = soloDigitos(inp.value);
+      const msg = $("l-msg");
+      if (d === "") { msg.className = "form-msg error"; msg.textContent = "Escribe el valor quincenal."; return; }
+      const nuevo = Number(d);
+      if (nuevo === Number(x.valor)) { editandoId = null; pintarLista(); return; }
+      const b = tr.querySelector(".l-guardar");
+      b.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones?id=eq.${id}`, {
+          method: "PATCH",
+          headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
+          body: JSON.stringify({ valor: nuevo }),
+        });
+        const cuerpo = await resp.json().catch(() => []);
+        if (!resp.ok) throw new Error(cuerpo.message || `HTTP ${resp.status}`);
+        if (!Array.isArray(cuerpo) || cuerpo.length === 0) throw new Error("No se pudo actualizar: falta habilitar la edición en la base de datos (schema_bonificaciones_editar.sql).");
+        const antes = x.valor;
+        x.valor = nuevo;
+        editandoId = null;
+        msg.className = "form-msg ok";
+        msg.textContent = `Quincenal de ${x.nombre} actualizado: ${antes === null ? "—" : COP.format(Number(antes))} → ${COP.format(nuevo)}.`;
+        pintarLista();
+      } catch (err) {
+        msg.className = "form-msg error";
+        const m = String(err.message || err);
+        msg.textContent = /permission denied|42501|row-level/i.test(m)
+          ? "No se pudo actualizar: falta habilitar la edición en la base de datos (schema_bonificaciones_editar.sql)." : m;
+        b.disabled = false;
+      }
+      return;
+    }
+
+    if (e.target.closest(".l-eliminar")) {
+      if (!confirm(`¿Eliminar la bonificación de ${x.nombre} (${COP.format(Number(x.valor || 0))}) del ${fmtFecha(x.fecha_actualizacion)}?`)) return;
+      const b = e.target.closest(".l-eliminar");
+      b.disabled = true;
+      try {
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones?id=eq.${x.id}`, { method: "DELETE", headers: { ...authHeaders(), Prefer: "return=minimal" } });
+        if (!resp.ok) throw new Error(await resp.text());
+        await cargarLista();
+      } catch (err) {
+        alert("No se pudo eliminar: " + (err.message || err));
+        b.disabled = false;
+      }
+    }
+  });
+
+  // dentro de la fila: formato en pesos mientras escribe; Enter guarda, Esc cancela
+  $("l-tbody").addEventListener("input", (e) => {
+    if (!e.target.classList.contains("inp-valor")) return;
+    const d = soloDigitos(e.target.value);
+    e.target.value = d === "" ? "" : COP.format(Number(d));
+  });
+  $("l-tbody").addEventListener("keydown", (e) => {
+    if (!e.target.classList.contains("inp-valor")) return;
+    const tr = e.target.closest("tr");
+    if (e.key === "Enter") { e.preventDefault(); tr.querySelector(".l-guardar").click(); }
+    if (e.key === "Escape") { tr.querySelector(".l-cancelar").click(); }
   });
 
   ["l-desde", "l-hasta", "l-tipo"].forEach((id) => $(id).addEventListener("change", cargarLista));
