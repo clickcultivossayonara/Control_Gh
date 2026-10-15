@@ -1443,7 +1443,7 @@ AUTH_READY.then(async function () {
   msFiltroArea.establecerOpciones(AREAS_FILTRO.map(a => [a, a]));
 
   // Turno: solo aplica a las areas que realmente trabajan por turnos.
-  const AREAS_CON_TURNO = ["ESTERILIZACIÓN", "ASPERSIÓN"];
+  const AREAS_CON_TURNO = ["CALDERA", "FITOSANIDAD ASPERSIÓN", "ESTERILIZACIÓN", "ASPERSIÓN"];
   function actualizarVisibilidadTurno(prefijo) {
     const area = document.getElementById(`${prefijo}-area`).value;
     const selTurno = document.getElementById(`${prefijo}-turno`);
@@ -1532,8 +1532,8 @@ AUTH_READY.then(async function () {
   // validaba contra valores ya existentes en algun empleado -- por eso
   // nunca se podia elegir "Doctorado" mientras nadie lo tuviera todavia).
   const OPCIONES_ESCOLARIDAD = [
-    "NINGUNO", "PRIMARIA", "SECUNDARIA", "BACHILLER", "TÉCNICO", "TECNÓLOGO",
-    "UNIVERSITARIO", "POSTGRADO", "MAESTRÍA", "DOCTORADO", "NO REGISTRA",
+    "NINGUNO", "PRIMARIA", "SECUNDARIA", "BACHILLER", "BACHILLER TÉCNICO", "TÉCNICA", "TECNOLOGÍA",
+    "UNIVERSITARIA", "ESPECIALIZACIÓN", "MAGISTER/DOCTORADO", "NO REGISTRA",
   ];
   ["f-escolaridad", "e-escolaridad"].forEach((id) => {
     const sel = document.getElementById(id);
@@ -1684,7 +1684,8 @@ AUTH_READY.then(async function () {
     "motivo_retiro", "detalle_retiro", "fecha_retiro", "inicio_credito_feser", "fin_credito_feser",
     "prorroga_1", "prorroga_2", "prorroga_3", "prorroga_4",
   ]);
-  const ESCOLARIDAD_CON_TITULO = ["TÉCNICO", "TECNÓLOGO", "UNIVERSITARIO", "POSTGRADO", "MAESTRÍA", "DOCTORADO"];
+  const ESCOLARIDAD_CON_TITULO = ["BACHILLER TÉCNICO", "TÉCNICA", "TECNOLOGÍA", "UNIVERSITARIA", "ESPECIALIZACIÓN", "MAGISTER/DOCTORADO",
+    "TÉCNICO", "TECNÓLOGO", "UNIVERSITARIO", "POSTGRADO", "MAESTRÍA", "DOCTORADO"];   // los 6 ultimos: nombres anteriores a la lista del Excel
   const valorDe = (id) => (document.getElementById(id)?.value || "").trim();
   const respondeNo = (id) => /^NO\b/i.test(valorDe(id));
 
