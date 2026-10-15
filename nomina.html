@@ -774,6 +774,9 @@ AUTH_READY.then(async function () {
 
   // ---------------- cargadores para Softland ----------------
   const TIPOS_RANGO_FECHA_CARGADOR = ["Ausencia", "Vacaciones"];
+  // DOR (Deduccion por omision de registro, ERP D072) es tipo Ausencia en Novedades/Ausentismo, pero a nomina
+  // se lleva en HORAS (suma por quincena), asi que va al Cargador Horas y no al de Ausentismo.
+  const CODIGOS_CARGADOR_HORAS = ["DOR"];
   const cgDesde = document.getElementById("cg-desde");
   const cgHasta = document.getElementById("cg-hasta");
   const cgCodigo = document.getElementById("cg-codigo");
@@ -786,7 +789,7 @@ AUTH_READY.then(async function () {
     const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,codigo_descripcion,tipo&habilitado=eq.true&order=codigo_descripcion.asc`, { headers: authHeaders() });
     if (!resp.ok) return;
     const filas = await resp.json();
-    filas.filter(f => TIPOS_RANGO_FECHA_CARGADOR.includes(f.tipo)).forEach(f => {
+    filas.filter(f => TIPOS_RANGO_FECHA_CARGADOR.includes(f.tipo) && !CODIGOS_CARGADOR_HORAS.includes(f.codigo)).forEach(f => {
       cgCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
     });
   }
@@ -959,7 +962,7 @@ AUTH_READY.then(async function () {
     filas.filter(f => f.codigo_novedad && f.hora != null).forEach(f => {
       const info = mapa[f.codigo_novedad];
       if (!info || !info.codigo_nomina) return; // no se lleva a nomina
-      if (TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo)) return; // esos van en el cargador de ausentismo
+      if (TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo) && !CODIGOS_CARGADOR_HORAS.includes(f.codigo_novedad)) return; // esos van en el cargador de ausentismo
       const clave = `${f.cedula}|${info.codigo_nomina}`;
       totales[clave] = (totales[clave] || 0) + Number(f.hora);
     });
@@ -1068,7 +1071,7 @@ AUTH_READY.then(async function () {
 
     const relevantes = filas.filter(f => {
       const info = mapa[f.codigo_novedad];
-      return info && info.codigo_nomina && TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo);
+      return info && info.codigo_nomina && TIPOS_RANGO_FECHA_CARGADOR.includes(info.tipo) && !CODIGOS_CARGADOR_HORAS.includes(f.codigo_novedad);
     });
 
     // Agrupa por (cedula, codigo_novedad) y colapsa dias consecutivos en

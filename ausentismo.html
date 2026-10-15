@@ -563,7 +563,8 @@ AUTH_READY.then(async function () {
 
   function filaHTML(r) {
     const pendiente = r.novedad === NOVEDAD_PENDIENTE;
-    const injustificada = String(r.novedad || "").toUpperCase().includes("INJUSTIFICADA");
+    const novedadMayus = String(r.novedad || "").toUpperCase();
+    const injustificada = novedadMayus.includes("INJUSTIFICADA") || novedadMayus.includes("OMISIÓN DE REGISTRO");
     const chip = pendiente
       ? `<span class="chip pendiente">${NOVEDAD_PENDIENTE}</span>`
       : `<span class="chip ${injustificada ? "injustificada" : "justificada"}">${r.novedad}</span>`;
