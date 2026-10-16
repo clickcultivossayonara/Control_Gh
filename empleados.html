@@ -198,6 +198,16 @@
   .modal-box h3 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 10px; }
   .modal-box p { font-size: 14px; color: var(--ink-soft); margin: 0 0 20px; line-height: 1.45; }
   .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
+  .modal-box.ancho { max-width: 580px; }
+  .cambios-lista { margin: 0 0 16px; padding: 0; list-style: none; max-height: 48vh; overflow-y: auto; font-size: 13.5px; }
+  .cambios-lista li { padding: 8px 0; border-bottom: 1px solid var(--line-strong); line-height: 1.4; }
+  .cambios-lista li:last-child { border-bottom: none; }
+  .cambios-lista .campo { display: block; font-weight: 600; color: var(--ink); }
+  .cambios-lista .antes { color: var(--ink-faint); text-decoration: line-through; margin-right: 4px; }
+  .cambios-lista .despues { color: var(--ink); font-weight: 500; }
+  .cambios-lista.error .campo { color: var(--critical); }
+  .modal-box h3.ok-titulo { color: var(--accent); }
+  .modal-box h3.error-titulo { color: var(--critical); }
   .btn-critical {
     font: inherit; font-size: 14px; font-weight: 600; padding: 10px 20px; border-radius: 7px; border: none;
     background: var(--critical); color: #fff; cursor: pointer;
@@ -1297,6 +1307,19 @@
   </div>
 </div>
 
+<div class="modal-overlay" id="modal-cambios" hidden>
+  <div class="modal-box ancho">
+    <h3 id="modal-cambios-titulo"></h3>
+    <p id="modal-cambios-sub"></p>
+    <ul class="cambios-lista" id="modal-cambios-lista"></ul>
+    <p id="modal-cambios-fallo-sub" hidden style="margin-bottom:8px"></p>
+    <ul class="cambios-lista error" id="modal-cambios-fallidos" hidden></ul>
+    <div class="modal-actions">
+      <button type="button" class="btn-primary" id="modal-cambios-ok">Aceptar</button>
+    </div>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="auth.js"></script>
 <script>
@@ -1944,7 +1967,9 @@ AUTH_READY.then(async function () {
   const elResultados = document.getElementById("editar-resultados");
   let ultimosResultadosBusqueda = [];
 
+  let empleadoActual = null;   // el empleado tal como se cargo en el formulario (para saber que cambio)
   function cargarEmpleadoEnFormulario(emp) {
+    empleadoActual = { ...emp };
     elResultados.hidden = true;
     // Colapsa todo antes de precargar, para que una seccion que quedo
     // abierta con el empleado anterior no se quede abierta vacia con este.
@@ -2103,6 +2128,17 @@ AUTH_READY.then(async function () {
       cambios[campo] = CAMPOS_RRHH_NUMERICOS.includes(campo) && crudo !== null ? Number(crudo) : crudo;
     });
 
+    // solo se envia (y se avisa) lo que realmente cambio
+    const lista = calcularCambios(empleadoActual, cambios, (campo) => etiquetaDeCampo(campo));
+    if (lista.length === 0) {
+      editarMsg.textContent = "No hiciste ningún cambio.";
+      editarMsg.className = "form-msg";
+      await mostrarAvisoCambios({ titulo: "Sin cambios", subtitulo: `No modificaste ningún campo de ${nombre}.` });
+      return;
+    }
+    const soloCambios = {};
+    lista.forEach((c) => { soloCambios[c.campo] = cambios[c.campo]; });
+
     const btnGuardarEditar = document.getElementById("btn-guardar-editar");
     btnGuardarEditar.disabled = true;
     editarMsg.textContent = "Guardando...";
@@ -2112,7 +2148,7 @@ AUTH_READY.then(async function () {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedula}`, {
         method: "PATCH",
         headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
-        body: JSON.stringify(cambios),
+        body: JSON.stringify(soloCambios),
       });
 
       const resultado = await resp.json();
@@ -2121,9 +2157,22 @@ AUTH_READY.then(async function () {
         throw new Error("No se guardó ningún cambio: no se encontró el empleado o no tienes permiso para editarlo.");
       }
 
-      editarMsg.textContent = `Empleado "${nombre}" actualizado correctamente.`;
-      editarMsg.className = "form-msg ok";
+      // comprobacion campo por campo con la fila que devolvio la base
+      const { guardados, noGuardados } = verificarGuardado(lista, resultado[0]);
+      empleadoActual = { ...empleadoActual, ...resultado[0] };
+      if (noGuardados.length) {
+        editarMsg.textContent = `Se guardaron ${guardados.length} campo(s); ${noGuardados.length} NO quedaron guardados.`;
+        editarMsg.className = "form-msg error";
+      } else {
+        editarMsg.textContent = `Empleado "${nombre}" actualizado correctamente (${guardados.length} campo${guardados.length === 1 ? "" : "s"}).`;
+        editarMsg.className = "form-msg ok";
+      }
       cargarEmpleados();
+      await mostrarAvisoCambios({
+        titulo: noGuardados.length ? "Algunos cambios no se guardaron" : "Cambios guardados",
+        subtitulo: `${nombre} (cédula ${cedula})`,
+        guardados, noGuardados,
+      });
     } catch (err) {
       editarMsg.textContent = "No se pudo guardar: " + (err.message || err);
       editarMsg.className = "form-msg error";
@@ -2153,11 +2202,13 @@ AUTH_READY.then(async function () {
     const elArea = document.getElementById(`${prefijo}-area-filtro`);
     AREAS_CONOCIDAS.forEach((a) => elArea.insertAdjacentHTML("beforeend", `<option value="${escaparHtml(a)}">${escaparHtml(a)}</option>`));
     let cedulaActual = null;
+    let empActual = null;
     let resultados = [];
 
     function cargar(emp) {
       elResultados.hidden = true;
       cedulaActual = emp.cedula;
+      empActual = { ...emp };
       elNombre.textContent = `${emp.cedula} — ${emp.nombre}`;
       campos.forEach((campo) => {
         const el = document.getElementById(idRrhh(prefijo, campo));
@@ -2262,6 +2313,22 @@ AUTH_READY.then(async function () {
         const el = document.getElementById(idRrhh(prefijo, campo));
         cambios[campo] = esCheckbox ? (el.checked ? "SI" : "NO") : (el.value.trim() || null);
       });
+      // lo que habia cargado, en la misma forma que se guarda (checkbox: SI / NO)
+      const original = {};
+      campos.forEach((campo) => {
+        const v = empActual ? empActual[campo] : null;
+        original[campo] = esCheckbox ? (((v ?? "").toString().trim().toUpperCase() !== "" && (v ?? "").toString().trim().toUpperCase() !== "NO") ? "SI" : "NO") : v;
+      });
+      const lista = calcularCambios(original, cambios, (campo) => etiquetaDeCampo(campo, idRrhh(prefijo, campo)));
+      const nombreEmp = elNombre.textContent;
+      if (lista.length === 0) {
+        msg.textContent = "No hiciste ningún cambio.";
+        msg.className = "form-msg";
+        await mostrarAvisoCambios({ titulo: "Sin cambios", subtitulo: `No modificaste ningún campo de ${nombreEmp}.` });
+        return;
+      }
+      const soloCambios = {};
+      lista.forEach((c) => { soloCambios[c.campo] = cambios[c.campo]; });
       const btn = form.querySelector('button[type="submit"]');
       btn.disabled = true;
       msg.textContent = "Guardando...";
@@ -2270,15 +2337,27 @@ AUTH_READY.then(async function () {
         const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees?cedula=eq.${cedulaActual}`, {
           method: "PATCH",
           headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=representation" },
-          body: JSON.stringify(cambios),
+          body: JSON.stringify(soloCambios),
         });
         const resultado = await resp.json();
         if (!resp.ok) throw new Error(resultado.message || `HTTP ${resp.status}`);
         if (!Array.isArray(resultado) || resultado.length === 0) {
           throw new Error("No se guardó ningún cambio: no se encontró el empleado o no tienes permiso para editarlo.");
         }
-        msg.textContent = `${nombreSeccion} guardada correctamente.`;
-        msg.className = "form-msg ok";
+        const { guardados, noGuardados } = verificarGuardado(lista, resultado[0]);
+        empActual = { ...empActual, ...resultado[0] };
+        if (noGuardados.length) {
+          msg.textContent = `Se guardaron ${guardados.length} campo(s); ${noGuardados.length} NO quedaron guardados.`;
+          msg.className = "form-msg error";
+        } else {
+          msg.textContent = `${nombreSeccion} guardada correctamente (${guardados.length} cambio${guardados.length === 1 ? "" : "s"}).`;
+          msg.className = "form-msg ok";
+        }
+        await mostrarAvisoCambios({
+          titulo: noGuardados.length ? "Algunos cambios no se guardaron" : "Cambios guardados",
+          subtitulo: `${nombreSeccion} de ${nombreEmp}`,
+          guardados, noGuardados,
+        });
       } catch (err) {
         msg.textContent = "No se pudo guardar: " + (err.message || err);
         msg.className = "form-msg error";
@@ -2307,6 +2386,92 @@ AUTH_READY.then(async function () {
   const modalMensaje = document.getElementById("modal-mensaje");
   const modalCancelar = document.getElementById("modal-cancelar");
   const modalConfirmarBtn = document.getElementById("modal-confirmar-btn");
+  // ---------- Aviso de cambios guardados ----------
+  // Compara lo que habia cargado en el formulario con lo que el usuario dejo, guarda SOLO lo que cambio y, con la
+  // fila que devuelve la base, comprueba campo por campo que de verdad quedo guardado. Muestra un aviso con
+  // "antes -> despues" de cada campo y, si alguno no quedo guardado, lo dice claramente.
+  const ETIQUETAS_FIJAS = {
+    nombre: "e-nombre", area: "e-area", sede: "e-sede", labor: "e-labor", eficiencia: "e-eficiencia", turno: "e-turno",
+    fecha_ingreso: "e-fecha-ingreso", fecha_ultimo_cambio_area: "e-fecha-cambio-area", activo: "e-activo",
+    administrativo: "e-administrativo",
+  };
+  function etiquetaDeCampo(campo, idInput) {
+    const id = idInput || ETIQUETAS_FIJAS[campo] || idRrhh("e", campo);
+    const lab = document.querySelector(`label[for="${id}"]`);
+    if (lab) return lab.textContent.replace(/\*/g, "").replace(/\s+/g, " ").trim();
+    const el = document.getElementById(id);
+    const envolvente = el && el.closest("label");
+    if (envolvente) return envolvente.textContent.replace(/\*/g, "").replace(/\s+/g, " ").trim();
+    return campo.replace(/_/g, " ").replace(/^./, (c) => c.toUpperCase());
+  }
+  function textoValor(v) {
+    if (v === null || v === undefined || v === "") return "(vacío)";
+    if (v === true) return "Sí";
+    if (v === false) return "No";
+    return String(v);
+  }
+  function normalizarValor(v) {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "boolean") return v ? "true" : "false";
+    let t = String(v).trim();
+    if (/^\d{4}-\d{2}-\d{2}T/.test(t)) t = t.slice(0, 10);   // fechas: se ignora la hora
+    if (/^-?\d+(\.\d+)?$/.test(t)) t = String(Number(t));      // 7.50 == 7.5
+    return t;
+  }
+  // original: objeto cargado en el formulario; nuevos: {campo: valor}; etiquetaDe(campo) -> texto
+  function calcularCambios(original, nuevos, etiquetaDe) {
+    const lista = [];
+    Object.keys(nuevos).forEach((campo) => {
+      const antes = original ? original[campo] : undefined;
+      if (normalizarValor(antes) !== normalizarValor(nuevos[campo])) {
+        lista.push({ campo, etiqueta: etiquetaDe(campo), antes, despues: nuevos[campo] });
+      }
+    });
+    return lista;
+  }
+  // filaGuardada: la fila que devolvio la base tras el PATCH. Separa lo que quedo guardado de lo que no.
+  function verificarGuardado(cambiosLista, filaGuardada) {
+    const guardados = [], noGuardados = [];
+    cambiosLista.forEach((c) => {
+      const real = filaGuardada ? filaGuardada[c.campo] : undefined;
+      (normalizarValor(real) === normalizarValor(c.despues) ? guardados : noGuardados).push({ ...c, real });
+    });
+    return { guardados, noGuardados };
+  }
+  function mostrarAvisoCambios({ titulo, subtitulo, guardados = [], noGuardados = [] }) {
+    return new Promise((resolve) => {
+      const ov = document.getElementById("modal-cambios");
+      const tit = document.getElementById("modal-cambios-titulo");
+      tit.textContent = titulo;
+      tit.className = noGuardados.length ? "error-titulo" : "ok-titulo";
+      document.getElementById("modal-cambios-sub").textContent = subtitulo || "";
+      const li = (c, conReal) =>
+        `<li><span class="campo">${escaparHtml(c.etiqueta)}</span>` +
+        `<span class="antes">${escaparHtml(textoValor(c.antes))}</span> → <span class="despues">${escaparHtml(textoValor(c.despues))}</span>` +
+        (conReal ? `<br><small>La base devolvió: ${escaparHtml(textoValor(c.real))}</small>` : "") + `</li>`;
+      const lista = document.getElementById("modal-cambios-lista");
+      lista.innerHTML = guardados.map((c) => li(c, false)).join("");
+      lista.hidden = guardados.length === 0;
+      const fall = document.getElementById("modal-cambios-fallidos");
+      const fallSub = document.getElementById("modal-cambios-fallo-sub");
+      fall.innerHTML = noGuardados.map((c) => li(c, true)).join("");
+      fall.hidden = fallSub.hidden = noGuardados.length === 0;
+      fallSub.textContent = noGuardados.length ? "Estos campos NO quedaron guardados:" : "";
+      const ok = document.getElementById("modal-cambios-ok");
+      function cerrar() {
+        ov.hidden = true;
+        ok.removeEventListener("click", cerrar);
+        ov.removeEventListener("click", onFondo);
+        resolve();
+      }
+      function onFondo(e) { if (e.target === ov) cerrar(); }
+      ok.addEventListener("click", cerrar);
+      ov.addEventListener("click", onFondo);
+      ov.hidden = false;
+      ok.focus();
+    });
+  }
+
   function pedirConfirmacion({ titulo = "¿Estás seguro?", mensaje, textoConfirmar = "Confirmar" }) {
     return new Promise((resolve) => {
       modalTitulo.textContent = titulo;
