@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Registro Biométrico — En vivo</title>
+<title>Registro Biométrico</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -387,15 +387,6 @@
     <span class="page-brand">Cultivos Sayonara</span>
     <h1>Registro Biométrico</h1>
   </div>
-    <div class="live-bar">
-      <span class="live-dot" id="live-dot"></span>
-      <span class="live-label" id="live-label">Conectando...</span>
-      <button class="refresh-btn" id="btn-actualizar">Actualizar ahora</button>
-      <label class="auto-toggle">
-        <input type="checkbox" id="chk-auto" checked>
-        Autoactualizar cada 60s
-      </label>
-    </div>
 
   <div class="alerta-sin-entrada" id="alerta-sin-entrada" hidden>
     <div class="alerta-header" id="alerta-header">
@@ -462,7 +453,7 @@
   </div>
 
   <footer>
-    Datos en vivo desde Supabase &middot; última actualización: <strong id="ultima-actualizacion">—</strong>
+    Datos desde Supabase &middot; última consulta: <strong id="ultima-actualizacion">—</strong>
   </footer>
 </div>
 </div>
@@ -565,7 +556,6 @@ AUTH_READY.then(async function () {
   let sortKey = 'fecha', sortDir = -1;
   let visibles = 300;
   const PAGE = 300;
-  let autoTimer = null;
   let peticionActual = 0;
 
   const elBuscar = document.getElementById('f-buscar');
@@ -573,10 +563,7 @@ AUTH_READY.then(async function () {
   const elHasta = document.getElementById('f-hasta');
   const elBody = document.getElementById('tbody');
   const elCount = document.getElementById('result-count');
-  const elDot = document.getElementById('live-dot');
-  const elLabel = document.getElementById('live-label');
   const elUltima = document.getElementById('ultima-actualizacion');
-  const elChkAuto = document.getElementById('chk-auto');
 
   function aplicarFiltros(params) {
     params.set('select', 'cedula,nombre,area,sede,fecha,hora_entrada,hora_salida,horas_trabajadas,diferencia_tiempo,estado,semana');
@@ -608,9 +595,6 @@ AUTH_READY.then(async function () {
 
   async function cargar() {
     const miPeticion = ++peticionActual;
-    elDot.className = 'live-dot cargando';
-    elLabel.textContent = 'Actualizando...';
-
     try {
       const query = construirQuery();
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/registro_horas_detalle?${query}`, {
@@ -630,13 +614,9 @@ AUTH_READY.then(async function () {
 
       renderTabla(filas, total);
 
-      elDot.className = 'live-dot';
-      elLabel.textContent = 'En vivo';
       elUltima.textContent = new Date().toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true });
     } catch (err) {
       if (miPeticion !== peticionActual) return;
-      elDot.className = 'live-dot error';
-      elLabel.textContent = 'Error de conexión';
       elBody.innerHTML = `<tr><td colspan="10"><div class="error-state">No se pudo cargar: ${String(err.message || err)}</div></td></tr>`;
       elCount.textContent = '';
     }
@@ -788,11 +768,6 @@ AUTH_READY.then(async function () {
 
   function reset() { visibles = PAGE; cargar(); }
 
-  function reiniciarAutoRefresh() {
-    if (autoTimer) clearInterval(autoTimer);
-    if (elChkAuto.checked) autoTimer = setInterval(() => { reset(); cargarSinEntradaHoy(); }, 60000);
-  }
-
   document.querySelectorAll('thead th').forEach(th => {
     th.addEventListener('click', () => {
       const key = th.dataset.key;
@@ -822,8 +797,6 @@ AUTH_READY.then(async function () {
     elBuscar.value = '';
     reset();
   });
-  document.getElementById('btn-actualizar').addEventListener('click', () => { reset(); cargarSinEntradaHoy(); });
-  elChkAuto.addEventListener('change', reiniciarAutoRefresh);
 
   async function exportarExcel() {
     const btn = document.getElementById('btn-excel');
@@ -889,7 +862,6 @@ AUTH_READY.then(async function () {
   document.getElementById('btn-excel').addEventListener('click', exportarExcel);
 
   fechasPorDefecto();
-  reiniciarAutoRefresh();
   cargar();
   cargarSinEntradaHoy();
 });
