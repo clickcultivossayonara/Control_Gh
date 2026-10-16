@@ -1955,7 +1955,7 @@ AUTH_READY.then(async function () {
   // La base valida lo mismo (funcion editar_novedad): origen "app", ventana de dias, permiso por area.
   let lnFilas = {};
   function novedadEditable(f) {
-    if (!f || f.origen !== "app" || !f.fecha_novedad || !f.id_nomina) return false;
+    if (!f || !f.fecha_novedad || !f.id_nomina) return false;
     return f.fecha_novedad.slice(0, 10) >= fechaMinimaGeneral();
   }
   const edModal = document.getElementById("modal-editar-nov");
