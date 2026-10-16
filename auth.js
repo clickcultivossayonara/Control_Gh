@@ -80,6 +80,16 @@ const AUTH_READY = (async () => {
     } catch (e) { /* sin permisos por usuario */ }
   }
 
+  // Anota el ultimo acceso del usuario (lo ve el Super Admin en Usuarios). Como maximo una vez cada 10 minutos por
+  // navegador; si la funcion de la base aun no existe o falla, se ignora sin afectar nada.
+  try {
+    const claveAcceso = "sayonara_acceso_" + session.user.id;
+    if (Date.now() - Number(localStorage.getItem(claveAcceso) || 0) > 10 * 60 * 1000) {
+      localStorage.setItem(claveAcceso, String(Date.now()));
+      _sb.rpc("registrar_acceso").then(() => {}, () => {});
+    }
+  } catch (e) { /* sin registro de acceso */ }
+
   return window.SESION;
 })();
 

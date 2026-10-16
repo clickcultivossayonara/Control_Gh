@@ -328,7 +328,7 @@
       <span class="result-count" id="lu-count"></span>
     </div>
     <div class="table-scroll">
-      <table id="tabla-usuarios" data-principales="Nombre,Rol,Estado,Acciones">
+      <table id="tabla-usuarios" data-principales="Nombre,Rol,Estado,Último acceso,Acciones">
         <thead>
           <tr>
             <th data-key="nombre">Nombre <span class="arrow">↕</span></th>
@@ -336,6 +336,7 @@
             <th data-key="rol">Rol <span class="arrow">↕</span></th>
             <th>Áreas</th>
             <th data-key="activo">Estado <span class="arrow">↕</span></th>
+            <th id="th-acceso">Último acceso</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -503,6 +504,39 @@ AUTH_READY.then(async function () {
   const luCount = document.getElementById("lu-count");
   let usuariosCache = [];
 
+  // ---------- Ultimo acceso (solo Super Admin) ----------
+  const VER_ACCESO = window.SESION.rol === "super_admin";
+  const COLUMNAS_TABLA = VER_ACCESO ? 7 : 6;
+  if (!VER_ACCESO) document.getElementById("th-acceso").remove();
+  let accesoPorId = {};
+  async function cargarAccesos() {
+    accesoPorId = {};
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/ultimo_acceso_usuarios`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" }, body: "{}",
+      });
+      if (!resp.ok) return;
+      (await resp.json()).forEach((r) => { accesoPorId[r.id] = r; });
+    } catch { /* sin datos de acceso: se muestra "—" */ }
+  }
+  function fmtFechaHora(iso) {
+    return new Date(iso).toLocaleString("es-CO", { timeZone: "America/Bogota", day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit", hour12: false });
+  }
+  function celdaAcceso(id) {
+    if (!VER_ACCESO) return "";
+    const a = accesoPorId[id];
+    const t1 = a && a.ultimo_acceso ? new Date(a.ultimo_acceso).getTime() : 0;
+    const t2 = a && a.ultimo_inicio_sesion ? new Date(a.ultimo_inicio_sesion).getTime() : 0;
+    const t = Math.max(t1, t2);
+    if (!t) return `<td class="col-acceso" title="Este usuario no ha ingresado al sistema">Nunca</td>`;
+    const dias = Math.floor((Date.now() - t) / 86400000);
+    const rel = dias <= 0 ? "hoy" : dias === 1 ? "ayer" : `hace ${dias} días`;
+    const detalle = `Último acceso al sistema: ${t1 ? fmtFechaHora(a.ultimo_acceso) : "sin registro todavía"}` +
+      `\nÚltimo inicio de sesión (contraseña): ${t2 ? fmtFechaHora(a.ultimo_inicio_sesion) : "sin registro"}`;
+    const aviso = dias >= 30 ? ' style="color:var(--critical)"' : "";
+    return `<td class="col-acceso" title="${detalle}"${aviso}>${fmtFechaHora(new Date(t).toISOString())}<br><small>${rel}</small></td>`;
+  }
+
   function filaVista(f) {
     return `<tr data-id="${f.id}">
       <td class="nombre">${f.nombre}</td>
@@ -510,6 +544,7 @@ AUTH_READY.then(async function () {
       <td>${ROL_ETIQUETA[f.rol] || f.rol}</td>
       <td>${(f.areas && f.areas.length) ? f.areas.join(", ") : "—"}</td>
       <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+      ${celdaAcceso(f.id)}
       <td class="fila-acciones">
         <button type="button" class="btn-small fila-editar">Editar</button>
         <button type="button" class="btn-small ${f.activo ? "critical" : ""} fila-toggle">${f.activo ? "Desactivar" : "Activar"}</button>
@@ -531,6 +566,7 @@ AUTH_READY.then(async function () {
         <span class="fila-areas-vacio" ${conArea ? "hidden" : ""}>—</span>
       </td>
       <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
+      ${celdaAcceso(f.id)}
       <td class="fila-acciones">
         <button type="button" class="btn-small fila-guardar-edicion">Guardar</button>
         <button type="button" class="btn-small fila-cancelar-edicion">Cancelar</button>
@@ -585,14 +621,15 @@ AUTH_READY.then(async function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       usuariosCache = Array.isArray(filas) ? filas : [];
+      if (VER_ACCESO) await cargarAccesos();
       if (usuariosCache.length === 0) {
-        luBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin usuarios para estos filtros.</div></td></tr>`;
+        luBody.innerHTML = `<tr><td colspan="${COLUMNAS_TABLA}"><div class="empty-state">Sin usuarios para estos filtros.</div></td></tr>`;
       } else {
         luBody.innerHTML = usuariosCache.map(filaVista).join("");
       }
       luCount.textContent = total.toLocaleString("es-CO") + " usuario" + (total === 1 ? "" : "s");
     } catch (err) {
-      luBody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      luBody.innerHTML = `<tr><td colspan="${COLUMNAS_TABLA}"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
     }
 
     document.querySelectorAll("thead th[data-key]").forEach((th) => {
