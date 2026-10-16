@@ -1762,6 +1762,7 @@ AUTH_READY.then(async function () {
           semana: isoWeekNum(fecha),
           hora: horasSistema ? horasDelDia(emp, fecha, cod) : Number(inHora.value),
           fecha_creacion: ahoraNaive(),
+          origen: "app",   // cargada desde este modulo (cuenta como horas festivas asignadas)
         });
       });
     });
