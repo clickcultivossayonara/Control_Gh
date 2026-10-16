@@ -346,6 +346,7 @@
     <div id="rachas-cuerpo">
       <p class="rachas-hint">Más de 3 días hábiles seguidos sin marcar y sin una novedad que lo explique (domingos y festivos no cortan la racha). Para que RRHH y Nómina tomen medidas.</p>
       <div class="rachas-chips" id="rachas-chips" style="margin:10px 0"></div>
+      <div style="display:flex;justify-content:flex-end;margin:0 0 6px"><span class="result-count" id="rachas-count"></span></div>
       <div class="table-scroll rachas-tabla">
         <table id="tabla-rachas" data-principales="Colaborador,Días seguidos,Estado">
           <thead>
@@ -749,6 +750,7 @@ AUTH_READY.then(async function () {
     document.getElementById("rachas-chips").innerHTML = Object.entries(GRUPOS_RACHAS).map(([k, g]) =>
       `<button type="button" class="rachas-chip${k === grupoRachas ? " activo" : ""}" data-grupo="${k}">${g.etiqueta} (${cuenta(k)})</button>`).join("");
     const filas = rachas.filter(GRUPOS_RACHAS[grupoRachas].filtro);
+    document.getElementById("rachas-count").textContent = filas.length.toLocaleString("es-CO") + " colaborador" + (filas.length === 1 ? "" : "es");
     document.getElementById("rachas-tbody").innerHTML = filas.length === 0
       ? `<tr><td colspan="8"><div class="empty-state">Ninguno en este grupo.</div></td></tr>`
       : filas.map((r) => `<tr>

@@ -148,3 +148,7 @@ img, svg, canvas { max-width: 100%; }
   body.menu-hover .page-content { display: flex; width: 100%; }
   body.menu-hover .wrap { padding-top: 60px; }
 }
+
+
+/* Contador de filas de cada tabla: mas visible para detectar de un vistazo cuando faltan o sobran registros */
+.result-count { font-weight: 600 !important; color: var(--ink-soft, #57625b) !important; font-size: 13px !important; }

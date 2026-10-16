@@ -423,6 +423,7 @@
   <section class="card" id="card-horas" hidden>
     <h2>Horas esperadas por día</h2>
     <p class="card-hint">Se usan para calcular la diferencia de horas trabajadas en Registro Biométrico y Nómina. Las horas trabajadas son el tiempo entre la entrada y la salida menos 0.5 h de alimentación. Son siempre estos 7 días — no se pueden agregar ni quitar filas. Al guardar un cambio, se recalcula de inmediato ese día en todos los registros ya existentes, no solo en los nuevos.</p>
+    <div style="display:flex;justify-content:flex-end;margin:0 0 6px"><span class="result-count" id="horas-count"></span></div>
     <div class="table-scroll">
       <table>
         <thead>
@@ -470,6 +471,7 @@
     </form>
 
     <p class="card-hint" style="margin-top:24px">Turnos registrados</p>
+    <div style="display:flex;justify-content:flex-end;margin:0 0 6px"><span class="result-count" id="turno-count"></span></div>
     <div class="table-scroll">
       <table>
         <thead>
@@ -1186,6 +1188,7 @@ AUTH_READY.then(async function () {
       const filas = await resp.json();
       if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
       horasCache = Array.isArray(filas) ? filas : [];
+      document.getElementById("horas-count").textContent = horasCache.length + " día" + (horasCache.length === 1 ? "" : "s");
       horasTbody.innerHTML = horasCache.length === 0
         ? `<tr><td colspan="3"><div class="empty-state">Sin datos.</div></td></tr>`
         : horasCache.map(filaVistaHora).join("");
@@ -1287,6 +1290,7 @@ AUTH_READY.then(async function () {
       const filas = await resp.json();
       if (!resp.ok) throw new Error(filas.message || `HTTP ${resp.status}`);
       turnosCache = Array.isArray(filas) ? filas.map(f => ({ ...f, hora_inicio: f.hora_inicio.slice(0, 5), hora_fin: f.hora_fin.slice(0, 5) })) : [];
+      document.getElementById("turno-count").textContent = turnosCache.length + " turno" + (turnosCache.length === 1 ? "" : "s");
       turnoTbody.innerHTML = turnosCache.length === 0
         ? `<tr><td colspan="6"><div class="empty-state">Sin turnos registrados.</div></td></tr>`
         : turnosCache.map(filaVistaTurno).join("");
