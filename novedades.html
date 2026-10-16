@@ -106,6 +106,12 @@
     justify-content: center; padding: 20px; z-index: 60;
   }
   .popup-biometrico[hidden] { display: none; }
+  .edit-box { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); max-width: 460px; width: 100%; padding: 22px 24px; }
+  .edit-box h3 { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 6px; }
+  .edit-box .field { margin-bottom: 12px; }
+  .edit-box select, .edit-box input { width: 100%; }
+  .edit-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+  .btn-editar-nov { padding: 4px 10px; font-size: 12.5px; }
   .popup-biometrico .caja {
     background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); max-width: 520px; width: 100%;
     max-height: 85vh; overflow-y: auto; padding: 24px; display: flex; flex-direction: column; gap: 12px;
@@ -490,6 +496,7 @@
             <th data-key="area">Área <span class="arrow">↕</span></th>
             <th data-key="codigo_descripcion">Código - Descripción <span class="arrow">↕</span></th>
             <th data-key="hora">Horas <span class="arrow">↕</span></th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody id="ln-tbody"></tbody>
@@ -569,6 +576,32 @@
     <ul id="popup-bio-lista"></ul>
     <p id="popup-bio-pie" style="color:var(--ink-soft);font-size:12.5px"></p>
     <button type="button" class="btn-cerrar" id="popup-bio-cerrar">Entendido</button>
+  </div>
+</div>
+
+<div class="popup-biometrico" id="modal-editar-nov" hidden role="dialog" aria-modal="true" aria-labelledby="ed-titulo">
+  <div class="edit-box">
+    <h3 id="ed-titulo">Editar novedad</h3>
+    <p class="card-hint" id="ed-info" style="margin-bottom:14px"></p>
+    <div class="field">
+      <label for="ed-codigo">Código - Descripción</label>
+      <select id="ed-codigo"></select>
+    </div>
+    <div class="field">
+      <label for="ed-fecha">Fecha</label>
+      <input type="date" id="ed-fecha">
+    </div>
+    <div class="field" id="ed-hora-campo">
+      <label for="ed-hora">Hora (cantidad)</label>
+      <input type="number" id="ed-hora" step="0.01" min="0">
+    </div>
+    <p class="card-hint" id="ed-hint-sistema" hidden>Las horas las asigna el sistema según las horas esperadas de ese día y el turno del área.</p>
+    <p class="card-hint">Solo se puede cambiar el código, la fecha y las horas, y solo de hoy y hasta <span id="ed-dias">2</span> días atrás. Para cambiar el colaborador o el área, vuelve a cargar la novedad.</p>
+    <p class="form-msg" id="ed-msg"></p>
+    <div class="edit-actions">
+      <button type="button" class="clear-btn" id="ed-cancelar">Cancelar</button>
+      <button type="button" class="btn-primary" id="ed-guardar">Guardar cambios</button>
+    </div>
   </div>
 </div>
 
@@ -1918,9 +1951,145 @@ AUTH_READY.then(async function () {
   // Sin filtro de semana por defecto: la lista de Novedades registradas abre mostrando
   // todas las semanas (las mas recientes primero); el filtro es opcional.
 
+  // ---------- Editar una novedad ya cargada (solo hoy y los ultimos DIAS_ATRAS_GENERAL dias) ----------
+  // La base valida lo mismo (funcion editar_novedad): origen "app", ventana de dias, permiso por area.
+  let lnFilas = {};
+  function novedadEditable(f) {
+    if (!f || f.origen !== "app" || !f.fecha_novedad || !f.id_nomina) return false;
+    return f.fecha_novedad.slice(0, 10) >= fechaMinimaGeneral();
+  }
+  const edModal = document.getElementById("modal-editar-nov");
+  const edCodigo = document.getElementById("ed-codigo");
+  const edFecha = document.getElementById("ed-fecha");
+  const edHora = document.getElementById("ed-hora");
+  const edMsg = document.getElementById("ed-msg");
+  const edGuardar = document.getElementById("ed-guardar");
+  let edNovedad = null, edEmp = null;
+
+  function edMostrarMensaje(texto, tipo) { edMsg.textContent = texto; edMsg.className = "form-msg" + (tipo ? " " + tipo : ""); }
+  function edActualizarHora() {
+    const cod = codigosPorValor[edCodigo.value];
+    const sistema = !!cod && usaHorasDelSistema(cod);
+    document.getElementById("ed-hora-campo").style.display = sistema ? "none" : "";
+    document.getElementById("ed-hint-sistema").hidden = !sistema;
+  }
+  edCodigo.addEventListener("change", edActualizarHora);
+
+  async function abrirEdicion(id) {
+    const f = lnFilas[id];
+    if (!novedadEditable(f)) return;
+    edNovedad = f; edEmp = null;
+    document.getElementById("ed-info").textContent = `${f.nombre_colaborador || ""} · cédula ${f.cedula} · ${f.area || ""}`;
+    document.getElementById("ed-dias").textContent = String(DIAS_ATRAS_GENERAL);
+    edCodigo.innerHTML = Object.values(codigosPorValor)
+      .sort((a, b) => (a.codigo_descripcion || "").localeCompare(b.codigo_descripcion || "", "es"))
+      .map((c) => `<option value="${c.codigo}">${c.codigo_descripcion}</option>`).join("");
+    if (!codigosPorValor[f.codigo_novedad]) edCodigo.insertAdjacentHTML("afterbegin", `<option value="${f.codigo_novedad}">${f.codigo_descripcion}</option>`);
+    edCodigo.value = f.codigo_novedad;
+    edFecha.min = fechaMinimaGeneral();
+    edFecha.value = f.fecha_novedad.slice(0, 10);
+    edHora.value = f.hora ?? "";
+    edActualizarHora();
+    edMostrarMensaje("", "");
+    edGuardar.disabled = false;
+    edModal.hidden = false;
+    // turno del colaborador (para las horas que asigna el sistema)
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=cedula,area,turno&cedula=eq.${f.cedula}&limit=1`, { headers: authHeaders() });
+      const j = await r.json();
+      edEmp = Array.isArray(j) && j[0] ? j[0] : { cedula: f.cedula, area: f.area, turno: null };
+    } catch { edEmp = { cedula: f.cedula, area: f.area, turno: null }; }
+  }
+
+  async function guardarEdicion() {
+    const f = edNovedad;
+    if (!f) return;
+    const cod = codigosPorValor[edCodigo.value];
+    const fecha = edFecha.value;
+    if (!cod) { edMostrarMensaje("Selecciona un código.", "error"); return; }
+    if (!fecha) { edMostrarMensaje("La fecha es obligatoria.", "error"); return; }
+    const minima = fechaMinimaGeneral();
+    if (fecha < minima) { edMostrarMensaje(`La fecha no puede tener vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minima}).`, "error"); return; }
+    const sistema = usaHorasDelSistema(cod);
+    let hora;
+    if (sistema) {
+      if (HORAS_ESPERADAS_DIA === null) await cargarHorasEsperadas();
+      hora = horasDelDia(edEmp || { cedula: f.cedula, area: f.area, turno: null }, fecha, cod);
+      if (hora === undefined || hora === null || Number.isNaN(Number(hora))) { edMostrarMensaje("No se pudieron leer las horas esperadas de ese día. No se guardó nada.", "error"); return; }
+    } else {
+      if (edHora.value === "") { edMostrarMensaje("Las horas son obligatorias.", "error"); return; }
+      hora = Number(edHora.value);
+    }
+    const diaViejo = f.fecha_novedad.slice(0, 10);
+    const horaVieja = Number(f.hora || 0);
+    const cedula = Number(f.cedula);
+    edGuardar.disabled = true;
+    edMostrarMensaje("Verificando...", "");
+    try {
+      // 1. conceptos de domingo/festivo y de horas trabajadas: deben coincidir con el dia y con el biometrico
+      if (CODIGOS_FESTIVOS.includes(cod.codigo) && !esFestivoODomingo(fecha)) {
+        edMostrarMensaje(`"${cod.codigo_descripcion}" solo se puede cargar en domingos o festivos; el ${fecha} no lo es.`, "error"); return;
+      }
+      if (CODIGOS_FESTIVOS.includes(cod.codigo) || CODIGOS_TRABAJADOS.includes(cod.codigo)) {
+        const sinRespaldo = await colaboradoresSinRespaldoDelConcepto([cedula], fecha, cod);
+        if (sinRespaldo.length > 0) { edMostrarMensaje(`No coincide con el registro biométrico: no hay respaldo para "${cod.codigo_descripcion}" el ${fecha}.`, "error"); return; }
+      }
+      // 2. horas extra: ventana propia, tope por colaborador (sin contar la que se esta editando) y biometrico
+      if (CODIGOS_HORA_EXTRA.includes(cod.codigo)) {
+        const lim = limiteFechaHoraExtra();
+        if (fecha < lim.minima || fecha > lim.maxima) { edMostrarMensaje(`"${cod.codigo_descripcion}" solo se puede cargar entre ${lim.minima} y ${lim.maxima}.`, "error"); return; }
+        if (hora > MAX_HORAS_HORA_EXTRA) { edMostrarMensaje(`"${cod.codigo_descripcion}" no puede superar ${MAX_HORAS_HORA_EXTRA} horas por colaborador.`, "error"); return; }
+        const ya = (await horasExtraYaCargadas([cedula], fecha))[cedula] || 0;
+        const propia = (CODIGOS_HORA_EXTRA.includes(f.codigo_novedad) && diaViejo === fecha) ? horaVieja : 0;
+        if (ya - propia + hora > MAX_HORAS_HORA_EXTRA + 1e-9) { edMostrarMensaje(`Pasaría de ${MAX_HORAS_HORA_EXTRA} horas ese día (ya tiene ${fmtH(ya - propia)}).`, "error"); return; }
+        const sinHoras = await colaboradoresSinHorasSuficientes([cedula], fecha, hora);
+        if (sinHoras.length > 0) { edMostrarMensaje("El colaborador no tiene horas suficientes en el biométrico para esta novedad.", "error"); return; }
+      }
+      // 3. presupuesto de horas extra del area (sumando lo que esta novedad ya tenia cargado)
+      if (CODIGOS_PRESUPUESTO_EXTRA.includes(cod.codigo)) {
+        const disp = await consultarHorasExtraDisponibles(fecha, f.area, cod.codigo);
+        if (disp === null) { edMostrarMensaje(`No hay horas asignadas de "${cod.codigo_descripcion}" para "${f.area}" el ${fecha}. Solicita el presupuesto a Nómina/RRHH.`, "error"); return; }
+        const propia = (f.codigo_novedad === cod.codigo && diaViejo === fecha) ? horaVieja : 0;
+        if (hora > disp + propia + 1e-9) { edMostrarMensaje(`Presupuesto excedido: quedan ${fmtH(disp + propia)} h de "${cod.codigo_descripcion}" para "${f.area}" el ${fecha}.`, "error"); return; }
+      }
+      // 4. otras novedades ya cargadas ese dia (distintas de la que se edita)
+      const yaCargadas = (await novedadesYaCargadas([cedula], [fecha]))
+        .filter((r) => !(String(r.fecha_novedad).slice(0, 10) === diaViejo && r.codigo_novedad === f.codigo_novedad && fecha === diaViejo));
+      if (yaCargadas.length > 0) {
+        edModal.hidden = true;
+        const sigue = await preguntarNovedadesExistentes(yaCargadas, cod);
+        edModal.hidden = false;
+        if (!sigue) { edMostrarMensaje("Cancelado: no se guardó nada.", "error"); return; }
+      }
+      // 5. guarda (la base vuelve a validar permiso, origen y ventana de dias)
+      edMostrarMensaje("Guardando...", "");
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/editar_novedad`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ p_id: f.id_nomina, p_codigo: cod.codigo, p_fecha: fecha, p_hora: hora }),
+      });
+      const res = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(res.message || `HTTP ${resp.status}`);
+      edModal.hidden = true;
+      msgNovedad.textContent = `Novedad de ${f.nombre_colaborador} editada: ${f.codigo_novedad} ${diaViejo} ${fmtH(horaVieja)} → ${cod.codigo} ${fecha} ${fmtH(hora)}.`;
+      msgNovedad.className = "form-msg ok";
+      cargarListaNovedades();
+    } catch (err) {
+      edMostrarMensaje("No se pudo guardar: " + (err.message || err), "error");
+    } finally {
+      edGuardar.disabled = false;
+    }
+  }
+  edGuardar.addEventListener("click", guardarEdicion);
+  document.getElementById("ed-cancelar").addEventListener("click", () => { edModal.hidden = true; });
+  edModal.addEventListener("click", (e) => { if (e.target === edModal) edModal.hidden = true; });
+  lnTbody.addEventListener("click", (e) => {
+    const b = e.target.closest(".btn-editar-nov");
+    if (b) abrirEdicion(b.dataset.id);
+  });
+
   async function cargarListaNovedades() {
     const params = new URLSearchParams();
-    params.set("select", "fecha_novedad,nombre_colaborador,cedula,area,codigo_descripcion,hora,dia,semana");
+    params.set("select", "id_nomina,fecha_novedad,nombre_colaborador,cedula,area,codigo_descripcion,codigo_novedad,hora,dia,semana,origen");
     params.set("order", `${lnSortKey}.${lnSortDir === 1 ? "asc" : "desc"}.nullslast`);
     params.set("limit", "300");
     const buscar = lnBuscar.value.trim();
@@ -1941,8 +2110,10 @@ AUTH_READY.then(async function () {
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
       if (filas.length === 0) {
-        lnTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
+        lnTbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
       } else {
+        lnFilas = {};
+        filas.forEach(f => { lnFilas[f.id_nomina] = f; });
         lnTbody.innerHTML = filas.map(f => `<tr>
           <td class="num">${f.fecha_novedad ? f.fecha_novedad.slice(0, 10) : "—"}</td>
           <td class="num">${f.semana ?? "—"}</td>
@@ -1952,12 +2123,13 @@ AUTH_READY.then(async function () {
           <td>${f.area || "—"}</td>
           <td>${f.codigo_descripcion || "—"}</td>
           <td class="num">${f.hora ?? "—"}</td>
+          <td>${novedadEditable(f) ? `<button type="button" class="clear-btn btn-editar-nov" data-id="${f.id_nomina}">Editar</button>` : ""}</td>
         </tr>`).join("");
       }
       lnCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      lnTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      lnTbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       lnCount.textContent = "";
     }
 
