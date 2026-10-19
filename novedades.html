@@ -880,6 +880,31 @@ AUTH_READY.then(async function () {
     function abrir() { render(input.value); el.classList.add("open"); }
     function cerrar() { el.classList.remove("open"); }
 
+    // Lo escrito se puede confirmar sin hacer clic en la lista: coincidencia exacta (sin importar mayusculas) o, si solo
+    // queda una opcion, esa. Antes, escribir "mantenimiento" y salir del campo lo dejaba vacio.
+    function opcionEscrita() {
+      const q = input.value.trim().toLowerCase();
+      if (!q) return null;
+      const opciones = obtenerOpciones();
+      const exacta = opciones.find(([, texto]) => texto.toLowerCase() === q);
+      if (exacta) return exacta;
+      const coinciden = opciones.filter(([, texto]) => texto.toLowerCase().includes(q));
+      return coinciden.length === 1 ? coinciden[0] : null;
+    }
+    function elegir(valor, texto) {
+      selectOculto.value = valor;
+      input.value = valor === "" ? "" : texto;
+      cerrar();
+      selectOculto.dispatchEvent(new Event("change"));
+    }
+    input.addEventListener("keydown", (e) => {
+      if (e.key !== "Enter") return;
+      e.preventDefault();
+      const q = input.value.trim().toLowerCase();
+      const primera = opcionEscrita() || (q ? obtenerOpciones().find(([, texto]) => texto.toLowerCase().includes(q)) : null);
+      if (primera) elegir(primera[0], primera[1]);
+    });
+
     input.addEventListener("focus", abrir);
     input.addEventListener("input", abrir);
     panel.addEventListener("click", (e) => {
@@ -892,6 +917,11 @@ AUTH_READY.then(async function () {
     });
     input.addEventListener("blur", () => {
       setTimeout(() => {
+        const escrita = opcionEscrita();
+        if (escrita && escrita[0] !== selectOculto.value && input.value.trim().toLowerCase() !== etiquetaDe(selectOculto.value).toLowerCase()) {
+          elegir(escrita[0], escrita[1]);
+          return;
+        }
         const etiquetaActual = etiquetaDe(selectOculto.value);
         if (input.value !== etiquetaActual) input.value = etiquetaActual;
         cerrar();
