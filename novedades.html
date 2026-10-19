@@ -111,7 +111,11 @@
   .edit-box .field { margin-bottom: 12px; }
   .edit-box select, .edit-box input { width: 100%; }
   .edit-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
-  .btn-editar-nov { padding: 4px 10px; font-size: 12.5px; }
+  .btn-editar-nov, .btn-eliminar-nov { padding: 4px 10px; font-size: 12.5px; }
+  .btn-eliminar-nov { color: var(--critical); border-color: var(--critical); margin-left: 6px; }
+  .btn-peligro { background: var(--critical); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13.5px; }
+  .btn-peligro:disabled { opacity: 0.6; cursor: default; }
+  table.tabla-novedades.con-eliminar th:nth-child(9), table.tabla-novedades.con-eliminar td:nth-child(9) { width: 190px; }
   @media (min-width: 901px) {
     .tabla-novedades th.col-acciones, .tabla-novedades td.col-acciones { position: sticky; right: 0; z-index: 2; box-shadow: -6px 0 8px -6px rgba(20, 24, 15, 0.25); }
     .tabla-novedades td.col-acciones { background: var(--surface); }
@@ -582,6 +586,19 @@
     <ul id="popup-bio-lista"></ul>
     <p id="popup-bio-pie" style="color:var(--ink-soft);font-size:12.5px"></p>
     <button type="button" class="btn-cerrar" id="popup-bio-cerrar">Entendido</button>
+  </div>
+</div>
+
+<div class="popup-biometrico" id="modal-eliminar-nov" hidden role="alertdialog" aria-modal="true" aria-labelledby="del-titulo">
+  <div class="edit-box">
+    <h3 id="del-titulo">Eliminar novedad</h3>
+    <p class="card-hint" id="del-info" style="margin-bottom:10px"></p>
+    <p class="card-hint">Esta acción quita la novedad de Novedades y de Nómina. Se guarda una copia de respaldo para poder recuperarla si fue un error.</p>
+    <p class="form-msg" id="del-msg"></p>
+    <div class="edit-actions">
+      <button type="button" class="clear-btn" id="del-cancelar">Cancelar</button>
+      <button type="button" class="btn-peligro" id="del-confirmar">Sí, eliminar</button>
+    </div>
   </div>
 </div>
 
@@ -2089,12 +2106,56 @@ AUTH_READY.then(async function () {
       edGuardar.disabled = false;
     }
   }
+  // ---------- Eliminar una novedad (solo Super Admin; la base lo valida y guarda una copia) ----------
+  const delModal = document.getElementById("modal-eliminar-nov");
+  const delMsg = document.getElementById("del-msg");
+  const delConfirmar = document.getElementById("del-confirmar");
+  let delNovedad = null;
+  if (ES_SUPER_ADMIN) lnTbody.closest("table").classList.add("con-eliminar");
+  function abrirEliminar(id) {
+    const f = lnFilas[id];
+    if (!f || !ES_SUPER_ADMIN) return;
+    delNovedad = f;
+    document.getElementById("del-info").textContent =
+      `${f.nombre_colaborador || ""} · cédula ${f.cedula} · ${f.fecha_novedad ? f.fecha_novedad.slice(0, 10) : ""} · ${f.codigo_descripcion || f.codigo_novedad} · ${fmtH(f.hora || 0)}`;
+    delMsg.textContent = ""; delMsg.className = "form-msg";
+    delConfirmar.disabled = false;
+    delModal.hidden = false;
+  }
+  async function confirmarEliminar() {
+    const f = delNovedad;
+    if (!f) return;
+    delConfirmar.disabled = true;
+    delMsg.textContent = "Eliminando..."; delMsg.className = "form-msg";
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/eliminar_novedad`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ p_id: f.id_nomina }),
+      });
+      const res = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(res.message || `HTTP ${resp.status}`);
+      delModal.hidden = true;
+      msgNovedad.textContent = `Novedad eliminada: ${f.nombre_colaborador} · ${f.codigo_novedad} · ${f.fecha_novedad.slice(0, 10)} · ${fmtH(f.hora || 0)}. Queda una copia de respaldo.`;
+      msgNovedad.className = "form-msg ok";
+      cargarListaNovedades();
+    } catch (err) {
+      delMsg.textContent = "No se pudo eliminar: " + (err.message || err);
+      delMsg.className = "form-msg error";
+      delConfirmar.disabled = false;
+    }
+  }
+  delConfirmar.addEventListener("click", confirmarEliminar);
+  document.getElementById("del-cancelar").addEventListener("click", () => { delModal.hidden = true; });
+  delModal.addEventListener("click", (e) => { if (e.target === delModal) delModal.hidden = true; });
+
   edGuardar.addEventListener("click", guardarEdicion);
   document.getElementById("ed-cancelar").addEventListener("click", () => { edModal.hidden = true; });
   edModal.addEventListener("click", (e) => { if (e.target === edModal) edModal.hidden = true; });
   lnTbody.addEventListener("click", (e) => {
     const b = e.target.closest(".btn-editar-nov");
     if (b) abrirEdicion(b.dataset.id);
+    const d = e.target.closest(".btn-eliminar-nov");
+    if (d) abrirEliminar(d.dataset.id);
   });
 
   async function cargarListaNovedades() {
@@ -2133,7 +2194,7 @@ AUTH_READY.then(async function () {
           <td>${f.area || "—"}</td>
           <td>${f.codigo_descripcion || "—"}</td>
           <td class="num">${f.hora ?? "—"}</td>
-          <td class="col-acciones">${novedadEditable(f) ? `<button type="button" class="clear-btn btn-editar-nov" data-id="${f.id_nomina}">Editar</button>` : ""}</td>
+          <td class="col-acciones">${novedadEditable(f) ? `<button type="button" class="clear-btn btn-editar-nov" data-id="${f.id_nomina}">Editar</button>` : ""}${ES_SUPER_ADMIN ? `<button type="button" class="clear-btn btn-eliminar-nov" data-id="${f.id_nomina}">Eliminar</button>` : ""}</td>
         </tr>`).join("");
       }
       lnCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
