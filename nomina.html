@@ -865,12 +865,15 @@ AUTH_READY.then(async function () {
   const cgPreviewTbody = document.getElementById("cg-preview-tbody");
   const btnCgDescargar = document.getElementById("btn-cg-descargar");
 
-  function mostrarPreviewCargador(filasExcel, hoja, nombreArchivo, anchos) {
-    ultimoCargador = { filasExcel, hoja, nombreArchivo, anchos };
+  // 2026-09-16 -> 16/09/2026
+  const fechaDMA = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? "")); return m ? `${m[3]}/${m[2]}/${m[1]}` : iso; };
+
+  function mostrarPreviewCargador(filasExcel, hoja, nombreArchivo, anchos, columnasFecha = []) {
+    ultimoCargador = { filasExcel, hoja, nombreArchivo, anchos, columnasFecha };
     const columnas = Object.keys(filasExcel[0]);
     cgPreviewTitulo.textContent = `Vista previa: ${hoja} (${filasExcel.length} fila${filasExcel.length === 1 ? "" : "s"})`;
     cgPreviewThead.innerHTML = `<tr>${columnas.map(c => `<th>${c}</th>`).join("")}</tr>`;
-    cgPreviewTbody.innerHTML = filasExcel.map(f => `<tr>${columnas.map(c => `<td>${f[c] ?? "—"}</td>`).join("")}</tr>`).join("");
+    cgPreviewTbody.innerHTML = filasExcel.map(f => `<tr>${columnas.map(c => `<td>${(columnasFecha.includes(c) ? fechaDMA(f[c]) : f[c]) ?? "—"}</td>`).join("")}</tr>`).join("");
     cgPreview.hidden = false;
     btnCgDescargar.disabled = false;
     cgPreview.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -878,7 +881,7 @@ AUTH_READY.then(async function () {
 
   btnCgDescargar.addEventListener("click", () => {
     if (!ultimoCargador) return;
-    descargarLibro(ultimoCargador.filasExcel, ultimoCargador.hoja, ultimoCargador.nombreArchivo, ultimoCargador.anchos);
+    descargarLibro(ultimoCargador.filasExcel, ultimoCargador.hoja, ultimoCargador.nombreArchivo, ultimoCargador.anchos, ultimoCargador.columnasFecha);
   });
 
   async function obtenerMapaCodigos() {
@@ -935,8 +938,21 @@ AUTH_READY.then(async function () {
     return filas;
   }
 
-  function descargarLibro(filasExcel, hoja, nombreArchivo, anchos) {
+  function descargarLibro(filasExcel, hoja, nombreArchivo, anchos, columnasFecha = []) {
     const ws = XLSX.utils.json_to_sheet(filasExcel);
+    // Las fechas van como fechas reales de Excel (no texto) con formato dd/mm/yyyy. Se calcula el numero de serie a mano
+    // (dias desde 1899-12-30, en UTC) para que la zona horaria del equipo no corra el dia.
+    const nombresColumnas = Object.keys(filasExcel[0] || {});
+    columnasFecha.forEach((nombre) => {
+      const c = nombresColumnas.indexOf(nombre);
+      if (c < 0) return;
+      filasExcel.forEach((fila, i) => {
+        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(fila[nombre] ?? ""));
+        if (!m) return;
+        const serie = Math.round((Date.UTC(+m[1], +m[2] - 1, +m[3]) - Date.UTC(1899, 11, 30)) / 86400000);
+        ws[XLSX.utils.encode_cell({ r: i + 1, c })] = { t: "n", v: serie, z: "dd/mm/yyyy" };
+      });
+    });
     if (anchos) ws["!cols"] = anchos.map(wch => ({ wch }));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, hoja);
@@ -1075,7 +1091,7 @@ AUTH_READY.then(async function () {
       "Tipo Ausencia": mapaTipoAusencia[ep.codigo] || "Ausencia",
     }));
 
-    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${nomina}_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13]);
+    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${nomina}_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13], ["FechaNovedad", "Fecha Inicial", "Fecha Final"]);
   }
 
   cgCodigo.addEventListener("change", renderizarPreviewAusentismo);
