@@ -602,7 +602,7 @@
       <input type="number" id="ed-hora" step="0.01" min="0">
     </div>
     <p class="card-hint" id="ed-hint-sistema" hidden>Las horas las asigna el sistema según las horas esperadas de ese día y el turno del área.</p>
-    <p class="card-hint">Solo se puede cambiar el código, la fecha y las horas, y solo de hoy y hasta <span id="ed-dias">2</span> días atrás. Para cambiar el colaborador o el área, vuelve a cargar la novedad.</p>
+    <p class="card-hint" id="ed-aviso-dias">Solo se puede cambiar el código, la fecha y las horas, y solo de hoy y hasta <span id="ed-dias">2</span> días atrás. Para cambiar el colaborador o el área, vuelve a cargar la novedad.</p>
     <p class="form-msg" id="ed-msg"></p>
     <div class="edit-actions">
       <button type="button" class="clear-btn" id="ed-cancelar">Cancelar</button>
@@ -987,6 +987,9 @@ AUTH_READY.then(async function () {
   const DIAS_ATRAS_GENERAL_BASE = 2;
   // Sube solo si el Super Admin le habilito mas dias a ESTE usuario (Configuraciones -> Habilitar dias atras); ver cargarHabilitacionDiasAtras.
   let DIAS_ATRAS_GENERAL = DIAS_ATRAS_GENERAL_BASE;
+  // El Super Admin no tiene limite de fechas hacia atras (crear ni editar).
+  const ES_SUPER_ADMIN = window.SESION.rol === "super_admin";
+  if (ES_SUPER_ADMIN) DIAS_ATRAS_GENERAL = 36500;
   function fechaMinimaGeneral() {
     return restarDias(fechaHoy(), DIAS_ATRAS_GENERAL);
   }
@@ -1986,7 +1989,8 @@ AUTH_READY.then(async function () {
     if (!novedadEditable(f)) return;
     edNovedad = f; edEmp = null;
     document.getElementById("ed-info").textContent = `${f.nombre_colaborador || ""} · cédula ${f.cedula} · ${f.area || ""}`;
-    document.getElementById("ed-dias").textContent = String(DIAS_ATRAS_GENERAL);
+    if (ES_SUPER_ADMIN) document.getElementById("ed-aviso-dias").textContent = "Como Super Admin puedes editar cualquier novedad, de cualquier fecha. Solo se cambia el código, la fecha y las horas; para cambiar el colaborador o el área, vuelve a cargar la novedad.";
+    else document.getElementById("ed-dias").textContent = String(DIAS_ATRAS_GENERAL);
     edCodigo.innerHTML = Object.values(codigosPorValor)
       .sort((a, b) => (a.codigo_descripcion || "").localeCompare(b.codigo_descripcion || "", "es"))
       .map((c) => `<option value="${c.codigo}">${c.codigo_descripcion}</option>`).join("");
