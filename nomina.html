@@ -868,8 +868,8 @@ AUTH_READY.then(async function () {
   // 2026-09-16 -> 16/09/2026
   const fechaDMA = (iso) => { const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(iso ?? "")); return m ? `${m[3]}/${m[2]}/${m[1]}` : iso; };
 
-  function mostrarPreviewCargador(filasExcel, hoja, nombreArchivo, anchos, columnasFecha = []) {
-    ultimoCargador = { filasExcel, hoja, nombreArchivo, anchos, columnasFecha };
+  function mostrarPreviewCargador(filasExcel, hoja, nombreArchivo, anchos, columnasFecha = [], hojaExcel = hoja) {
+    ultimoCargador = { filasExcel, hoja: hojaExcel, nombreArchivo, anchos, columnasFecha };
     const columnas = Object.keys(filasExcel[0]);
     cgPreviewTitulo.textContent = `Vista previa: ${hoja} (${filasExcel.length} fila${filasExcel.length === 1 ? "" : "s"})`;
     cgPreviewThead.innerHTML = `<tr>${columnas.map(c => `<th>${c}</th>`).join("")}</tr>`;
@@ -1082,8 +1082,8 @@ AUTH_READY.then(async function () {
 
     const filasExcel = filtrados.map(ep => ({
       "Empleado (c.c)": ep.cedula,
-      "FechaNovedad": ep.inicio,
-      "Fecha Inicial": ep.inicio,
+      "Fecha Novedad": ep.inicio,
+      "Fecha Inicio": ep.inicio,
       "Fecha Final": ep.fin,
       "Dias Accion": ep.dias,
       "Dias Saldo": ep.dias,
@@ -1091,7 +1091,7 @@ AUTH_READY.then(async function () {
       "Tipo Ausencia": mapaTipoAusencia[ep.codigo] || "Ausencia",
     }));
 
-    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${nomina}_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13], ["FechaNovedad", "Fecha Inicial", "Fecha Final"]);
+    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${nomina}_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13], ["Fecha Novedad", "Fecha Inicio", "Fecha Final"], "Hoja1");
   }
 
   cgCodigo.addEventListener("change", renderizarPreviewAusentismo);
