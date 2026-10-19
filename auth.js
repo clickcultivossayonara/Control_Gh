@@ -64,20 +64,14 @@ const AUTH_READY = (async () => {
   };
 
   if (perfil.rol !== "super_admin") {
-    const { data: filas } = await _sb
-      .from("permisos_rol")
-      .select("pagina,puede_ver")
-      .eq("rol", perfil.rol);
+    // Las dos consultas de permisos se piden a la vez (antes iban una despues de la otra en cada pagina).
+    // Los permisos por usuario (por correo) suman o quitan sobre los del rol; si esa tabla falla se ignora.
+    const [{ data: filas }, propios] = await Promise.all([
+      _sb.from("permisos_rol").select("pagina,puede_ver").eq("rol", perfil.rol),
+      _sb.from("permisos_usuario").select("pagina,puede_ver").then((r) => r.data, () => null),
+    ]);
     (filas || []).forEach((f) => { window.SESION.permisos[f.pagina] = f.puede_ver; });
-  }
-
-  // Permisos de pagina dados a este usuario en particular (por correo): suman o quitan sobre los de su rol.
-  // Si la tabla aun no existe o falla, se ignora y quedan los del rol.
-  if (perfil.rol !== "super_admin") {
-    try {
-      const { data: propios } = await _sb.from("permisos_usuario").select("pagina,puede_ver");
-      (propios || []).forEach((f) => { window.SESION.permisos[f.pagina] = f.puede_ver; });
-    } catch (e) { /* sin permisos por usuario */ }
+    (propios || []).forEach((f) => { window.SESION.permisos[f.pagina] = f.puede_ver; });
   }
 
   // Anota el ultimo acceso del usuario (lo ve el Super Admin en Usuarios). Como maximo una vez cada 10 minutos por

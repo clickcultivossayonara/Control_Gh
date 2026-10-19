@@ -133,6 +133,7 @@
   .ms-trigger::after { content: "▾"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 10px; }
   .ms-trigger:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
   .multiselect.open .ms-trigger { border-color: var(--accent); }
+  .ms-trigger:disabled { opacity: 0.55; cursor: not-allowed; }
   .ms-panel {
     display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
     min-width: 220px; max-height: 260px; overflow-y: auto;
@@ -376,6 +377,13 @@
     <p class="card-hint">Genera los archivos de carga a nómina a partir de las novedades ya registradas. El rango de fechas aplica sobre la fecha en que termina cada novedad — una ausencia de varios días se reporta completa (con su fecha de inicio real) en el cargador del periodo donde termina.</p>
     <div class="filters">
       <div class="field">
+        <label for="cg-nomina">Tipo de nómina</label>
+        <select id="cg-nomina">
+          <option value="QUIN">QUIN</option>
+          <option value="QADM">QADM</option>
+        </select>
+      </div>
+      <div class="field">
         <label for="cg-desde">Desde</label>
         <input type="date" id="cg-desde">
       </div>
@@ -390,10 +398,8 @@
         </select>
       </div>
       <div class="field">
-        <label for="cg-concepto">Concepto (solo Horas)</label>
-        <select id="cg-concepto" disabled>
-          <option value="">Todos los conceptos</option>
-        </select>
+        <label>Concepto (solo Horas)</label>
+        <div class="multiselect" id="ms-cg-concepto"></div>
       </div>
       <button type="button" class="excel-btn" id="btn-cg-descargar" disabled>Descargar Excel</button>
     </div>
@@ -780,7 +786,17 @@ AUTH_READY.then(async function () {
   const cgDesde = document.getElementById("cg-desde");
   const cgHasta = document.getElementById("cg-hasta");
   const cgCodigo = document.getElementById("cg-codigo");
-  const cgConcepto = document.getElementById("cg-concepto");
+  const cgNomina = document.getElementById("cg-nomina");
+  // Concepto (solo Horas): seleccion multiple; las opciones se arman al generar el Cargador Horas (dependen de los datos).
+  let msCgConcepto = null;
+  function armarConceptos(opciones) {
+    msCgConcepto = crearMultiselect("ms-cg-concepto", opciones, "Todos los conceptos", renderizarPreviewHoras);
+    document.querySelector("#ms-cg-concepto .ms-trigger").disabled = opciones.length === 0;
+  }
+  function bloquearConceptos() {
+    armarConceptos([]);
+  }
+  bloquearConceptos();
   const msgCargadores = document.getElementById("msg-cargadores");
   cgDesde.value = fechaISO(new Date(new Date().setDate(new Date().getDate() - 15)));
   cgHasta.value = fechaISO(new Date());
@@ -982,9 +998,7 @@ AUTH_READY.then(async function () {
     if (filasHoras.length === 0) throw new Error("No hay novedades de horas en ese rango.");
 
     cacheHoras = { filasHoras };
-    const conceptos = [...new Set(filasHoras.map(f => f.CONCEPTO))].sort();
-    cgConcepto.innerHTML = `<option value="">Todos los conceptos</option>` + conceptos.map(c => `<option value="${c}">${c}</option>`).join("");
-    cgConcepto.disabled = false;
+    poblarConceptosHoras();
     renderizarPreviewHoras();
   }));
 
@@ -1004,14 +1018,31 @@ AUTH_READY.then(async function () {
 
   // Igual que ausentismo: cambiar el filtro de concepto solo re-renderiza.
   let cacheHoras = null;
+  // Los conceptos ofrecidos son los que tienen horas en el tipo de nomina elegido.
+  function poblarConceptosHoras() {
+    const nomina = cgNomina.value;
+    armarConceptos([...new Set(cacheHoras.filasHoras.filter(f => f.NOMINA === nomina).map(f => f.CONCEPTO))].sort());
+  }
   function renderizarPreviewHoras() {
     if (!cacheHoras) return;
-    const concepto = cgConcepto.value;
-    const filtradas = concepto ? cacheHoras.filasHoras.filter(f => f.CONCEPTO === concepto) : cacheHoras.filasHoras;
+    const nomina = cgNomina.value;
+    const elegidos = msCgConcepto ? msCgConcepto.seleccion : new Set();
+    const filtradas = cacheHoras.filasHoras
+      .filter(f => f.NOMINA === nomina && (elegidos.size === 0 || elegidos.has(f.CONCEPTO)))
+      .map(({ EMPLEADO, CONCEPTO, CANTIDAD }) => ({ EMPLEADO, CONCEPTO, CANTIDAD }));
+    if (filtradas.length === 0) {
+      msgCargadores.textContent = `No hay horas de nómina ${nomina}` + (elegidos.size ? " para los conceptos elegidos" : "") + " en ese rango.";
+      msgCargadores.className = "form-msg error";
+      cgPreview.hidden = true;
+      btnCgDescargar.disabled = true;
+      ultimoCargador = null;
+      return;
+    }
     msgCargadores.textContent = "";
-    mostrarPreviewCargador(filtradas, "Cargador Horas", `cargador_horas_${concepto || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 12, 10, 8]);
+    msgCargadores.className = "form-msg";
+    const sufijoConceptos = elegidos.size === 0 ? "todos" : elegidos.size <= 4 ? [...elegidos].sort().join("-") : "varios";
+    mostrarPreviewCargador(filtradas, "Cargador Horas", `cargador_horas_${nomina}_${sufijoConceptos}_${fechaISO(new Date())}.xlsx`, [12, 12, 10]);
   }
-  cgConcepto.addEventListener("change", renderizarPreviewHoras);
 
   // Se guarda lo ya calculado (episodios en el rango, sin filtrar por
   // codigo, mas los mapas usados para armar el Excel) para que cambiar el
@@ -1021,11 +1052,12 @@ AUTH_READY.then(async function () {
 
   function renderizarPreviewAusentismo() {
     if (!cacheAusentismo) return;
-    const { enRango, mapa, mapaTipoAusencia } = cacheAusentismo;
+    const { enRango, mapa, mapaTipoAusencia, adminActual } = cacheAusentismo;
     const codigoFiltro = cgCodigo.value;
-    const filtrados = codigoFiltro ? enRango.filter(ep => ep.codigo === codigoFiltro) : enRango;
+    const nomina = cgNomina.value;
+    const filtrados = enRango.filter(ep => (adminActual[ep.cedula] === true ? "QADM" : "QUIN") === nomina && (!codigoFiltro || ep.codigo === codigoFiltro));
     if (filtrados.length === 0) {
-      msgCargadores.textContent = "No hay ausencias que terminen en ese rango" + (codigoFiltro ? ` para "${mapa[codigoFiltro]?.codigo_descripcion || codigoFiltro}"` : "") + ".";
+      msgCargadores.textContent = `No hay ausencias de nómina ${nomina} que terminen en ese rango` + (codigoFiltro ? ` para "${mapa[codigoFiltro]?.codigo_descripcion || codigoFiltro}"` : "") + ".";
       msgCargadores.className = "form-msg error";
       cgPreview.hidden = true;
       return;
@@ -1043,7 +1075,7 @@ AUTH_READY.then(async function () {
       "Tipo Ausencia": mapaTipoAusencia[ep.codigo] || "Ausencia",
     }));
 
-    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13]);
+    mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${nomina}_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13]);
   }
 
   cgCodigo.addEventListener("change", renderizarPreviewAusentismo);
@@ -1051,11 +1083,15 @@ AUTH_READY.then(async function () {
   // previsualizar para traer los datos de ese nuevo rango.
   cgDesde.addEventListener("change", () => { cacheAusentismo = null; cacheHoras = null; });
   cgHasta.addEventListener("change", () => { cacheAusentismo = null; cacheHoras = null; });
+  // El tipo de nomina (QUIN / QADM) filtra lo ya calculado, sin volver a pedir datos.
+  cgNomina.addEventListener("change", () => {
+    if (cacheHoras) { poblarConceptosHoras(); renderizarPreviewHoras(); }
+    else if (cacheAusentismo) renderizarPreviewAusentismo();
+  });
 
   document.getElementById("btn-cargador-ausentismo").addEventListener("click", (e) => conBotonOcupado(e.target, async () => {
     cgCodigo.disabled = false;
-    cgConcepto.disabled = true;
-    cgConcepto.value = "";
+    bloquearConceptos();
     cacheHoras = null;
     if (!cgDesde.value || !cgHasta.value) throw new Error("Selecciona el rango de fechas.");
     const mapa = await obtenerMapaCodigos();
@@ -1109,7 +1145,7 @@ AUTH_READY.then(async function () {
     const enRango = episodios.filter(ep => ep.fin >= cgDesde.value && ep.fin <= cgHasta.value);
     if (enRango.length === 0) throw new Error("No hay ausencias que terminen en ese rango.");
 
-    cacheAusentismo = { enRango, mapa, mapaTipoAusencia };
+    cacheAusentismo = { enRango, mapa, mapaTipoAusencia, adminActual: await obtenerMapaAdministrativo() };
     renderizarPreviewAusentismo();
   }));
 

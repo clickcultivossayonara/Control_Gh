@@ -937,6 +937,18 @@ AUTH_READY.then(async function () {
   // En las novedades por rango (vacaciones, incapacidades, licencias...) las horas de cada dia las pone el sistema:
   // las horas esperadas de ese dia (turno del area si el colaborador tiene turno, si no la tabla de Configuraciones).
   // Excepciones: PCM (permiso por cita medica) se da por horas, asi que sigue pidiendolas; APD siempre es 0 h.
+  // El servidor corta cada respuesta en 1000 filas aunque se pida limit=5000: se pide por paginas hasta traer todo.
+  // `orden` es obligatorio para que las paginas no se repitan ni se salten filas.
+  async function traerTodo(urlBase, orden, mensajeError) {
+    const TAM = 1000, filas = [];
+    for (let desde = 0; ; desde += TAM) {
+      const resp = await fetch(`${urlBase}&order=${orden}&limit=${TAM}&offset=${desde}`, { headers: authHeaders() });
+      if (!resp.ok) throw new Error(mensajeError + " (HTTP " + resp.status + ").");
+      const pagina = await resp.json();
+      filas.push(...pagina);
+      if (pagina.length < TAM) return filas;
+    }
+  }
   const CODIGOS_HORAS_MANUALES = ["PCM"];
   const CODIGOS_SIN_HORAS = ["APD"];
   // Una incapacidad o licencia que cae en dias de vacaciones los reemplaza y la base repone esos dias al final del periodo
@@ -945,12 +957,11 @@ AUTH_READY.then(async function () {
   async function fechasDeVacaciones(cedulas, desde) {
     const set = new Set();
     for (let i = 0; i < cedulas.length; i += 100) {
-      const resp = await fetch(
+      const filas = await traerTodo(
         `${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?select=cedula,fecha_novedad&codigo_novedad=eq.VAC` +
-        `&cedula=in.(${cedulas.slice(i, i + 100).join(",")})&fecha_novedad=gte.${desde}T00:00:00&limit=5000`,
-        { headers: authHeaders() });
-      if (!resp.ok) throw new Error("No se pudieron consultar las vacaciones (HTTP " + resp.status + ").");
-      (await resp.json()).forEach((r) => set.add(`${r.cedula}|${String(r.fecha_novedad).slice(0, 10)}`));
+        `&cedula=in.(${cedulas.slice(i, i + 100).join(",")})&fecha_novedad=gte.${desde}T00:00:00`,
+        "id_nomina.asc", "No se pudieron consultar las vacaciones");
+      filas.forEach((r) => set.add(`${r.cedula}|${String(r.fecha_novedad).slice(0, 10)}`));
     }
     return set;
   }
@@ -1439,12 +1450,11 @@ AUTH_READY.then(async function () {
     const mapa = {}, fechasSet = new Set(fechas);
     const ord = [...fechas].sort();
     for (let i = 0; i < cedulas.length; i += 100) {
-      const resp = await fetch(
+      const filas = await traerTodo(
         `${SUPABASE_URL}/rest/v1/registro_horas_detalle?select=cedula,fecha,hora_entrada,hora_salida,horas_trabajadas,horas_esperadas,diferencia_tiempo` +
-        `&cedula=in.(${cedulas.slice(i, i + 100).join(",")})&fecha=gte.${ord[0]}&fecha=lte.${ord[ord.length - 1]}&limit=5000`,
-        { headers: authHeaders() });
-      if (!resp.ok) throw new Error("No se pudo consultar el registro biométrico (HTTP " + resp.status + ").");
-      (await resp.json()).forEach((r) => { const f = String(r.fecha).slice(0, 10); if (fechasSet.has(f)) mapa[`${r.cedula}|${f}`] = r; });
+        `&cedula=in.(${cedulas.slice(i, i + 100).join(",")})&fecha=gte.${ord[0]}&fecha=lte.${ord[ord.length - 1]}`,
+        "id.asc", "No se pudo consultar el registro biométrico");
+      filas.forEach((r) => { const f = String(r.fecha).slice(0, 10); if (fechasSet.has(f)) mapa[`${r.cedula}|${f}`] = r; });
     }
     return mapa;
   }
@@ -1522,13 +1532,12 @@ AUTH_READY.then(async function () {
     const encontradas = [];
     for (let i = 0; i < cedulas.length; i += 100) {
       const lista = cedulas.slice(i, i + 100).join(",");
-      const resp = await fetch(
+      const filas = await traerTodo(
         `${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?select=cedula,fecha_novedad,codigo_novedad,codigo_descripcion,hora` +
         `&cedula=in.(${lista})&fecha_novedad=gte.${desde}T00:00:00&fecha_novedad=lt.${hasta}T00:00:00` +
-        `&${filtroCodigo}&limit=5000`,
-        { headers: authHeaders() });
-      if (!resp.ok) throw new Error("No se pudieron consultar las novedades ya cargadas (HTTP " + resp.status + ").");
-      (await resp.json()).forEach((r) => { if (fechasSet.has(String(r.fecha_novedad).slice(0, 10))) encontradas.push(r); });
+        `&${filtroCodigo}`,
+        "id_nomina.asc", "No se pudieron consultar las novedades ya cargadas");
+      filas.forEach((r) => { if (fechasSet.has(String(r.fecha_novedad).slice(0, 10))) encontradas.push(r); });
     }
     return encontradas;
   }
