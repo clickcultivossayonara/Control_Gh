@@ -262,17 +262,21 @@
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
-  table.tabla-novedades { min-width: 900px; table-layout: fixed; }
-  table.tabla-novedades th:nth-child(1), table.tabla-novedades td:nth-child(1) { width: 10%; }
-  table.tabla-novedades th:nth-child(2), table.tabla-novedades td:nth-child(2) { width: 8%; }
-  table.tabla-novedades th:nth-child(3), table.tabla-novedades td:nth-child(3) { width: 10%; }
-  table.tabla-novedades th:nth-child(4), table.tabla-novedades td:nth-child(4) { width: 11%; }
-  table.tabla-novedades th:nth-child(5), table.tabla-novedades td:nth-child(5) { width: 21%; }
-  table.tabla-novedades th:nth-child(6), table.tabla-novedades td:nth-child(6) { width: 14%; }
-  table.tabla-novedades th:nth-child(7), table.tabla-novedades td:nth-child(7) { width: 18%; }
-  table.tabla-novedades th:nth-child(8), table.tabla-novedades td:nth-child(8) { width: 8%; }
+  table.tabla-novedades { min-width: 1060px; table-layout: fixed; }
+  table.tabla-novedades th:nth-child(1), table.tabla-novedades td:nth-child(1) { width: 9%; }
+  table.tabla-novedades th:nth-child(2), table.tabla-novedades td:nth-child(2) { width: 6%; }
+  table.tabla-novedades th:nth-child(3), table.tabla-novedades td:nth-child(3) { width: 8%; }
+  table.tabla-novedades th:nth-child(4), table.tabla-novedades td:nth-child(4) { width: 10%; }
+  table.tabla-novedades th:nth-child(5), table.tabla-novedades td:nth-child(5) { width: 20%; }
+  table.tabla-novedades th:nth-child(6), table.tabla-novedades td:nth-child(6) { width: 13%; }
+  table.tabla-novedades th:nth-child(7), table.tabla-novedades td:nth-child(7) { width: 27%; }
+  table.tabla-novedades th:nth-child(8), table.tabla-novedades td:nth-child(8) { width: 7%; }
   table.tabla-novedades th:nth-child(9), table.tabla-novedades td:nth-child(9) { width: 96px; text-align: center; }
   table.tabla-novedades td { overflow: hidden; text-overflow: ellipsis; }
+  /* Colaborador, area y codigo-descripcion se leen completos: el texto largo baja a la linea siguiente en vez de cortarse con "..." */
+  table.tabla-novedades td:nth-child(5), table.tabla-novedades td:nth-child(6), table.tabla-novedades td:nth-child(7) {
+    white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.3;
+  }
   thead th {
     position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
     font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap;
@@ -949,7 +953,8 @@ AUTH_READY.then(async function () {
       if (pagina.length < TAM) return filas;
     }
   }
-  const CODIGOS_HORAS_MANUALES = ["PCM"];
+  // PCM y DOR: las horas se escriben a mano (no son las horas del turno). La DOR no se ofrece al crear: solo la crea el sistema.
+  const CODIGOS_HORAS_MANUALES = ["PCM", "DOR"];
   const CODIGOS_SIN_HORAS = ["APD"];
   // Una incapacidad o licencia que cae en dias de vacaciones los reemplaza y la base repone esos dias al final del periodo
   // (ver schema_incapacidad_en_vacaciones.sql). Aqui solo se evita la alerta de "ya tiene novedad" y se informa el resultado.
@@ -1147,6 +1152,7 @@ AUTH_READY.then(async function () {
   document.getElementById("e-area").innerHTML = selArea.innerHTML;
 
   let codigosPorValor = {};
+  let codigoDOR = null;   // DOR esta deshabilitada en el catalogo (solo la crea el sistema); se carga aparte para poder editar las existentes
   let empleadosPorCedula = {};
   actualizarCamposFechaRango();
   actualizarLimitesHoraExtra();
@@ -1167,6 +1173,11 @@ AUTH_READY.then(async function () {
         selCodigoExtra.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
       }
     });
+    try {
+      const rd = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=*&codigo=eq.DOR`, { headers: authHeaders() });
+      const d = rd.ok ? await rd.json() : [];
+      if (d[0]) codigoDOR = d[0];
+    } catch { /* sin DOR: no se podran editar, el resto sigue igual */ }
   }
   cargarCodigos();
   cargarFestivos();
@@ -2019,10 +2030,18 @@ AUTH_READY.then(async function () {
   // ---------- Editar una novedad ya cargada (solo hoy y los ultimos DIAS_ATRAS_GENERAL dias) ----------
   // La base valida lo mismo (funcion editar_novedad): origen "app", ventana de dias, permiso por area.
   let lnFilas = {};
+  const escaparAtributo = (t) => String(t ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  // La DOR (deduccion por omision de registro): Nomina y los administradores la editan SIN limite de dias (el sistema la genera
+  // varios dias despues del dia que deduce, asi que casi siempre queda fuera de la ventana normal). Jefes de area, supervisores y
+  // auxiliares tambien la editan, pero solo las de su area y dentro de la ventana normal (hoy y los ultimos dias). Su fecha no se cambia.
+  const ROLES_GESTION_DOR = ["super_admin", "admin", "nomina", "rrhh"];
+  const PUEDE_GESTIONAR_DOR = ROLES_GESTION_DOR.includes(window.SESION.rol);
   function novedadEditable(f) {
     if (!f || !f.fecha_novedad || !f.id_nomina) return false;
+    if (f.codigo_novedad === "DOR" && PUEDE_GESTIONAR_DOR) return true;
     return f.fecha_novedad.slice(0, 10) >= fechaMinimaGeneral();
   }
+  const codigoParaEdicion = (valor) => codigosPorValor[valor] || (valor === "DOR" ? codigoDOR : null);
   const edModal = document.getElementById("modal-editar-nov");
   const edCodigo = document.getElementById("ed-codigo");
   const edFecha = document.getElementById("ed-fecha");
@@ -2030,10 +2049,11 @@ AUTH_READY.then(async function () {
   const edMsg = document.getElementById("ed-msg");
   const edGuardar = document.getElementById("ed-guardar");
   let edNovedad = null, edEmp = null;
+  const edAvisoOriginal = document.getElementById("ed-aviso-dias").innerHTML;
 
   function edMostrarMensaje(texto, tipo) { edMsg.textContent = texto; edMsg.className = "form-msg" + (tipo ? " " + tipo : ""); }
   function edActualizarHora() {
-    const cod = codigosPorValor[edCodigo.value];
+    const cod = codigoParaEdicion(edCodigo.value);
     const sistema = !!cod && usaHorasDelSistema(cod);
     document.getElementById("ed-hora-campo").style.display = sistema ? "none" : "";
     document.getElementById("ed-hint-sistema").hidden = !sistema;
@@ -2045,14 +2065,20 @@ AUTH_READY.then(async function () {
     if (!novedadEditable(f)) return;
     edNovedad = f; edEmp = null;
     document.getElementById("ed-info").textContent = `${f.nombre_colaborador || ""} · cédula ${f.cedula} · ${f.area || ""}`;
-    if (ES_SUPER_ADMIN) document.getElementById("ed-aviso-dias").textContent = "Como Super Admin puedes editar cualquier novedad, de cualquier fecha. Solo se cambia el código, la fecha y las horas; para cambiar el colaborador o el área, vuelve a cargar la novedad.";
+    const edAviso = document.getElementById("ed-aviso-dias");
+    edAviso.innerHTML = edAvisoOriginal;
+    const esDor = f.codigo_novedad === "DOR";
+    if (esDor && PUEDE_GESTIONAR_DOR) edAviso.textContent = "Deducción por omisión de registro: Nómina y Administración la pueden editar sin límite de días. Puedes cambiar las horas deducidas o reemplazarla por otro código (por ejemplo, un permiso que la justifique). " + (ES_SUPER_ADMIN ? "Como Super Admin también puedes cambiar su fecha." : "La fecha no se puede cambiar.");
+    else if (esDor) edAviso.textContent = `Deducción por omisión de registro: puedes cambiar las horas deducidas o reemplazarla por otro código que la justifique, solo de hoy y hasta ${DIAS_ATRAS_GENERAL} días atrás. La fecha no se puede cambiar.`;
+    else if (ES_SUPER_ADMIN) edAviso.textContent = "Como Super Admin puedes editar cualquier novedad, de cualquier fecha. Solo se cambia el código, la fecha y las horas; para cambiar el colaborador o el área, vuelve a cargar la novedad.";
     else document.getElementById("ed-dias").textContent = String(DIAS_ATRAS_GENERAL);
     edCodigo.innerHTML = Object.values(codigosPorValor)
       .sort((a, b) => (a.codigo_descripcion || "").localeCompare(b.codigo_descripcion || "", "es"))
       .map((c) => `<option value="${c.codigo}">${c.codigo_descripcion}</option>`).join("");
     if (!codigosPorValor[f.codigo_novedad]) edCodigo.insertAdjacentHTML("afterbegin", `<option value="${f.codigo_novedad}">${f.codigo_descripcion}</option>`);
     edCodigo.value = f.codigo_novedad;
-    edFecha.min = fechaMinimaGeneral();
+    edFecha.min = (esDor && !ES_SUPER_ADMIN) ? f.fecha_novedad.slice(0, 10) : fechaMinimaGeneral();
+    edFecha.max = (esDor && !ES_SUPER_ADMIN) ? f.fecha_novedad.slice(0, 10) : "";
     edFecha.value = f.fecha_novedad.slice(0, 10);
     edHora.value = f.hora ?? "";
     edActualizarHora();
@@ -2070,12 +2096,13 @@ AUTH_READY.then(async function () {
   async function guardarEdicion() {
     const f = edNovedad;
     if (!f) return;
-    const cod = codigosPorValor[edCodigo.value];
+    const cod = codigoParaEdicion(edCodigo.value);
     const fecha = edFecha.value;
     if (!cod) { edMostrarMensaje("Selecciona un código.", "error"); return; }
     if (!fecha) { edMostrarMensaje("La fecha es obligatoria.", "error"); return; }
     const minima = fechaMinimaGeneral();
-    if (fecha < minima) { edMostrarMensaje(`La fecha no puede tener vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minima}).`, "error"); return; }
+    if (f.codigo_novedad === "DOR" && !ES_SUPER_ADMIN && fecha !== f.fecha_novedad.slice(0, 10)) { edMostrarMensaje("La fecha de una deducción por omisión de registro no se puede cambiar.", "error"); return; }
+    if (fecha < minima && !(f.codigo_novedad === "DOR" && PUEDE_GESTIONAR_DOR && !ES_SUPER_ADMIN)) { edMostrarMensaje(`La fecha no puede tener vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minima}).`, "error"); return; }
     const sistema = usaHorasDelSistema(cod);
     let hora;
     if (sistema) {
@@ -2229,9 +2256,9 @@ AUTH_READY.then(async function () {
           <td class="num">${f.semana ?? "—"}</td>
           <td>${f.dia || "—"}</td>
           <td class="cedula">${f.cedula ?? "—"}</td>
-          <td class="nombre">${f.nombre_colaborador || "—"}</td>
-          <td>${f.area || "—"}</td>
-          <td>${f.codigo_descripcion || "—"}</td>
+          <td class="nombre" title="${escaparAtributo(f.nombre_colaborador)}">${f.nombre_colaborador || "—"}</td>
+          <td title="${escaparAtributo(f.area)}">${f.area || "—"}</td>
+          <td title="${escaparAtributo(f.codigo_descripcion)}">${f.codigo_descripcion || "—"}</td>
           <td class="num">${f.hora ?? "—"}</td>
           <td class="col-acciones">${novedadEditable(f) ? `<button type="button" class="clear-btn btn-editar-nov" data-id="${f.id_nomina}">Editar</button>` : ""}${ES_SUPER_ADMIN ? `<button type="button" class="clear-btn btn-eliminar-nov" data-id="${f.id_nomina}">Eliminar</button>` : ""}</td>
         </tr>`).join("");
