@@ -518,7 +518,7 @@ AUTH_READY.then(async function () {
   }
   $("btn-buscar").addEventListener("click", buscar);
   $("f-texto").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); buscar(); } });
-  $("f-desde").value = hace(7); $("f-hasta").value = hoyISO();
+  $("f-desde").value = hoyISO(); $("f-hasta").value = hoyISO();
   $("reg-tbody").addEventListener("click", (e) => {
     const b = e.target.closest("[data-editar]");
     if (b) abrirModal({ modo: "editar", reg: registros[Number(b.dataset.editar)] });
@@ -634,7 +634,7 @@ AUTH_READY.then(async function () {
     } else if (c.modo === "crear") {
       $("maj-titulo").textContent = "Crear registro de un día sin marcación";
       $("maj-sub").textContent = "Para un día en el que la persona sí trabajó pero el biométrico no tiene ningún registro.";
-      $("maj-cedula").value = ""; $("maj-fecha").value = hace(1); $("maj-emp").textContent = "";
+      $("maj-cedula").value = ""; $("maj-fecha").value = hoyISO(); $("maj-emp").textContent = "";
       $("maj-entrada").value = ""; $("maj-salida").value = "";
       $("maj-guardar").textContent = "Crear registro";
     } else {
