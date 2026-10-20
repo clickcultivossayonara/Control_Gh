@@ -1003,7 +1003,7 @@ AUTH_READY.then(async function () {
   const CODIGOS_FESTIVOS = ["HF", "HFN", "HEF", "HEFN", "RNF"];
   const CODIGOS_NOCTURNOS = ["HN", "HEN", "HEFN", "HFN", "RNF"];
   const NOCHE_DESDE_HORA = 19, NOCHE_HASTA_HORA = 6;
-  const DIAS_ATRAS_HORA_EXTRA = 2;
+  const DIAS_ATRAS_HORA_EXTRA = 3;
   const MAX_HORAS_HORA_EXTRA = 2;
 
   function restarDias(fechaISO, dias) {
@@ -1032,7 +1032,7 @@ AUTH_READY.then(async function () {
   const msgNovedad = document.getElementById("msg-novedad");
 
   // Ventana de fechas permitida hoy para cargar una novedad de hora extra:
-  // hoy, ayer y antier (DIAS_ATRAS_HORA_EXTRA dias hacia atras).
+  // hoy y los 3 dias anteriores (DIAS_ATRAS_HORA_EXTRA dias hacia atras).
   function limiteFechaHoraExtra() {
     const hoy = fechaHoy();
     return { minima: restarDias(hoy, Math.max(DIAS_ATRAS_HORA_EXTRA, DIAS_ATRAS_GENERAL)), maxima: hoy };
@@ -1042,7 +1042,7 @@ AUTH_READY.then(async function () {
   // con vigencia de mas de DIAS_ATRAS_GENERAL dias atras (hoy, ayer y
   // antier). Hacia adelante no hay limite -- salvo hora extra, que ademas
   // nunca permite fecha futura (ver limiteFechaHoraExtra arriba).
-  const DIAS_ATRAS_GENERAL_BASE = 2;
+  const DIAS_ATRAS_GENERAL_BASE = 3;   // hoy y los 3 dias anteriores (4 dias de vigencia); antes eran 2 (hoy, ayer y antier)
   // Sube solo si el Super Admin le habilito mas dias a ESTE usuario (Configuraciones -> Habilitar dias atras); ver cargarHabilitacionDiasAtras.
   let DIAS_ATRAS_GENERAL = DIAS_ATRAS_GENERAL_BASE;
   // El Super Admin no tiene limite de fechas hacia atras (crear ni editar).

@@ -585,7 +585,7 @@
 
   <section class="card" id="card-habilitar-dias" hidden>
     <h2>Habilitar días atrás</h2>
-    <p class="card-hint">Por regla, las novedades solo se pueden cargar con vigencia de hoy hasta 2 días atrás. Aquí autorizas a <strong>un usuario</strong> a cargar novedades más atrás, por un tiempo limitado y con el motivo registrado. Pasada la fecha de vigencia vuelve solo a la regla normal. Solo lo ve y lo gestiona el Super Admin.</p>
+    <p class="card-hint">Por regla, las novedades solo se pueden cargar con vigencia de hoy hasta 3 días atrás (4 días en total). Aquí autorizas a <strong>un usuario</strong> a cargar novedades más atrás, por un tiempo limitado y con el motivo registrado. Pasada la fecha de vigencia vuelve solo a la regla normal. Solo lo ve y lo gestiona el Super Admin.</p>
     <form id="form-habilitar-dias">
       <div class="form-grid">
         <div class="field">
@@ -594,7 +594,7 @@
         </div>
         <div class="field">
           <label for="hd-dias">Días hacia atrás permitidos <span class="req">*</span></label>
-          <input type="number" id="hd-dias" min="3" max="365" step="1" required placeholder="Ej. 10">
+          <input type="number" id="hd-dias" min="4" max="365" step="1" required placeholder="Ej. 10">
         </div>
         <div class="field">
           <label for="hd-hasta">Vigente hasta <span class="req">*</span></label>
@@ -2010,7 +2010,7 @@ AUTH_READY.then(async function () {
       const motivo = inHdMotivo.value.trim();
       const falla = (m) => { msgHd.textContent = m; msgHd.className = "form-msg error"; };
       if (!usuario_id) return falla("Selecciona el usuario.");
-      if (!Number.isInteger(dias) || dias < 3 || dias > 365) return falla("Los días deben ser un número entero entre 3 y 365 (la regla normal ya permite 2).");
+      if (!Number.isInteger(dias) || dias < 4 || dias > 365) return falla("Los días deben ser un número entero entre 4 y 365 (la regla normal ya permite 3).");
       if (!vigente_hasta || vigente_hasta < hoyLocal()) return falla("La fecha de vigencia no puede ser anterior a hoy.");
       if (vigente_hasta > sumarDiasHd(hoyLocal(), 90)) return falla("La vigencia no puede pasar de 90 días desde hoy.");
       if (motivo.length < 5) return falla("El motivo es obligatorio (mínimo 5 caracteres).");
@@ -2047,7 +2047,7 @@ AUTH_READY.then(async function () {
       const h = habilitaciones.find((x) => String(x.id) === fila.dataset.id);
       if (!h) return;
       const u = usuariosHd[h.usuario_id] || {};
-      if (!confirm(`¿Revocar la habilitación de ${h.dias} días de ${u.nombre || "este usuario"}? Vuelve a la regla normal (2 días atrás).`)) return;
+      if (!confirm(`¿Revocar la habilitación de ${h.dias} días de ${u.nombre || "este usuario"}? Vuelve a la regla normal (3 días atrás).`)) return;
       btn.disabled = true;
       try {
         const resp = await fetch(`${SUPABASE_URL}/rest/v1/habilitaciones_dias_atras?id=eq.${h.id}`, {
