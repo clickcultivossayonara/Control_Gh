@@ -473,12 +473,8 @@
           <select id="ln-area" style="display:none"><option value="">Todas</option></select>
         </div>
         <div class="field">
-          <label for="ln-codigo-buscar">Código - Descripción</label>
-          <div class="combo" id="ln-codigo-combo">
-            <input type="text" id="ln-codigo-buscar" placeholder="Buscar…" autocomplete="off">
-            <div class="combo-panel" id="ln-codigo-panel"></div>
-          </div>
-          <select id="ln-codigo" style="display:none"><option value="">Todos</option></select>
+          <label>Código - Descripción</label>
+          <div class="multiselect" id="ln-codigo-ms"></div>
         </div>
       </div>
       <div class="filters">
@@ -1168,7 +1164,6 @@ AUTH_READY.then(async function () {
     filas.forEach(f => {
       codigosPorValor[f.codigo] = f;
       selCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
-      lnCodigo.insertAdjacentHTML("beforeend", `<option value="${f.codigo_descripcion}">${f.codigo_descripcion}</option>`);
       if (CODIGOS_PRESUPUESTO_EXTRA.includes(f.codigo)) {
         selCodigoExtra.insertAdjacentHTML("beforeend", `<option value="${f.codigo}">${f.codigo_descripcion}</option>`);
       }
@@ -2005,7 +2000,6 @@ AUTH_READY.then(async function () {
   // ---------------- lista: novedades registradas ----------------
   const lnBuscar = document.getElementById("ln-buscar");
   const lnArea = document.getElementById("ln-area");
-  const lnCodigo = document.getElementById("ln-codigo");
   const lnDesde = document.getElementById("ln-desde");
   const lnHasta = document.getElementById("ln-hasta");
   const lnTbody = document.getElementById("ln-tbody");
@@ -2015,9 +2009,17 @@ AUTH_READY.then(async function () {
   const comboLnArea = crearCombobox("ln-area-combo", "ln-area-buscar", "ln-area-panel", lnArea,
     () => [["", "Todas"], ...AREAS_CONOCIDAS.map(a => [a, a])]);
   comboLnArea.sincronizar();
-  const comboLnCodigo = crearCombobox("ln-codigo-combo", "ln-codigo-buscar", "ln-codigo-panel", lnCodigo,
-    () => [["", "Todos"], ...Object.values(codigosPorValor).map(c => [c.codigo_descripcion, c.codigo_descripcion])]);
-  comboLnCodigo.sincronizar();
+  // Filtro de codigo: seleccion multiple y con TODOS los codigos del catalogo (tambien los deshabilitados, como la DOR, que solo crea el
+  // sistema, o codigos antiguos que aparecen en novedades viejas). Filtra por el codigo, no por el texto de la descripcion.
+  const msCodigoNovedad = crearMultiselect("ln-codigo-ms", "Todos", () => cargarListaNovedades());
+  msCodigoNovedad.deshabilitar("Cargando…");
+  (async function cargarOpcionesFiltroCodigo() {
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,codigo_descripcion&order=codigo_descripcion.asc`, { headers: authHeaders() });
+      const filas = resp.ok ? await resp.json() : [];
+      msCodigoNovedad.establecerOpciones(filas.map(f => [f.codigo, f.codigo_descripcion || f.codigo]), "Sin códigos");
+    } catch { msCodigoNovedad.establecerOpciones([], "No se pudieron cargar"); }
+  })();
 
   let lnSortKey = "fecha_novedad", lnSortDir = -1;
 
@@ -2235,7 +2237,7 @@ AUTH_READY.then(async function () {
       else params.set("nombre_colaborador", "ilike.*" + buscar.replace(/[,()]/g, "") + "*");
     }
     if (lnArea.value) params.set("area", "eq." + lnArea.value);
-    if (lnCodigo.value) params.set("codigo_descripcion", "eq." + lnCodigo.value);
+    if (msCodigoNovedad.seleccion.size) params.set("codigo_novedad", "in.(" + [...msCodigoNovedad.seleccion].map(c => `"${c}"`).join(",") + ")");
     if (lnDesde.value) params.append("fecha_novedad", "gte." + lnDesde.value + "T00:00:00");
     if (lnHasta.value) params.append("fecha_novedad", "lte." + lnHasta.value + "T23:59:59");
     if (msSemanaNovedad.seleccion.size) params.set("semana", "in.(" + [...msSemanaNovedad.seleccion].join(",") + ")");
@@ -2289,13 +2291,12 @@ AUTH_READY.then(async function () {
   let lnTimeout;
   lnBuscar.addEventListener("input", () => { clearTimeout(lnTimeout); lnTimeout = setTimeout(cargarListaNovedades, 300); });
   lnArea.addEventListener("change", cargarListaNovedades);
-  lnCodigo.addEventListener("change", cargarListaNovedades);
   lnDesde.addEventListener("change", cargarListaNovedades);
   lnHasta.addEventListener("change", cargarListaNovedades);
   document.getElementById("ln-limpiar").addEventListener("click", () => {
-    lnBuscar.value = ""; lnArea.value = ""; lnCodigo.value = ""; lnDesde.value = ""; lnHasta.value = "";
+    lnBuscar.value = ""; lnArea.value = ""; lnDesde.value = ""; lnHasta.value = "";
     comboLnArea.sincronizar();
-    comboLnCodigo.sincronizar();
+    msCodigoNovedad.limpiar();
     msSemanaNovedad.limpiar();
     cargarListaNovedades();
   });
