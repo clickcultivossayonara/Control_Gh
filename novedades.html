@@ -115,7 +115,6 @@
   .btn-eliminar-nov { color: var(--critical); border-color: var(--critical); margin-left: 6px; }
   .btn-peligro { background: var(--critical); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13.5px; }
   .btn-peligro:disabled { opacity: 0.6; cursor: default; }
-  table.tabla-novedades.con-eliminar th:nth-child(9), table.tabla-novedades.con-eliminar td:nth-child(9) { width: 190px; }
   @media (min-width: 901px) {
     .tabla-novedades th.col-acciones, .tabla-novedades td.col-acciones { position: sticky; right: 0; z-index: 2; box-shadow: -6px 0 8px -6px rgba(20, 24, 15, 0.25); }
     .tabla-novedades td.col-acciones { background: var(--surface); }
@@ -262,20 +261,25 @@
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); }
   table { border-collapse: collapse; width: 100%; min-width: 760px; font-size: 13px; }
-  table.tabla-novedades { min-width: 1060px; table-layout: fixed; }
-  table.tabla-novedades th:nth-child(1), table.tabla-novedades td:nth-child(1) { width: 9%; }
-  table.tabla-novedades th:nth-child(2), table.tabla-novedades td:nth-child(2) { width: 6%; }
-  table.tabla-novedades th:nth-child(3), table.tabla-novedades td:nth-child(3) { width: 8%; }
-  table.tabla-novedades th:nth-child(4), table.tabla-novedades td:nth-child(4) { width: 10%; }
-  table.tabla-novedades th:nth-child(5), table.tabla-novedades td:nth-child(5) { width: 20%; }
-  table.tabla-novedades th:nth-child(6), table.tabla-novedades td:nth-child(6) { width: 13%; }
-  table.tabla-novedades th:nth-child(7), table.tabla-novedades td:nth-child(7) { width: 27%; }
-  table.tabla-novedades th:nth-child(8), table.tabla-novedades td:nth-child(8) { width: 7%; }
-  table.tabla-novedades th:nth-child(9), table.tabla-novedades td:nth-child(9) { width: 96px; text-align: center; }
-  table.tabla-novedades td { overflow: hidden; text-overflow: ellipsis; }
-  /* Colaborador, area y codigo-descripcion se leen completos: el texto largo baja a la linea siguiente en vez de cortarse con "..." */
-  table.tabla-novedades td:nth-child(5), table.tabla-novedades td:nth-child(6), table.tabla-novedades td:nth-child(7) {
-    white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: anywhere; line-height: 1.3;
+  table.tabla-novedades { min-width: 1060px; }
+  @media (min-width: 901px) {
+    /* Cada columna toma el ancho de su contenido y NADA se corta: las cortas (fecha, semana, dia, cedula, horas, acciones) no se parten
+       y las de texto largo (colaborador, area, codigo-descripcion) usan el espacio restante bajando a la linea siguiente. */
+    table.tabla-novedades { table-layout: auto; }
+    table.tabla-novedades th, table.tabla-novedades td { overflow: visible; text-overflow: clip; }
+    table.tabla-novedades th:nth-child(1), table.tabla-novedades td:nth-child(1),
+    table.tabla-novedades th:nth-child(2), table.tabla-novedades td:nth-child(2),
+    table.tabla-novedades th:nth-child(3), table.tabla-novedades td:nth-child(3),
+    table.tabla-novedades th:nth-child(4), table.tabla-novedades td:nth-child(4),
+    table.tabla-novedades th:nth-child(8), table.tabla-novedades td:nth-child(8),
+    table.tabla-novedades th:nth-child(9), table.tabla-novedades td:nth-child(9) { width: 1%; white-space: nowrap; }
+    table.tabla-novedades th:nth-child(9), table.tabla-novedades td:nth-child(9) { text-align: center; }
+    table.tabla-novedades td:nth-child(5), table.tabla-novedades td:nth-child(6), table.tabla-novedades td:nth-child(7) {
+      white-space: normal; overflow-wrap: break-word; line-height: 1.3;
+    }
+    table.tabla-novedades td:nth-child(5) { min-width: 170px; }
+    table.tabla-novedades td:nth-child(6) { min-width: 130px; }
+    table.tabla-novedades td:nth-child(7) { min-width: 230px; }
   }
   thead th {
     position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 10px;
