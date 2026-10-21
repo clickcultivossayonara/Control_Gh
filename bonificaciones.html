@@ -384,8 +384,8 @@
   </div>
 
   <div class="aviso-super">
-    <strong>Poscosecha Unión · información confidencial de pago.</strong> Registra aquí las bonificaciones (bono prestacional de Poscosecha y Unique
-    y acompañamiento de mula). Solo la ven Super Admin, Administrador, Nómina y los usuarios autorizados para este módulo.
+    <strong>Poscosecha Unión · información confidencial de pago.</strong> Registra aquí las bonificaciones (auxilio por mera liberalidad
+    y acompañamiento de tracto mula). Solo la ven Super Admin, Administrador, Nómina y los usuarios autorizados para este módulo.
   </div>
 
   <section class="card">
@@ -399,8 +399,8 @@
         <div class="field ancho2">
           <label for="f-tipo">Tipo de bonificación <span class="req">*</span></label>
           <select id="f-tipo" required>
-            <option value="BONO">Bono prestacional Poscosecha y Unique</option>
-            <option value="VIAJES_MULA">Acompañamiento de mula</option>
+            <option value="BONO">AUXILIO POR MERA LIBERALIDAD</option>
+            <option value="VIAJES_MULA">ACOMPAÑAMIENTO DE TRACTO MULA</option>
           </select>
         </div>
         <div class="field">
@@ -438,8 +438,8 @@
     <p class="titulo-seccion">Bonificaciones registradas</p>
     <div class="resumen-bono">
       <div class="cifra-bono"><span>Registros</span><b id="r-reg">—</b></div>
-      <div class="cifra-bono"><span>Bono prestacional</span><b id="r-bono">—</b></div>
-      <div class="cifra-bono"><span>Acompañamiento de mula</span><b id="r-mula">—</b></div>
+      <div class="cifra-bono"><span>Auxilio por mera liberalidad</span><b id="r-bono">—</b></div>
+      <div class="cifra-bono"><span>Acompañamiento de tracto mula</span><b id="r-mula">—</b></div>
       <div class="cifra-bono"><span>Total</span><b id="r-total">—</b></div>
     </div>
     <div class="filters">
@@ -449,8 +449,8 @@
         <label for="l-tipo">Tipo</label>
         <select id="l-tipo">
           <option value="">Todos</option>
-          <option value="BONO">Bono prestacional</option>
-          <option value="VIAJES_MULA">Acompañamiento de mula</option>
+          <option value="BONO">AUXILIO POR MERA LIBERALIDAD</option>
+          <option value="VIAJES_MULA">ACOMPAÑAMIENTO DE TRACTO MULA</option>
         </select>
       </div>
       <div class="field grow">
@@ -506,7 +506,7 @@ AUTH_READY.then(async function () {
   const $ = (id) => document.getElementById(id);
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   const COP = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
-  const TIPOS = { BONO: "Bono prestacional Poscosecha y Unique", VIAJES_MULA: "Acompañamiento de mula" };
+  const TIPOS = { BONO: "AUXILIO POR MERA LIBERALIDAD", VIAJES_MULA: "ACOMPAÑAMIENTO DE TRACTO MULA" };
   const hoyISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
   const haceISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
   const fmtFecha = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-"); return `${d}/${m}/${y}`; };

@@ -459,7 +459,7 @@ AUTH_READY.then(async function () {
   const NOVEDAD_PENDIENTE = "AUSENCIA PENDIENTE POR DEFINIR";
   let codigosAusencia = [];
   try {
-    const respCod = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,descripcion,codigo_descripcion,codigo_nomina,tipo&tipo=eq.Ausencia&habilitado=eq.true`, { headers: authHeaders() });
+    const respCod = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,descripcion,codigo_descripcion,codigo_nomina,tipo&tipo=in.(Ausencia,Compensatorio)&habilitado=eq.true`, { headers: authHeaders() });
     const filasCod = await respCod.json();
     if (respCod.ok && Array.isArray(filasCod)) codigosAusencia = filasCod;
   } catch {}
@@ -552,7 +552,7 @@ AUTH_READY.then(async function () {
     params.set("order", `${sortKey}.${sortDir === 1 ? "asc" : "desc"}`);
   }
 
-  // Todas las novedades de tipo Ausencia habilitadas (menos "pendiente por definir",
+  // Todas las novedades de tipo Ausencia y Compensatorio habilitadas (menos "pendiente por definir",
   // que es el estado por defecto, no una novedad que se elija). "Injustificada" primero.
   const NOVEDADES_ELEGIBLES = codigosAusencia
     .filter((c) => c.codigo !== "APD")

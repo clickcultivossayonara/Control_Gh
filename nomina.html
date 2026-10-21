@@ -374,7 +374,7 @@
 
   <section class="card" id="card-cargadores" hidden>
     <h2>Cargadores para Softland</h2>
-    <p class="card-hint">Genera los archivos de carga a nómina a partir de las novedades ya registradas. El rango de fechas aplica sobre la fecha en que termina cada novedad — una ausencia de varios días se reporta completa (con su fecha de inicio real) en el cargador del periodo donde termina.</p>
+    <p class="card-hint">Genera los archivos de carga a nómina a partir de las novedades ya registradas. El rango de fechas aplica sobre la fecha en que EMPIEZA cada novedad — una ausencia de varios días se reporta completa (con su fecha final real) en el cargador del periodo donde empieza.</p>
     <div class="filters">
       <div class="field">
         <label for="cg-nomina">Tipo de nómina</label>
@@ -536,7 +536,7 @@ AUTH_READY.then(async function () {
   const elBody = document.getElementById("tbody");
   const elCount = document.getElementById("result-count");
 
-  function fechaISO(d) { return d.toISOString().slice(0, 10); }
+  function fechaISO(d) { return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; }
   function fechasPorDefecto() {
     const hoy = new Date();
     const hace30 = new Date(); hace30.setDate(hace30.getDate() - 30);
@@ -1073,7 +1073,7 @@ AUTH_READY.then(async function () {
     const nomina = cgNomina.value;
     const filtrados = enRango.filter(ep => (adminActual[ep.cedula] === true ? "QADM" : "QUIN") === nomina && (!codigoFiltro || ep.codigo === codigoFiltro));
     if (filtrados.length === 0) {
-      msgCargadores.textContent = `No hay ausencias de nómina ${nomina} que terminen en ese rango` + (codigoFiltro ? ` para "${mapa[codigoFiltro]?.codigo_descripcion || codigoFiltro}"` : "") + ".";
+      msgCargadores.textContent = `No hay ausencias de nómina ${nomina} que empiecen en ese rango` + (codigoFiltro ? ` para "${mapa[codigoFiltro]?.codigo_descripcion || codigoFiltro}"` : "") + ".";
       msgCargadores.className = "form-msg error";
       cgPreview.hidden = true;
       return;
@@ -1158,8 +1158,9 @@ AUTH_READY.then(async function () {
       if (inicio !== null) cerrar(anterior);
     });
 
-    const enRango = episodios.filter(ep => ep.fin >= cgDesde.value && ep.fin <= cgHasta.value);
-    if (enRango.length === 0) throw new Error("No hay ausencias que terminen en ese rango.");
+    // El rango se aplica sobre la fecha de INICIO del episodio (no la final); el episodio se reporta completo.
+    const enRango = episodios.filter(ep => ep.inicio >= cgDesde.value && ep.inicio <= cgHasta.value);
+    if (enRango.length === 0) throw new Error("No hay ausencias que empiecen en ese rango.");
 
     cacheAusentismo = { enRango, mapa, mapaTipoAusencia, adminActual: await obtenerMapaAdministrativo() };
     renderizarPreviewAusentismo();
