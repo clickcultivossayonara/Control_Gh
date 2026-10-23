@@ -340,7 +340,7 @@
   </div>
 
   <div class="aviso-super">
-    <strong>Módulo exclusivo de Super Admin.</strong> Corrige la entrada/salida de un día directamente en el registro de horas,
+    <strong>Módulo de Super Admin y Nómina.</strong> Nómina corrige únicamente la quincena en curso (cortes del 15 y fin de mes); el Super Admin no tiene límite. Corrige la entrada/salida de un día directamente en el registro de horas,
     el mismo que leen Registro Biométrico, Novedades y Nómina: las horas y la diferencia quedan corregidas en todos esos módulos
     y el día deja de figurar como ausencia. Cada cambio exige un motivo, queda en el historial con tu usuario y la fecha, y se puede
     revertir. El sincronizador no sobrescribe un registro ajustado.
@@ -436,7 +436,8 @@
 AUTH_READY.then(async function () {
   if (!requierePagina("ajuste_marcaciones")) return;
   // doble candado en la pagina; el candado real esta en la base de datos (auth_rol_real)
-  if (window.SESION.rol !== "super_admin") { location.href = "index.html"; return; }
+  if (!["super_admin", "nomina"].includes(window.SESION.rol)) { location.href = "index.html"; return; }
+  const ES_SUPER_ADMIN = window.SESION.rol === "super_admin";
   pintarSesion("sesion-box");
   filtrarSidebar();
 
