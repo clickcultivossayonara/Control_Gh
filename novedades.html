@@ -999,7 +999,8 @@ AUTH_READY.then(async function () {
   // horas extra (HEC) NO entra aqui: no tiene tope, ni ventana propia, ni biometrico, ni presupuesto.
   const CODIGOS_HORA_EXTRA = ["HE", "HEF", "HEFN", "HEN"];
   // Conceptos que se validan contra el registro biometrico del dia al guardar, por colaborador:
-  //  - TRABAJADOS: exigen marcacion (entrada o salida) ese dia.
+  //  - TRABAJADOS: exigen marcacion COMPLETA (entrada Y salida) ese dia; con una sola marcacion (o ninguna) el dia es una omision (DOR) y
+  //    no se puede cargar una novedad de estas hasta corregir la marcacion en Ajuste de marcaciones.
   //  - FESTIVOS: el dia debe ser festivo o domingo.
   //  - NOCTURNOS: la marcacion debe tocar el horario nocturno (de NOCHE_DESDE_HORA a NOCHE_HASTA_HORA del dia siguiente).
   // El resto de conceptos (ausencias, permisos, compensatorios, HEC, HC75/HC100, HR, HO, B073, CAP...) no se comparan.
@@ -1445,12 +1446,17 @@ AUTH_READY.then(async function () {
     return false;
   }
 
-  // Colaboradores cuya marcacion de ese dia NO respalda el concepto (sin marcacion, o sin pasar por la noche en los nocturnos).
-  // Chile no tiene biometrico: se omite. Lanza error si no se puede consultar (no se guarda a ciegas).
+  // Colaboradores cuya marcacion de ese dia NO respalda el concepto (sin marcacion completa, o sin pasar por la noche en los nocturnos).
+  // Chile y los cargos marcados "sin biometrico" no marcan: se omiten. Lanza error si no se puede consultar (no se guarda a ciegas).
   async function colaboradoresSinRespaldoDelConcepto(cedulas, fecha, cod) {
+    let sinBio = new Set();
+    try {
+      const rs = await fetch(`${SUPABASE_URL}/rest/v1/employees?select=cedula&sin_biometrico=eq.true&cedula=in.(${cedulas.join(",")})`, { headers: authHeaders() });
+      if (rs.ok) sinBio = new Set((await rs.json()).map((x) => x.cedula));
+    } catch { /* si no se puede consultar, se exige la marcacion como a los demas */ }
     const aVerificar = cedulas.filter((c) => {
       const e = empleadosPorCedula[c] || {};
-      return String(e.area || "").toUpperCase() !== "CHILE" && String(e.sede || "").toUpperCase() !== "CHILE";
+      return String(e.area || "").toUpperCase() !== "CHILE" && String(e.sede || "").toUpperCase() !== "CHILE" && !sinBio.has(Number(c));
     });
     if (aVerificar.length === 0) return [];
     const resp = await fetch(
@@ -1464,6 +1470,10 @@ AUTH_READY.then(async function () {
       const nombre = (empleadosPorCedula[c] || {}).nombre || String(c);
       const m = marca[c];
       if (!m || (!m.hora_entrada && !m.hora_salida)) { problemas.push({ nombre, detalle: "Sin marcación en el biométrico ese día." }); return; }
+      if (!m.hora_entrada || !m.hora_salida) {
+        problemas.push({ nombre, detalle: `Marcación incompleta: solo tiene ${m.hora_entrada ? "entrada" : "salida"} (falta la ${m.hora_entrada ? "salida" : "entrada"}). Se corrige en Ajuste de marcaciones antes de cargar esta novedad.` });
+        return;
+      }
       if (CODIGOS_NOCTURNOS.includes(cod.codigo) && !marcacionTocaNoche(fecha, m.hora_entrada, m.hora_salida)) {
         const h = (x) => (x ? String(x).slice(11, 16) : "—");
         problemas.push({ nombre, detalle: `Su marcación (${h(m.hora_entrada)} a ${h(m.hora_salida)}) no toca el horario nocturno (${NOCHE_DESDE_HORA}:00 a ${String(NOCHE_HASTA_HORA).padStart(2, "0")}:00).` });
@@ -1696,7 +1706,7 @@ AUTH_READY.then(async function () {
         msgNovedad.className = "form-msg error";
         mostrarPopupConcepto("No coincide con el registro biométrico",
           `Estos colaboradores no tienen respaldo en el biométrico para "${cod.codigo_descripcion}" el ${inFecha.value}.`,
-          sinRespaldo, "No se guardó nada. Quita a estos colaboradores de la selección y vuelve a guardar.");
+          sinRespaldo, "No se guardó nada. Quita a estos colaboradores de la selección o corrige su marcación (entrada y salida) en Ajuste de marcaciones y vuelve a guardar.");
         return;
       }
       msgNovedad.textContent = "";
@@ -2152,7 +2162,7 @@ AUTH_READY.then(async function () {
       }
       if (CODIGOS_FESTIVOS.includes(cod.codigo) || CODIGOS_TRABAJADOS.includes(cod.codigo)) {
         const sinRespaldo = await colaboradoresSinRespaldoDelConcepto([cedula], fecha, cod);
-        if (sinRespaldo.length > 0) { edMostrarMensaje(`No coincide con el registro biométrico: no hay respaldo para "${cod.codigo_descripcion}" el ${fecha}.`, "error"); return; }
+        if (sinRespaldo.length > 0) { edMostrarMensaje(`No coincide con el registro biométrico: no hay respaldo para "${cod.codigo_descripcion}" el ${fecha}. ${sinRespaldo[0].detalle}`, "error"); return; }
       }
       // 2. horas extra: ventana propia, tope por colaborador (sin contar la que se esta editando) y biometrico
       if (CODIGOS_HORA_EXTRA.includes(cod.codigo)) {
