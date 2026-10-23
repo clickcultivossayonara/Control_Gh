@@ -2199,17 +2199,19 @@ AUTH_READY.then(async function () {
       edGuardar.disabled = false;
     }
   }
-  // ---------- Eliminar una novedad (Super Admin sin limite; Administrador / Nomina / RRHH dentro de la ventana de edicion, o una DOR de cualquier fecha; la base lo valida y guarda una copia) ----------
+  // ---------- Eliminar una novedad (Super Admin sin limite; Administrador / Nomina / RRHH dentro de la ventana de edicion, o una DOR de cualquier fecha; jefes de area, supervisores y auxiliares solo las de su area dentro de la ventana de dias; la base lo valida y guarda una copia) ----------
   const delModal = document.getElementById("modal-eliminar-nov");
   const delMsg = document.getElementById("del-msg");
   const delConfirmar = document.getElementById("del-confirmar");
   let delNovedad = null;
-  const PUEDE_ELIMINAR = ES_SUPER_ADMIN || PUEDE_GESTIONAR_DOR;
+  const PUEDE_ELIMINAR = ES_SUPER_ADMIN || PUEDE_GESTIONAR_DOR || ROL_AREA_LIMITADA.includes(window.SESION.rol);
   function novedadEliminable(f) {
     if (!f || !f.fecha_novedad || !f.id_nomina) return false;
     if (ES_SUPER_ADMIN) return true;
     if (!PUEDE_ELIMINAR) return false;
-    return f.codigo_novedad === "DOR" || f.fecha_novedad.slice(0, 10) >= fechaMinimaGeneral();
+    // la DOR de cualquier fecha solo la elimina Nomina / Administracion; el resto (y los jefes, supervisores y auxiliares) solo dentro de la ventana de dias
+    if (f.codigo_novedad === "DOR" && PUEDE_GESTIONAR_DOR) return true;
+    return f.fecha_novedad.slice(0, 10) >= fechaMinimaGeneral();
   }
   if (PUEDE_ELIMINAR) lnTbody.closest("table").classList.add("con-eliminar");
   function abrirEliminar(id) {
