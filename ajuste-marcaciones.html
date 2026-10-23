@@ -238,9 +238,20 @@
   .form-msg { font-size: 13px; font-weight: 500; min-height: 18px; margin: 0; }
   .form-msg.error { color: var(--critical); }
   .form-msg.ok { color: var(--accent); }
-  .tabla-aj { min-width: 1080px; table-layout: auto; }
-  .tabla-aj td { white-space: nowrap; }
-  .tabla-aj td.motivo { white-space: normal; min-width: 220px; max-width: 320px; }
+  /* Columnas al ancho de su contenido; nombre, area, estado y motivo bajan de linea para que todo quepa; la columna de acciones queda
+     fija a la derecha para que "Editar" / "Revertir" siempre se vea aunque la tabla tenga que desplazarse. */
+  .tabla-aj { min-width: 0; table-layout: auto; }
+  .tabla-aj th, .tabla-aj td { padding-left: 6px; padding-right: 6px; }
+  .tabla-aj td { white-space: nowrap; overflow: visible; text-overflow: clip; }
+  .tabla-aj td.nombre, .tabla-aj td.area, .tabla-aj td.estado { white-space: normal; min-width: 90px; }
+  .tabla-aj td.usuario { white-space: normal; min-width: 150px; max-width: 190px; overflow-wrap: anywhere; }
+  .tabla-aj td.nombre { min-width: 140px; }
+  .tabla-aj td.motivo { white-space: normal; min-width: 180px; max-width: 280px; }
+  @media (min-width: 901px) {
+    .tabla-aj th.col-acciones, .tabla-aj td.col-acciones { position: sticky; right: 0; z-index: 2; box-shadow: -6px 0 8px -6px rgba(20, 24, 15, 0.25); }
+    .tabla-aj td.col-acciones { background: var(--surface); }
+    .tabla-aj th.col-acciones { background: var(--ink); }
+  }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; }
   .badge.ajustado { background: var(--warn-soft); color: var(--warn); }
   .badge.t-AJUSTE { background: var(--warn-soft); color: var(--warn); }
@@ -369,7 +380,7 @@
       <table class="tabla-aj" data-principales="Fecha,Nombre,Entrada,Salida,Horas,Diferencia,Acción">
         <thead><tr>
           <th>Fecha</th><th>Cédula</th><th>Nombre</th><th>Área</th><th>Entrada</th><th>Salida</th>
-          <th>Horas</th><th>Esperadas</th><th>Diferencia</th><th>Estado</th><th>Acción</th>
+          <th>Horas</th><th>Esperadas</th><th>Diferencia</th><th>Estado</th><th class="col-acciones">Acción</th>
         </tr></thead>
         <tbody id="reg-tbody"></tbody>
       </table>
@@ -387,7 +398,7 @@
       <table class="tabla-aj" data-principales="Cuándo,Tipo,Colaborador,Acción">
         <thead><tr>
           <th>Cuándo</th><th>Tipo</th><th>Día del registro</th><th>Colaborador</th><th>Antes</th><th>Después</th>
-          <th>Motivo</th><th>Usuario</th><th>Acción</th>
+          <th>Motivo</th><th>Usuario</th><th class="col-acciones">Acción</th>
         </tr></thead>
         <tbody id="his-tbody"></tbody>
       </table>
@@ -507,11 +518,11 @@ AUTH_READY.then(async function () {
             const dif = r.diferencia_tiempo == null ? "—" : `<span class="${Number(r.diferencia_tiempo) >= 0 ? "dif-pos" : "dif-neg"}">${Number(r.diferencia_tiempo) > 0 ? "+" : ""}${num2(r.diferencia_tiempo)}</span>`;
             return `<tr>
               <td class="num">${fmtFecha(r.fecha)}</td><td class="cedula">${r.cedula}</td>
-              <td class="nombre" title="${esc(r.nombre)}">${esc(r.nombre)}</td><td>${esc(r.area || "—")}</td>
+              <td class="nombre" title="${esc(r.nombre)}">${esc(r.nombre)}</td><td class="area">${esc(r.area || "—")}</td>
               <td class="num">${fmtHora(r.hora_entrada) || "—"}</td><td class="num">${fmtHora(r.hora_salida) || "—"}</td>
               <td class="num">${num2(r.horas_trabajadas)}</td><td class="num">${num2(r.horas_esperadas)}</td><td class="num">${dif}</td>
-              <td>${esc(r.estado)}${r.ajuste_manual ? ' <span class="badge ajustado">AJUSTADO</span>' : ""}</td>
-              <td><button type="button" class="btn-small" data-editar="${i}">Editar</button></td></tr>`;
+              <td class="estado">${esc(r.estado)}${r.ajuste_manual ? ' <span class="badge ajustado">AJUSTADO</span>' : ""}</td>
+              <td class="col-acciones"><button type="button" class="btn-small" data-editar="${i}">Editar</button></td></tr>`;
           }).join("");
     } catch (err) {
       $("reg-msg").textContent = "No se pudo consultar: " + (err.message || err); $("reg-msg").className = "form-msg error";
@@ -555,8 +566,8 @@ AUTH_READY.then(async function () {
               <td class="num">${fmtFecha(a.fecha)}</td>
               <td class="nombre">${esc(a.nombre || "")}<br><span class="cedula">${a.cedula}</span></td>
               <td class="num">${esc(rango(a.antes))}</td><td class="num">${esc(rango(a.despues))}</td>
-              <td class="motivo">${esc(a.motivo)}</td><td>${esc(a.usuario_email || "")}</td>
-              <td>${puedeRevertir ? `<button type="button" class="btn-small" data-revertir="${a.id}">Revertir</button>` : ""}</td></tr>`;
+              <td class="motivo">${esc(a.motivo)}</td><td class="usuario">${esc(a.usuario_email || "")}</td>
+              <td class="col-acciones">${puedeRevertir ? `<button type="button" class="btn-small" data-revertir="${a.id}">Revertir</button>` : ""}</td></tr>`;
           }).join("");
     } catch (err) {
       $("his-msg").textContent = "No se pudo cargar el historial: " + (err.message || err); $("his-msg").className = "form-msg error";
