@@ -541,6 +541,7 @@
         </div>
       </div>
       <p class="card-hint" id="hint-hora-extra" hidden style="margin: 6px 0 16px;"></p>
+      <div class="card-hint" id="hint-jornada" hidden style="margin: 0 0 16px; padding: 8px 12px; border: 1px solid var(--accent-soft-line); background: var(--accent-soft); border-radius: 8px; color: var(--ink);"></div>
       <p class="card-hint" id="hint-horas-sistema" hidden style="margin: 6px 0 16px;">Las horas de cada día las asigna el sistema según las horas esperadas de ese día de la semana (Configuraciones), por eso no se escriben.</p>
       <div class="horas-habilitadas" id="horas-habilitadas" hidden></div>
       <div class="form-actions">
@@ -1440,10 +1441,34 @@ AUTH_READY.then(async function () {
       nombre: (empleadosPorCedula[c] || {}).nombre || String(c), previas: ya[c] || 0 }));
   }
 
+  // Pista: cuanto trabajo la persona ese dia calendario (incluye el turno nocturno que empezo el dia anterior)
+  const hintJornada = document.getElementById("hint-jornada");
+  let pistaToken = 0;
+  async function actualizarPistaJornada() {
+    const mio = ++pistaToken, cod = codigosPorValor[selCodigo.value], cedulas = [...msColaborador.seleccion], fecha = inFecha.value;
+    const aplica = cod && fecha && cedulas.length > 0 && cedulas.length <= 3 && !TIPOS_RANGO_FECHA.includes(cod.tipo) && (CODIGOS_TRABAJADOS.includes(cod.codigo) || CODIGOS_NOCTURNOS.includes(cod.codigo));
+    if (!aplica) { hintJornada.hidden = true; return; }
+    try {
+      const jor = await jornadasQueCubren(cedulas, fecha);
+      if (mio !== pistaToken) return;
+      const lineas = cedulas.map((c) => {
+        const nombre = (empleadosPorCedula[c] || {}).nombre || String(c), m = elegirJornada(jor[c]);
+        if (!m || !m.hora_entrada || !m.hora_salida) return null;
+        const t = tramoDelDia(m.hora_entrada, m.hora_salida, fecha);
+        if (!t) return null;
+        const turno = m._f !== fecha ? `turno que empezó el ${fmtFechaCorta(m._f)} (${String(m.hora_entrada).slice(11, 16)} a ${String(m.hora_salida).slice(11, 16)})` : `turno de ${String(m.hora_entrada).slice(11, 16)} a ${String(m.hora_salida).slice(11, 16)}${String(m.hora_salida).slice(0, 10) > fecha ? " (termina el día siguiente)" : ""}`;
+        return `<b>${escaparTexto(nombre)}</b>: ${turno}. El ${fmtFechaCorta(fecha)} trabajó <b>${fmtH(t.horas)}</b> (${hhmmMs(t.desde, fecha)} a ${hhmmMs(t.hasta, fecha)}), de ellas <b>${fmtH(t.nocturnas)}</b> en horario nocturno.`;
+      }).filter(Boolean);
+      hintJornada.innerHTML = lineas.join("<br>");
+      hintJornada.hidden = lineas.length === 0;
+    } catch { if (mio === pistaToken) hintJornada.hidden = true; }
+  }
+
   let tValidar, validarToken = 0;
   function validarEnVivo() {
     clearTimeout(tValidar);
     tValidar = setTimeout(async () => {
+      actualizarPistaJornada();
       const mia = ++validarToken;
       const cod = codigosPorValor[selCodigo.value];
       const esExtra = cod && CODIGOS_HORA_EXTRA.includes(cod.codigo);
@@ -1576,9 +1601,55 @@ AUTH_READY.then(async function () {
     return false;
   }
 
+  // ---------- Jornadas que cruzan la medianoche ----------
+  // Una marcacion (registro) pertenece al dia en que EMPIEZA el turno, pero las horas se clasifican por el dia calendario en que se
+  // trabajan: un turno del sabado 20:27 al domingo 04:23 tiene 3,5 h de sabado y 4,4 h de domingo (festivas). Por eso, para validar una
+  // novedad de un dia se mira la jornada de ese dia o la del dia anterior cuya salida cae en este.
+  async function jornadasQueCubren(cedulas, fecha) {
+    const ayer = restarDias(fecha, 1), por = {};
+    for (let i = 0; i < cedulas.length; i += 100) {
+      const resp = await fetch(
+        `${SUPABASE_URL}/rest/v1/registro_horas_detalle?select=cedula,fecha,hora_entrada,hora_salida,diferencia_tiempo,horas_trabajadas&fecha=gte.${ayer}&fecha=lte.${fecha}` +
+        `&cedula=in.(${cedulas.slice(i, i + 100).join(",")})&limit=1000`, { headers: authHeaders() });
+      if (!resp.ok) throw new Error("No se pudo consultar el registro biométrico (HTTP " + resp.status + ").");
+      (await resp.json()).forEach((r) => {
+        const f = String(r.fecha).slice(0, 10);
+        if (f === fecha || (f === ayer && r.hora_salida && String(r.hora_salida).slice(0, 10) === fecha)) (por[r.cedula] = por[r.cedula] || []).push(Object.assign({ _f: f }, r));
+      });
+    }
+    return por;
+  }
+  // la jornada que respalda el dia: prefiere la completa y, a igualdad, la que empezo ese mismo dia
+  function elegirJornada(lista) {
+    if (!lista || !lista.length) return null;
+    return [...lista].sort((a, b) => ((b.hora_entrada && b.hora_salida ? 1 : 0) - (a.hora_entrada && a.hora_salida ? 1 : 0)) || (a._f < b._f ? 1 : -1))[0];
+  }
+  const HORA_MS = 3600000;
+  const msLocal = (s) => new Date(String(s).slice(0, 19)).getTime();
+  // horas nocturnas (de NOCHE_DESDE_HORA a NOCHE_HASTA_HORA del dia siguiente) dentro de [a, b] (ms)
+  function nocturnasEnRango(a, b) {
+    let total = 0;
+    const primero = new Date(a); primero.setHours(0, 0, 0, 0);
+    for (let d = primero.getTime() - 86400000; d <= b; d += 86400000) {
+      [[d, d + NOCHE_HASTA_HORA * HORA_MS], [d + NOCHE_DESDE_HORA * HORA_MS, d + 24 * HORA_MS]].forEach(([x, y]) => { total += Math.max(0, Math.min(b, y) - Math.max(a, x)); });
+    }
+    return total / HORA_MS;
+  }
+  // La parte de la jornada que cae en el dia calendario `fecha`
+  function tramoDelDia(ent, sal, fecha) {
+    const ini = msLocal(fecha + "T00:00:00"), fin = ini + 86400000, a = Math.max(msLocal(ent), ini), b = Math.min(msLocal(sal), fin);
+    if (!(b > a)) return null;
+    return { desde: a, hasta: b, horas: (b - a) / HORA_MS, nocturnas: nocturnasEnRango(a, b) };
+  }
+  const hhmmMs = (ms, fecha) => { const d = new Date(ms); return ms === msLocal(fecha + "T00:00:00") + 86400000 ? "24:00" : `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  const fmtFechaCorta = (iso) => { const [, m, dd] = iso.split("-"); return `${dd}/${m}`; };
+  // Conceptos con tope segun lo realmente trabajado: HN hasta las horas nocturnas de TODO el turno; HF hasta las horas de ese dia;
+  // HFN y RNF hasta las horas nocturnas de ese dia. Tolerancia de media hora.
+  const TOLERANCIA_TRAMO_H = 0.5;
+
   // Colaboradores cuya marcacion de ese dia NO respalda el concepto (sin marcacion completa, o sin pasar por la noche en los nocturnos).
   // Chile y los cargos marcados "sin biometrico" no marcan: se omiten. Lanza error si no se puede consultar (no se guarda a ciegas).
-  async function colaboradoresSinRespaldoDelConcepto(cedulas, fecha, cod) {
+  async function colaboradoresSinRespaldoDelConcepto(cedulas, fecha, cod, horas = null) {
     let sinBio = new Set();
     try {
       const rs = await fetch(`${SUPABASE_URL}/rest/v1/employees?select=cedula&sin_biometrico=eq.true&cedula=in.(${cedulas.join(",")})`, { headers: authHeaders() });
@@ -1589,24 +1660,30 @@ AUTH_READY.then(async function () {
       return String(e.area || "").toUpperCase() !== "CHILE" && String(e.sede || "").toUpperCase() !== "CHILE" && !sinBio.has(Number(c));
     });
     if (aVerificar.length === 0) return [];
-    const resp = await fetch(
-      `${SUPABASE_URL}/rest/v1/registro_horas_detalle?select=cedula,hora_entrada,hora_salida&fecha=eq.${fecha}&cedula=in.(${aVerificar.join(",")})`,
-      { headers: authHeaders() });
-    if (!resp.ok) throw new Error("No se pudo consultar el registro biométrico (HTTP " + resp.status + ").");
-    const marca = {};
-    (await resp.json()).forEach((r) => { marca[r.cedula] = r; });
+    const jor = await jornadasQueCubren(aVerificar, fecha);
     const problemas = [];
     aVerificar.forEach((c) => {
       const nombre = (empleadosPorCedula[c] || {}).nombre || String(c);
-      const m = marca[c];
+      const m = elegirJornada(jor[c]);
       if (!m || (!m.hora_entrada && !m.hora_salida)) { problemas.push({ nombre, detalle: "Sin marcación en el biométrico ese día." }); return; }
       if (!m.hora_entrada || !m.hora_salida) {
         problemas.push({ nombre, detalle: `Marcación incompleta: solo tiene ${m.hora_entrada ? "entrada" : "salida"} (falta la ${m.hora_entrada ? "salida" : "entrada"}). Se corrige en Ajuste de marcaciones antes de cargar esta novedad.` });
         return;
       }
-      if (CODIGOS_NOCTURNOS.includes(cod.codigo) && !marcacionTocaNoche(fecha, m.hora_entrada, m.hora_salida)) {
-        const h = (x) => (x ? String(x).slice(11, 16) : "—");
-        problemas.push({ nombre, detalle: `Su marcación (${h(m.hora_entrada)} a ${h(m.hora_salida)}) no toca el horario nocturno (${NOCHE_DESDE_HORA}:00 a ${String(NOCHE_HASTA_HORA).padStart(2, "0")}:00).` });
+      const t = tramoDelDia(m.hora_entrada, m.hora_salida, fecha);
+      if (!t) { problemas.push({ nombre, detalle: "La jornada no tiene horas trabajadas en ese día." }); return; }
+      const deAyer = m._f !== fecha ? `, turno que empezó el ${fmtFechaCorta(m._f)}` : "";
+      if (CODIGOS_NOCTURNOS.includes(cod.codigo) && !(t.nocturnas > 0)) {
+        problemas.push({ nombre, detalle: `Su marcación (${hhmmMs(t.desde, fecha)} a ${hhmmMs(t.hasta, fecha)}${deAyer}) no toca el horario nocturno (${NOCHE_DESDE_HORA}:00 a ${String(NOCHE_HASTA_HORA).padStart(2, "0")}:00).` });
+        return;
+      }
+      if (horas && ["HN", "HF", "HFN", "RNF"].includes(cod.codigo)) {
+        const tope = cod.codigo === "HN" ? nocturnasEnRango(msLocal(m.hora_entrada), msLocal(m.hora_salida)) : (cod.codigo === "HF" ? t.horas : t.nocturnas);
+        if (horas > tope + TOLERANCIA_TRAMO_H) {
+          problemas.push({ nombre, detalle: cod.codigo === "HN"
+            ? `Su turno (${fmtFechaCorta(m._f)} ${String(m.hora_entrada).slice(11, 16)} a ${fmtFechaCorta(String(m.hora_salida).slice(0, 10))} ${String(m.hora_salida).slice(11, 16)}) tiene ${fmtH(tope)} en horario nocturno; no se pueden cargar ${fmtH(horas)}.`
+            : `Ese día trabajó ${fmtH(tope)}${cod.codigo === "HF" ? "" : " en horario nocturno"} (${hhmmMs(t.desde, fecha)} a ${hhmmMs(t.hasta, fecha)}${deAyer}); no se pueden cargar ${fmtH(horas)}.` });
+        }
       }
     });
     return problemas;
@@ -1641,13 +1718,9 @@ AUTH_READY.then(async function () {
     if (aVerificar.length === 0) return [];
     const lista = aVerificar.join(",");
 
-    const respBio = await fetch(
-      `${SUPABASE_URL}/rest/v1/registro_horas_detalle?select=cedula,diferencia_tiempo,horas_trabajadas&fecha=eq.${fecha}&cedula=in.(${lista})`,
-      { headers: authHeaders() });
-    if (!respBio.ok) throw new Error("No se pudo consultar el registro biométrico (HTTP " + respBio.status + ").");
-    const filasBio = await respBio.json();
+    const jorBio = await jornadasQueCubren(aVerificar, fecha);
     const bioPorCedula = {};
-    filasBio.forEach((r) => { bioPorCedula[r.cedula] = r; });
+    aVerificar.forEach((c) => { const j = elegirJornada(jorBio[c]); if (j) bioPorCedula[c] = j; });
 
     // horas extra que ya tiene cargadas ese mismo dia
     const siguiente = restarDias(fecha, -1);
@@ -1823,7 +1896,7 @@ AUTH_READY.then(async function () {
       msgNovedad.className = "form-msg";
       let sinRespaldo;
       try {
-        sinRespaldo = await colaboradoresSinRespaldoDelConcepto(cedulasSeleccionadas, inFecha.value, cod);
+        sinRespaldo = await colaboradoresSinRespaldoDelConcepto(cedulasSeleccionadas, inFecha.value, cod, horasSistema ? null : Number(inHora.value));
       } catch (err) {
         btnNovedad.disabled = false;
         msgNovedad.textContent = "No se pudo verificar el biométrico, no se guardó nada: " + (err.message || err);
@@ -2291,7 +2364,7 @@ AUTH_READY.then(async function () {
         edMostrarMensaje(`"${cod.codigo_descripcion}" solo se puede cargar en domingos o festivos; el ${fecha} no lo es.`, "error"); return;
       }
       if (CODIGOS_FESTIVOS.includes(cod.codigo) || CODIGOS_TRABAJADOS.includes(cod.codigo)) {
-        const sinRespaldo = await colaboradoresSinRespaldoDelConcepto([cedula], fecha, cod);
+        const sinRespaldo = await colaboradoresSinRespaldoDelConcepto([cedula], fecha, cod, hora);
         if (sinRespaldo.length > 0) { edMostrarMensaje(`No coincide con el registro biométrico: no hay respaldo para "${cod.codigo_descripcion}" el ${fecha}. ${sinRespaldo[0].detalle}`, "error"); return; }
       }
       // 2. horas extra: ventana propia, tope por colaborador (sin contar la que se esta editando) y biometrico
