@@ -299,6 +299,46 @@
   .empty-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
 
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
+  /* ---------- Dashboard por novedad ---------- */
+  .dash-presets { display: flex; flex-wrap: wrap; gap: 6px; margin: -4px 0 14px; }
+  .dash-presets button { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .dash-presets button:hover { border-color: var(--accent); color: var(--accent); }
+  .dash-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .dash-kpi { background: var(--accent-soft); border: 1px solid var(--accent-soft-line); border-radius: var(--radius); padding: 12px 14px; display: flex; flex-direction: column; gap: 2px; }
+  .dash-kpi b { font-size: 24px; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  .dash-kpi span { font-size: 11.5px; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; }
+  .dash-tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; align-items: start; }
+  .dash-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .dash-card-h { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .dash-cod { font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 700; font-size: 13px; background: var(--ink); color: var(--paper); padding: 3px 8px; border-radius: 6px; flex-shrink: 0; }
+  .dash-desc { font-weight: 600; font-size: 13px; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dash-tipo { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; padding: 2px 8px; border-radius: 20px; flex-shrink: 0; background: var(--line); color: var(--ink-soft); }
+  .dash-tipo.t-Ausencia { background: var(--critical-soft); color: var(--critical); }
+  .dash-tipo.t-Horas { background: var(--accent-soft); color: var(--accent); }
+  .dash-tipo.t-Permiso { background: var(--warn-soft); color: var(--warn); }
+  .dash-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .dash-mini div { display: flex; flex-direction: column; }
+  .dash-mini b { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .dash-mini span { font-size: 11px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; }
+  .dash-barras { display: flex; align-items: flex-end; gap: 2px; height: 54px; border-bottom: 1px solid var(--line-strong); }
+  .dash-barras i { flex: 1; min-width: 2px; background: var(--accent); border-radius: 2px 2px 0 0; opacity: 0.9; }
+  .dash-barras i.vacio { background: var(--line-strong); opacity: 0.6; }
+  .dash-barras i:hover { opacity: 1; background: var(--ink); }
+  .dash-barras-eje { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--ink-faint); margin-top: -6px; }
+  .dash-areas { display: flex; flex-direction: column; gap: 5px; }
+  .dash-area { display: grid; grid-template-columns: minmax(70px, 38%) 1fr 34px; gap: 8px; align-items: center; font-size: 12px; }
+  .dash-area-n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-soft); }
+  .dash-area-b { background: var(--line); border-radius: 4px; height: 8px; overflow: hidden; }
+  .dash-area-b b { display: block; height: 100%; background: var(--accent); border-radius: 4px; }
+  .dash-area-c { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .dash-mas { font-size: 11.5px; color: var(--ink-faint); }
+  .dash-detalle summary { cursor: pointer; font-size: 12.5px; font-weight: 600; color: var(--accent); user-select: none; }
+  .dash-detalle-cuerpo { margin-top: 8px; max-height: 320px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .dash-tabla { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .dash-tabla th { position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 6px 8px; font-size: 10px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .dash-tabla td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .dash-tabla .cedula { color: var(--ink-faint); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 11px; }
+  @media (max-width: 520px) { .dash-tarjetas { grid-template-columns: 1fr; } }
 </style>
 <link rel="stylesheet" href="responsive.css">
 <script src="responsive.js" defer></script>
@@ -379,6 +419,7 @@
   <div class="tabs">
     <button class="tab-btn activo" id="tab-novedad" type="button">Ingreso de Novedades</button>
     <button class="tab-btn" id="tab-extra" type="button">Presupuesto Horas extra</button>
+    <button class="tab-btn" id="tab-dashboard" type="button">Dashboard por novedad</button>
   </div>
 
   <section class="card" id="card-novedad">
@@ -516,6 +557,27 @@
         <tbody id="ln-tbody"></tbody>
       </table>
     </div>
+  </section>
+
+  <section class="card" id="card-dashboard" hidden>
+    <h2>Dashboard de novedades</h2>
+    <p class="card-hint">Una tarjeta por cada novedad dentro del rango de fechas: cuántos registros, cuántas personas, cuántas horas, cómo se reparten por día y por área, y quiénes son. Cambia las fechas o los filtros y se actualiza.</p>
+    <div class="filters">
+      <div class="field"><label for="d-desde">Fecha inicial</label><input type="date" id="d-desde"></div>
+      <div class="field"><label for="d-hasta">Fecha final</label><input type="date" id="d-hasta"></div>
+      <div class="field"><label>Área</label><div class="multiselect" id="d-area"></div></div>
+      <div class="field"><label for="d-tipo">Tipo de novedad</label>
+        <select id="d-tipo"><option value="">Todos</option><option value="Ausencia">Ausencia</option><option value="Horas">Horas</option><option value="Permiso">Permiso</option><option value="Compensatorio">Compensatorio</option><option value="Ingreso">Ingreso</option></select></div>
+      <div class="field"><label for="d-buscar">Persona</label><input type="text" id="d-buscar" placeholder="Cédula o nombre" autocomplete="off"></div>
+      <button class="clear-btn" id="d-actualizar" type="button">Actualizar</button>
+    </div>
+    <div class="dash-presets" id="dash-presets">
+      <button type="button" data-preset="hoy">Hoy</button><button type="button" data-preset="quincena">Quincena actual</button>
+      <button type="button" data-preset="quincena-anterior">Quincena anterior</button><button type="button" data-preset="mes">Este mes</button><button type="button" data-preset="30">Últimos 30 días</button>
+    </div>
+    <p class="form-msg" id="dash-msg"></p>
+    <div class="dash-kpis" id="dash-kpis"></div>
+    <div class="dash-tarjetas" id="dash-tarjetas"></div>
   </section>
 
   <section class="card" id="card-extra" hidden>
@@ -734,14 +796,16 @@ AUTH_READY.then(async function () {
   const tabExtra = document.getElementById("tab-extra");
   const cardNovedad = document.getElementById("card-novedad");
   const cardExtra = document.getElementById("card-extra");
-  tabNovedad.addEventListener("click", () => {
-    tabNovedad.classList.add("activo"); tabExtra.classList.remove("activo");
-    cardNovedad.hidden = false; cardExtra.hidden = true;
-  });
-  tabExtra.addEventListener("click", () => {
-    tabExtra.classList.add("activo"); tabNovedad.classList.remove("activo");
-    cardExtra.hidden = false; cardNovedad.hidden = true;
-  });
+  const tabDashboard = document.getElementById("tab-dashboard");
+  const cardDashboard = document.getElementById("card-dashboard");
+  function mostrarPestana(cual) {
+    [[tabNovedad, cardNovedad, "novedad"], [tabExtra, cardExtra, "extra"], [tabDashboard, cardDashboard, "dashboard"]].forEach(([t, c, n]) => {
+      t.classList.toggle("activo", n === cual); c.hidden = n !== cual;
+    });
+  }
+  tabNovedad.addEventListener("click", () => mostrarPestana("novedad"));
+  tabExtra.addEventListener("click", () => mostrarPestana("extra"));
+  tabDashboard.addEventListener("click", () => { mostrarPestana("dashboard"); if (!dashCargado) cargarDashboard(); });
 
   // ---------------- multiselect generico ----------------
   // conSeleccionarTodos: agrega arriba la opcion "Seleccionar todos" (aplica a lo que muestre el buscador) para marcar
@@ -2345,6 +2409,167 @@ AUTH_READY.then(async function () {
     cargarListaNovedades();
   });
   cargarListaNovedades();
+
+  // ---------------- Dashboard por novedad ----------------
+  // Una tarjeta por cada novedad (codigo) dentro del rango de fechas elegido: totales, evolucion por dia, areas y personas.
+  // Lee de novedades_nomina_detalle, asi cada rol ve solo lo que ya le corresponde (los jefes, solo sus areas).
+  const DASH_MAX_DIAS = 186;
+  const dDesde = document.getElementById("d-desde"), dHasta = document.getElementById("d-hasta");
+  const dTipo = document.getElementById("d-tipo"), dBuscar = document.getElementById("d-buscar");
+  const dMsg = document.getElementById("dash-msg"), dKpis = document.getElementById("dash-kpis"), dTarjetas = document.getElementById("dash-tarjetas");
+  const msAreaDash = crearMultiselect("d-area", "Todas", () => cargarDashboard());
+  msAreaDash.establecerOpciones(AREAS_CONOCIDAS.map((a) => [a, a]), "Sin áreas");
+
+  let dashFilas = [], dashToken = 0, dashAgrupado = [], dashCargado = false;
+  const fmtNum = (n) => Number(n).toLocaleString("es-CO", { maximumFractionDigits: 2 });
+  const fmtDiaCorto = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y.slice(2)}`; };
+  const diasEntre = (a, b) => Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
+
+  function rangoPreset(nombre) {
+    const hoy = fechaHoy();
+    if (nombre === "hoy") return [hoy, hoy];
+    if (nombre === "quincena") return [inicioQuincena(hoy), hoy];
+    if (nombre === "quincena-anterior") {
+      const [y, m, d] = hoy.split("-").map(Number);
+      if (d <= 15) {
+        const ult = new Date(y, m - 1, 0);     // ultimo dia del mes anterior
+        const p = (n) => String(n).padStart(2, "0");
+        return [`${ult.getFullYear()}-${p(ult.getMonth() + 1)}-16`, `${ult.getFullYear()}-${p(ult.getMonth() + 1)}-${p(ult.getDate())}`];
+      }
+      return [`${hoy.slice(0, 7)}-01`, `${hoy.slice(0, 7)}-15`];
+    }
+    if (nombre === "mes") return [`${hoy.slice(0, 7)}-01`, hoy];
+    return [restarDias(hoy, 29), hoy];       // ultimos 30 dias
+  }
+  document.querySelectorAll("#dash-presets [data-preset]").forEach((b) => b.addEventListener("click", () => {
+    const [a, z] = rangoPreset(b.dataset.preset);
+    dDesde.value = a; dHasta.value = z;
+    cargarDashboard();
+  }));
+
+  async function cargarDashboard() {
+    const desde = dDesde.value, hasta = dHasta.value;
+    if (!desde || !hasta) { dMsg.textContent = "Elige la fecha inicial y la fecha final."; dMsg.className = "form-msg error"; return; }
+    if (desde > hasta) { dMsg.textContent = "La fecha inicial no puede ser posterior a la fecha final."; dMsg.className = "form-msg error"; return; }
+    if (diasEntre(desde, hasta) + 1 > DASH_MAX_DIAS) { dMsg.textContent = `El rango es muy amplio (máximo ${DASH_MAX_DIAS} días). Reduce las fechas.`; dMsg.className = "form-msg error"; return; }
+    const mio = ++dashToken;
+    dMsg.textContent = "Cargando novedades…"; dMsg.className = "form-msg";
+    dTarjetas.innerHTML = ""; dKpis.innerHTML = "";
+    const areas = [...msAreaDash.seleccion];
+    let url = `${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?select=id_nomina,cedula,nombre_colaborador,area,fecha_novedad,codigo_novedad,codigo_descripcion,tipo_novedad,hora` +
+      `&fecha_novedad=gte.${desde}T00:00:00&fecha_novedad=lt.${restarDias(hasta, -1)}T00:00:00`;
+    if (areas.length) url += `&area=in.(${areas.map((a) => `"${a.replace(/"/g, "")}"`).join(",")})`;
+    try {
+      const filas = await traerTodo(url, "id_nomina.asc", "No se pudieron consultar las novedades");
+      if (mio !== dashToken) return;
+      dashFilas = filas; dashCargado = true;
+      pintarDashboard();
+    } catch (err) {
+      if (mio !== dashToken) return;
+      dMsg.textContent = "No se pudo cargar el dashboard: " + (err.message || err); dMsg.className = "form-msg error";
+    }
+  }
+
+  // Agrupa las filas (ya filtradas por tipo / persona) por codigo de novedad
+  function agruparPorNovedad(filas) {
+    const mapa = new Map();
+    filas.forEach((f) => {
+      const k = f.codigo_novedad;
+      let g = mapa.get(k);
+      if (!g) { g = { codigo: k, descripcion: f.codigo_descripcion || k, tipo: f.tipo_novedad || "—", registros: 0, horas: 0, personas: new Map(), dias: {}, areas: {} }; mapa.set(k, g); }
+      const dia = String(f.fecha_novedad).slice(0, 10);
+      g.registros++; g.horas += Number(f.hora || 0);
+      g.dias[dia] = (g.dias[dia] || 0) + 1;
+      g.areas[f.area || "—"] = (g.areas[f.area || "—"] || 0) + 1;
+      let p = g.personas.get(f.cedula);
+      if (!p) { p = { cedula: f.cedula, nombre: f.nombre_colaborador || "", area: f.area || "—", dias: new Set(), horas: 0, primero: dia, ultimo: dia }; g.personas.set(f.cedula, p); }
+      p.dias.add(dia); p.horas += Number(f.hora || 0);
+      if (dia < p.primero) p.primero = dia;
+      if (dia > p.ultimo) p.ultimo = dia;
+    });
+    return [...mapa.values()].sort((a, b) => b.registros - a.registros);
+  }
+
+  // Barras por dia (o por semana si el rango pasa de 62 dias) para una novedad
+  function barrasHTML(g, desde, hasta) {
+    const total = diasEntre(desde, hasta) + 1, paso = total > 62 ? 7 : 1;
+    const cubos = [];
+    for (let i = 0; i < total; i += paso) {
+      let n = 0, ini = restarDias(desde, -i), fin = restarDias(desde, -Math.min(i + paso - 1, total - 1));
+      for (let j = i; j < Math.min(i + paso, total); j++) n += g.dias[restarDias(desde, -j)] || 0;
+      cubos.push({ n, ini, fin });
+    }
+    const max = Math.max(1, ...cubos.map((c) => c.n));
+    return `<div class="dash-barras">${cubos.map((c) =>
+      `<i class="${c.n ? "" : "vacio"}" style="height:${c.n ? Math.max(8, Math.round(100 * c.n / max)) : 3}%" title="${paso === 1 ? fmtDiaCorto(c.ini) : fmtDiaCorto(c.ini) + " a " + fmtDiaCorto(c.fin)}: ${c.n}"></i>`).join("")}</div>
+      <div class="dash-barras-eje"><span>${fmtDiaCorto(desde)}</span><span>${paso === 7 ? "por semana" : "por día"} · máx. ${max}</span><span>${fmtDiaCorto(hasta)}</span></div>`;
+  }
+
+  const descSinCodigo = (g) => { const d = String(g.descripcion), p = g.codigo + "-"; return d.startsWith(p) ? d.slice(p.length) : d; };
+  function tarjetaHTML(g, desde, hasta) {
+    const areas = Object.entries(g.areas).sort((a, b) => b[1] - a[1]);
+    const maxA = areas.length ? areas[0][1] : 1;
+    const topAreas = areas.slice(0, 4).map(([a, n]) =>
+      `<div class="dash-area"><span class="dash-area-n" title="${escaparTexto(a)}">${escaparTexto(a)}</span><span class="dash-area-b"><b style="width:${Math.round(100 * n / maxA)}%"></b></span><span class="dash-area-c">${n}</span></div>`).join("");
+    return `<article class="dash-card" data-codigo="${escaparTexto(g.codigo)}">
+      <header class="dash-card-h">
+        <span class="dash-cod">${escaparTexto(g.codigo)}</span>
+        <span class="dash-desc" title="${escaparTexto(g.descripcion)}">${escaparTexto(descSinCodigo(g))}</span>
+        <span class="dash-tipo t-${escaparTexto(g.tipo)}">${escaparTexto(g.tipo)}</span>
+      </header>
+      <div class="dash-mini">
+        <div><b>${fmtNum(g.registros)}</b><span>registros</span></div>
+        <div><b>${fmtNum(g.personas.size)}</b><span>personas</span></div>
+        <div><b>${fmtNum(g.horas)}</b><span>horas</span></div>
+      </div>
+      ${barrasHTML(g, desde, hasta)}
+      <div class="dash-areas">${topAreas}${areas.length > 4 ? `<div class="dash-mas">+ ${areas.length - 4} área${areas.length - 4 === 1 ? "" : "s"} más</div>` : ""}</div>
+      <details class="dash-detalle"><summary>Ver personas (${g.personas.size})</summary><div class="dash-detalle-cuerpo"></div></details>
+    </article>`;
+  }
+
+  function llenarDetalle(g, cuerpo) {
+    if (cuerpo.dataset.listo) return;
+    cuerpo.dataset.listo = "1";
+    const personas = [...g.personas.values()].sort((a, b) => b.dias.size - a.dias.size || a.nombre.localeCompare(b.nombre, "es"));
+    const LIM = 100;
+    cuerpo.innerHTML = `<table class="dash-tabla"><thead><tr><th>Persona</th><th>Área</th><th>Días</th><th>Primer → último día</th><th>Horas</th></tr></thead><tbody>` +
+      personas.slice(0, LIM).map((p) => `<tr><td><b>${escaparTexto(p.nombre)}</b><br><span class="cedula">${p.cedula}</span></td><td>${escaparTexto(p.area)}</td><td class="num">${p.dias.size}</td>` +
+        `<td class="num">${fmtDiaCorto(p.primero)}${p.primero === p.ultimo ? "" : " → " + fmtDiaCorto(p.ultimo)}</td><td class="num">${fmtNum(p.horas)}</td></tr>`).join("") +
+      `</tbody></table>` + (personas.length > LIM ? `<p class="card-hint" style="margin:8px 0 0">Mostrando ${LIM} de ${personas.length} personas; usa el buscador para afinar.</p>` : "");
+  }
+
+  function pintarDashboard() {
+    const desde = dDesde.value, hasta = dHasta.value, tipo = dTipo.value;
+    const q = dBuscar.value.trim().toLowerCase();
+    const filas = dashFilas.filter((f) => (!tipo || f.tipo_novedad === tipo) &&
+      (!q || String(f.cedula).includes(q) || String(f.nombre_colaborador || "").toLowerCase().includes(q)));
+    dashAgrupado = agruparPorNovedad(filas);
+    const personas = new Set(filas.map((f) => f.cedula));
+    const horas = filas.reduce((s, f) => s + Number(f.hora || 0), 0);
+    const kpi = (v, e) => `<div class="dash-kpi"><b>${fmtNum(v)}</b><span>${e}</span></div>`;
+    dKpis.innerHTML = kpi(filas.length, "registros (persona-día)") + kpi(personas.size, "personas distintas") + kpi(dashAgrupado.length, "novedades distintas") + kpi(horas, "horas en total");
+    if (filas.length === 0) {
+      dMsg.textContent = ""; dMsg.className = "form-msg";
+      dTarjetas.innerHTML = `<div class="empty-state" style="grid-column:1/-1">Sin novedades entre ${fmtDiaCorto(desde)} y ${fmtDiaCorto(hasta)} con estos filtros.</div>`;
+      return;
+    }
+    dMsg.textContent = `${fmtDiaCorto(desde)} a ${fmtDiaCorto(hasta)} · ${dashAgrupado.length} novedad${dashAgrupado.length === 1 ? "" : "es"}`; dMsg.className = "form-msg ok";
+    dTarjetas.innerHTML = dashAgrupado.map((g) => tarjetaHTML(g, desde, hasta)).join("");
+  }
+
+  dTarjetas.addEventListener("toggle", (e) => {
+    const det = e.target; if (!det.matches || !det.matches("details.dash-detalle") || !det.open) return;
+    const g = dashAgrupado.find((x) => x.codigo === det.closest(".dash-card").dataset.codigo);
+    if (g) llenarDetalle(g, det.querySelector(".dash-detalle-cuerpo"));
+  }, true);
+
+  let dashTimer;
+  [dDesde, dHasta].forEach((el) => el.addEventListener("change", () => { clearTimeout(dashTimer); dashTimer = setTimeout(cargarDashboard, 350); }));
+  dTipo.addEventListener("change", () => { if (dashCargado) pintarDashboard(); });
+  dBuscar.addEventListener("input", () => { clearTimeout(dashTimer); dashTimer = setTimeout(() => { if (dashCargado) pintarDashboard(); }, 250); });
+  document.getElementById("d-actualizar").addEventListener("click", cargarDashboard);
+  { const [a, z] = rangoPreset("quincena"); dDesde.value = a; dHasta.value = z; }
 
   // ---------------- lista: extras registradas ----------------
   const leBuscar = document.getElementById("le-buscar");
