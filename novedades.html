@@ -346,6 +346,25 @@
   .ley-n b { color: var(--ink); }
   .ley-v { font-weight: 700; font-variant-numeric: tabular-nums; }
   .ley-p { color: var(--ink-faint); text-align: right; font-variant-numeric: tabular-nums; }
+  .dash-tabla-wrap { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
+  .dash-tabla2 { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+  .dash-tabla2 th:nth-child(1) { width: 27%; } .dash-tabla2 th:nth-child(2) { width: 16%; } .dash-tabla2 th:nth-child(3) { width: 27%; }
+  .dash-tabla2 th:nth-child(4), .dash-tabla2 th:nth-child(5) { width: 10%; } .dash-tabla2 th:nth-child(6) { width: 10%; }
+  .dash-tabla2 td { overflow-wrap: anywhere; white-space: normal; overflow: visible; text-overflow: clip; }
+  .dash-tabla2 th { white-space: normal; line-height: 1.2; overflow-wrap: normal; }
+  .dash-tabla2 th { position: sticky; top: 0; z-index: 1; background: var(--ink); color: var(--paper); text-align: left; padding: 7px 9px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.02em; cursor: pointer; user-select: none; }
+  .dash-tabla2 th:hover { background: var(--accent); }
+  .dash-tabla2 th i { font-style: normal; opacity: 0.5; margin-left: 3px; }
+  .dash-tabla2 th.orden i { opacity: 1; }
+  .dash-tabla2 td { padding: 6px 9px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  .dash-tabla2 td.num, .dash-tabla2 th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .dash-tabla2 td.f { white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .dash-tabla2 tbody tr { cursor: pointer; }
+  .dash-tabla2 tbody tr:hover td { background: var(--accent-soft); }
+  .dash-tabla2 tbody tr.sel td { background: var(--accent-soft); font-weight: 600; }
+  .dash-tabla2 .pto { display: inline-block; width: 9px; height: 9px; border-radius: 3px; margin-right: 5px; vertical-align: baseline; }
+  .dash-tabla2 .ced { color: var(--ink-faint); font-size: 11px; font-family: "IBM Plex Mono", ui-monospace, monospace; display: block; }
+  .dash-tabla2 .dias-b { display: inline-block; min-width: 26px; text-align: center; font-weight: 700; padding: 1px 7px; border-radius: 20px; background: var(--accent-soft); color: var(--accent); }
   .dash-detalle-ov { position: absolute; inset: 0; z-index: 5; background: var(--paper); padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
   .dash-detalle-ov[hidden] { display: none; }
   .dash-detalle-cab { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
@@ -589,7 +608,7 @@
 
   <section class="card dash-pantalla" id="card-dashboard" hidden>
     <div class="dash-barra">
-      <div><h2>Dashboard de novedades</h2><span class="dash-sub">Haz clic en cualquier barra o porción para filtrar todo el tablero; vuelve a hacer clic para quitarlo.</span></div>
+      <div><h2>Dashboard de novedades</h2><span class="dash-sub">Haz clic en una barra, porción o fila de la tabla para filtrar todo el tablero; vuelve a hacer clic para quitarlo.</span></div>
       <div class="dash-acciones">
         <button type="button" class="dash-btn" id="d-detalle">Ver detalle</button>
         <button type="button" class="dash-btn" id="d-pantalla">Pantalla completa</button>
@@ -612,7 +631,7 @@
     <div class="dash-activos" id="dash-activos"></div>
     <div class="dash-kpis" id="dash-kpis"></div>
     <div class="dash-grid">
-      <div class="dash-panel p-dias"><h3>Evolución por día <small>apilado por novedad</small></h3><div class="dash-lienzo"><canvas id="ch-dias"></canvas></div></div>
+      <div class="dash-panel p-dias"><h3>Novedades por persona <small id="dash-tabla-n"></small></h3><div class="dash-tabla-wrap"><table class="dash-tabla2"><thead><tr><th data-ord="nombre">Nombre <i></i></th><th data-ord="area">Área <i></i></th><th data-ord="novedad">Novedad <i></i></th><th data-ord="ini">Fecha inicio <i></i></th><th data-ord="fin">Fecha fin <i></i></th><th data-ord="dias" class="num">Días total <i></i></th></tr></thead><tbody id="dash-tabla-tb"></tbody></table></div></div>
       <div class="dash-panel p-novedad"><h3>Distribución por novedad</h3><div class="dona-wrap"><div class="dash-lienzo"><canvas id="ch-novedad"></canvas></div><div class="leyenda" id="leyenda-novedad"></div></div></div>
       <div class="dash-panel p-areas"><h3>Top 10 áreas</h3><div class="dash-lienzo"><canvas id="ch-areas"></canvas></div></div>
       <div class="dash-panel p-personas"><h3>Top 10 personas</h3><div class="dash-lienzo"><canvas id="ch-personas"></canvas></div></div>
@@ -2472,7 +2491,7 @@ AUTH_READY.then(async function () {
   const DIAS_CORTOS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
   let dashFilas = [], dashToken = 0, dashCargado = false, dashTop = [], dashMetrica = "registros";
   const charts = {};
-  const sel = { codigo: null, tipo: null, area: null, cedula: null, dia: null, dow: null };
+  const sel = { codigo: null, tipo: null, area: null, cedula: null, dow: null };
   const fmtNum = (n) => Number(n).toLocaleString("es-CO", { maximumFractionDigits: 1 });
   const fmtDiaCorto = (iso) => { const [y, m, d] = iso.split("-"); return `${d}/${m}/${y.slice(2)}`; };
   const diasEntre = (a, b) => Math.round((new Date(b + "T00:00:00") - new Date(a + "T00:00:00")) / 86400000);
@@ -2536,6 +2555,45 @@ AUTH_READY.then(async function () {
     }
   }
 
+  // ---- tabla: una fila por persona y novedad en dias seguidos (episodio). En las novedades de conteo "habil" (vacaciones, licencia
+  // remunerada) un hueco de solo domingos o festivos no corta el episodio, igual que en el cargador de Nomina.
+  let dashOrden = { clave: "ini", dir: -1 };
+  function episodios(filas) {
+    const grupos = new Map();
+    filas.forEach((f) => { const k = f.cedula + "|" + f.codigo_novedad; let g = grupos.get(k); if (!g) { g = { f, dias: new Set() }; grupos.set(k, g); } g.dias.add(f._dia); });
+    const out = [];
+    grupos.forEach(({ f, dias }) => {
+      const lista = [...dias].sort(), habil = (codigosPorValor[f.codigo_novedad] || {}).conteo_dias === "habil";
+      const sinLabor = (iso) => FESTIVOS.has(iso) || new Date(iso + "T00:00:00").getDay() === 0;
+      const cerrar = (ini, fin, n) => out.push({ cedula: f.cedula, nombre: f.nombre_colaborador || String(f.cedula), area: f.area || "—", codigo: f.codigo_novedad, novedad: f.codigo_descripcion || f.codigo_novedad, ini, fin, dias: n });
+      let ini = lista[0], prev = lista[0], n = 1;
+      for (let i = 1; i < lista.length; i++) {
+        const d = lista[i]; let continuo = diasEntre(prev, d) === 1;
+        if (!continuo && habil && diasEntre(prev, d) > 1) { continuo = true; for (let x = 1; x < diasEntre(prev, d); x++) if (!sinLabor(restarDias(prev, -x))) { continuo = false; break; } }
+        if (continuo) { prev = d; n++; } else { cerrar(ini, prev, n); ini = prev = d; n = 1; }
+      }
+      cerrar(ini, prev, n);
+    });
+    return out;
+  }
+  function pintarTabla(filas) {
+    const eps = episodios(filas), { clave, dir } = dashOrden;
+    eps.sort((a, b) => { const x = a[clave], y = b[clave]; const c = typeof x === "number" ? x - y : String(x).localeCompare(String(y), "es"); return (c || a.nombre.localeCompare(b.nombre, "es")) * dir; });
+    const LIM = 600;
+    document.getElementById("dash-tabla-n").textContent = `${fmtNum(eps.length)} novedad${eps.length === 1 ? "" : "es"} · ${fmtNum(new Set(eps.map((e) => e.cedula)).size)} personas${eps.length > LIM ? ` · mostrando ${LIM}` : ""}`;
+    document.querySelectorAll(".dash-tabla2 th[data-ord]").forEach((th) => { const on = th.dataset.ord === clave; th.classList.toggle("orden", on); th.querySelector("i").textContent = on ? (dir === 1 ? "▲" : "▼") : "↕"; });
+    document.getElementById("dash-tabla-tb").innerHTML = eps.length ? eps.slice(0, LIM).map((e) => `<tr data-ced="${e.cedula}" class="${sel.cedula === e.cedula ? "sel" : ""}"><td><b>${escaparTexto(e.nombre)}</b><span class="ced">${e.cedula}</span></td>` +
+      `<td>${escaparTexto(e.area)}</td><td><i class="pto" style="background:${colorCodigo(claveCodigo({ codigo_novedad: e.codigo }))}"></i>${escaparTexto(e.novedad)}</td>` +
+      `<td class="f">${fmtDiaCorto(e.ini)}</td><td class="f">${fmtDiaCorto(e.fin)}</td><td class="num"><span class="dias-b">${e.dias}</span></td></tr>`).join("")
+      : `<tr><td colspan="6" style="padding:18px;text-align:center;color:var(--ink-faint)">Sin novedades con estos filtros.</td></tr>`;
+  }
+  document.querySelector(".dash-tabla2 thead").addEventListener("click", (e) => {
+    const th = e.target.closest("th[data-ord]"); if (!th) return;
+    dashOrden = { clave: th.dataset.ord, dir: dashOrden.clave === th.dataset.ord ? -dashOrden.dir : (["ini", "fin", "dias"].includes(th.dataset.ord) ? -1 : 1) };
+    pintarTabla(filasPara(null));
+  });
+  document.getElementById("dash-tabla-tb").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-ced]"); if (tr) alternar("cedula", Number(tr.dataset.ced)); });
+
   // Una fila pasa si cumple todas las selecciones, salvo la de la dimension que se esta dibujando (para ver las alternativas)
   function pasa(f, excluir) {
     const q = dBuscar.value.trim().toLowerCase();
@@ -2544,7 +2602,6 @@ AUTH_READY.then(async function () {
     if (excluir !== "tipo" && sel.tipo && f.tipo_novedad !== sel.tipo) return false;
     if (excluir !== "area" && sel.area && (f.area || "—") !== sel.area) return false;
     if (excluir !== "cedula" && sel.cedula && f.cedula !== sel.cedula) return false;
-    if (excluir !== "dia" && sel.dia && (f._dia < sel.dia.ini || f._dia > sel.dia.fin)) return false;
     if (excluir !== "dow" && sel.dow !== null && f._dow !== sel.dow) return false;
     return true;
   }
@@ -2605,29 +2662,12 @@ AUTH_READY.then(async function () {
     const chips = [];
     if (sel.codigo) chips.push(["codigo", "Novedad: " + sel.codigo]); if (sel.tipo) chips.push(["tipo", "Tipo: " + sel.tipo]); if (sel.area) chips.push(["area", "Área: " + sel.area]);
     if (sel.cedula) { const p = dashFilas.find((f) => f.cedula === sel.cedula); chips.push(["cedula", "Persona: " + (p ? p.nombre_colaborador : sel.cedula)]); }
-    if (sel.dia) chips.push(["dia", sel.dia.ini === sel.dia.fin ? "Día: " + fmtDiaCorto(sel.dia.ini) : `Semana: ${fmtDiaCorto(sel.dia.ini)} a ${fmtDiaCorto(sel.dia.fin)}`]);
     if (sel.dow !== null) chips.push(["dow", "Día de la semana: " + DIAS_CORTOS[sel.dow]]);
     dActivos.innerHTML = chips.length ? chips.map(([k, t]) => `<button type="button" class="dash-chip" data-quitar="${k}">${escaparTexto(t)} <b>×</b></button>`).join("") +
       `<button type="button" class="dash-chip limpiar" data-quitar="*">Limpiar selección</button>` : "";
 
-    // ---- 1) evolucion por dia (apilado por novedad)
-    const filasDia = filasPara("dia"), total = diasEntre(desde, hasta) + 1, paso = total > 62 ? 7 : 1, cubos = [];
-    for (let i = 0; i < total; i += paso) cubos.push({ ini: restarDias(desde, -i), fin: restarDias(desde, -Math.min(i + paso - 1, total - 1)) });
-    const indice = {}; cubos.forEach((c, i) => { for (let j = diasEntre(desde, c.ini); j <= diasEntre(desde, c.fin); j++) indice[restarDias(desde, -j)] = i; });
-    const claves = [...dashTop, "Otras"], matriz = {}; claves.forEach((k) => { matriz[k] = new Array(cubos.length).fill(0); });
-    filasDia.forEach((f) => { const i = indice[f._dia]; if (i !== undefined) matriz[claveCodigo(f)][i] += valor(f); });
-    const sinSel = !sel.dia, esSel = (c) => sel.dia && c.ini === sel.dia.ini && c.fin === sel.dia.fin;
-    const optsDia = baseOpciones({ onClick: (e, els) => { if (els.length) alternar("dia", { ini: cubos[els[0].index].ini, fin: cubos[els[0].index].fin }); },
-      onHover: (e, els) => { e.native.target.style.cursor = els.length ? "pointer" : "default"; } });
-    optsDia.scales.x.stacked = true; optsDia.scales.y.stacked = true;
-    optsDia.plugins.legend = { display: true, position: "top", align: "end", labels: { usePointStyle: true, pointStyle: "rectRounded", boxWidth: 9, boxHeight: 9, color: css("--ink-soft"), font: { size: 11.5 } } };
-    optsDia.plugins.tooltip.mode = "index"; optsDia.plugins.tooltip.intersect = false;
-    optsDia.plugins.tooltip.callbacks.title = (it) => { const c = cubos[it[0].dataIndex]; return paso === 1 ? fmtDiaCorto(c.ini) + " · " + DIAS_CORTOS[(new Date(c.ini + "T00:00:00").getDay() + 6) % 7] : `${fmtDiaCorto(c.ini)} a ${fmtDiaCorto(c.fin)}`; };
-    optsDia.plugins.tooltip.callbacks.footer = (it) => `Total: ${fmtNum(it.reduce((s, x) => s + x.parsed.y, 0))}`;
-    optsDia.scales.x.ticks.callback = function (v) { const c = cubos[v]; return c ? fmtDiaCorto(c.ini).slice(0, 5) : ""; };
-    crearOActualizar("ch-dias", { type: "bar", data: { labels: cubos.map((c) => c.ini), datasets: claves.filter((k) => matriz[k].some((x) => x > 0)).map((k) => ({
-      label: k, data: matriz[k], stack: "s", borderRadius: 2, borderSkipped: false, borderColor: css("--surface"), borderWidth: 1,
-      backgroundColor: (ctx) => { const c = colorCodigo(k); return sinSel || esSel(cubos[ctx.dataIndex]) ? c : c + "40"; } })) }, options: optsDia });
+    // ---- 1) tabla de novedades por persona (episodios: dias seguidos de la misma novedad)
+    pintarTabla(todas);
 
     // ---- 2) distribucion por novedad (torta)
     const novedad = topN(sumar(filasPara("codigo"), (f) => claveCodigo(f)), 20), totNov = novedad.reduce((s, [, v]) => s + v, 0);
