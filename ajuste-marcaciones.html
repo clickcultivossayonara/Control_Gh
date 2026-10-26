@@ -244,7 +244,11 @@
   .tabla-aj th, .tabla-aj td { padding-left: 6px; padding-right: 6px; }
   .tabla-aj td { white-space: nowrap; overflow: visible; text-overflow: clip; }
   .tabla-aj td.nombre, .tabla-aj td.area, .tabla-aj td.estado { white-space: normal; min-width: 90px; }
-  .tabla-aj td.usuario { white-space: normal; min-width: 150px; max-width: 190px; overflow-wrap: anywhere; }
+  .tabla-his td.cuando { min-width: 110px; }
+  .tabla-his td.cambio { white-space: normal; min-width: 140px; }
+  .tabla-his td.motivo { min-width: 130px; }
+  .tabla-his td.cambio .etq { color: var(--ink-faint); font-family: inherit; font-size: 11px; }
+  .tabla-aj td.usuario { white-space: normal; min-width: 110px; max-width: 190px; overflow-wrap: anywhere; }
   .tabla-aj td.nombre { min-width: 140px; }
   .tabla-aj td.motivo { white-space: normal; min-width: 180px; max-width: 280px; }
   @media (min-width: 901px) {
@@ -395,9 +399,9 @@
     </div>
     <p class="form-msg" id="his-msg" style="margin-top:8px"></p>
     <div class="table-scroll" style="margin-top:8px">
-      <table class="tabla-aj" data-principales="Cuándo,Tipo,Colaborador,Acción">
+      <table class="tabla-aj tabla-his" data-principales="Cuándo / Tipo,Colaborador / Día,Acción">
         <thead><tr>
-          <th>Cuándo</th><th>Tipo</th><th>Día del registro</th><th>Colaborador</th><th>Antes</th><th>Después</th>
+          <th>Cuándo / Tipo</th><th>Colaborador / Día</th><th>Antes → Después</th>
           <th>Motivo</th><th>Usuario</th><th class="col-acciones">Acción</th>
         </tr></thead>
         <tbody id="his-tbody"></tbody>
@@ -557,15 +561,13 @@ AUTH_READY.then(async function () {
         if (!ultimo[k] || a.id > ultimo[k]) ultimo[k] = a.id;
       });
       $("his-tbody").innerHTML = filas.length === 0
-        ? `<tr><td colspan="9"><div class="empty-state">Todavía no hay ajustes registrados.</div></td></tr>`
+        ? `<tr><td colspan="6"><div class="empty-state">Todavía no hay ajustes registrados.</div></td></tr>`
         : filas.map((a) => {
             const puedeRevertir = a.tipo !== "REVERSION" && !a.revertido && ultimo[a.cedula + "|" + a.fecha] === a.id;
             return `<tr>
-              <td class="num">${fmtCuando(a.created_at)}</td>
-              <td><span class="badge t-${a.tipo}">${a.tipo}</span>${a.revertido ? ' <span class="badge revertido">REVERTIDO</span>' : ""}</td>
-              <td class="num">${fmtFecha(a.fecha)}</td>
-              <td class="nombre">${esc(a.nombre || "")}<br><span class="cedula">${a.cedula}</span></td>
-              <td class="num">${esc(rango(a.antes))}</td><td class="num">${esc(rango(a.despues))}</td>
+              <td class="num cuando">${fmtCuando(a.created_at)}<br><span class="badge t-${a.tipo}">${a.tipo}</span>${a.revertido ? ' <span class="badge revertido">REVERTIDO</span>' : ""}</td>
+              <td class="nombre">${esc(a.nombre || "")}<br><span class="cedula">${a.cedula}</span> · <span class="num">día ${fmtFecha(a.fecha)}</span></td>
+              <td class="num cambio"><span class="etq">Antes:</span> ${esc(rango(a.antes))}<br><span class="etq">Después:</span> ${esc(rango(a.despues))}</td>
               <td class="motivo">${esc(a.motivo)}</td><td class="usuario">${esc(a.usuario_email || "")}</td>
               <td class="col-acciones">${puedeRevertir ? `<button type="button" class="btn-small" data-revertir="${a.id}">Revertir</button>` : ""}</td></tr>`;
           }).join("");
