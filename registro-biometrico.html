@@ -180,6 +180,10 @@
   .alerta-fila { display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; padding: 5px 9px; border-radius: 6px; background: var(--surface); }
   .alerta-fila .af-nombre { font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink); }
   .alerta-fila .af-area, .alerta-fila .af-sede { color: var(--ink-faint); font-size: 11.5px; white-space: nowrap; }
+  .alerta-fila .af-motivo { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; white-space: nowrap; max-width: 46%; overflow: hidden; text-overflow: ellipsis;
+    background: var(--accent-soft); color: var(--accent); }
+  .alerta-fila .af-motivo.pendiente { background: var(--warn-soft); color: var(--warn); }
+  @media (max-width: 640px) { .alerta-fila { flex-wrap: wrap; } .alerta-fila .af-motivo { max-width: 100%; } }
 
   .filters {
     position: sticky;
@@ -642,11 +646,40 @@ AUTH_READY.then(async function () {
     exportarExcelSinEntrada();
   });
 
+  // Fecha de hoy en hora local (toISOString da la de UTC: desde las 7 p.m. de Colombia ya devolvia "manana").
+  function hoyLocalISO(desplazarDias = 0) {
+    const d = new Date(); d.setDate(d.getDate() + desplazarDias);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
+  // Motivo de la no marcacion: la(s) novedad(es) cargada(s) hoy para la persona; si no tiene ninguna (o solo la "ausencia pendiente por
+  // definir"), queda "Pendiente por definir". Si no se pueden consultar las novedades, se deja "Pendiente por definir" sin romper la lista.
+  async function agregarMotivos(filas) {
+    const porCedula = {};
+    try {
+      for (let i = 0; i < filas.length; i += 100) {
+        const lista = filas.slice(i, i + 100).map(f => f.cedula).join(',');
+        const r = await fetch(
+          `${SUPABASE_URL}/rest/v1/novedades_nomina_detalle?select=cedula,codigo_novedad,codigo_descripcion&cedula=in.(${lista})` +
+          `&fecha_novedad=gte.${hoyLocalISO()}T00:00:00&fecha_novedad=lt.${hoyLocalISO(1)}T00:00:00&order=id_nomina.asc&limit=1000`,
+          { headers: authHeaders() });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        (await r.json()).forEach(n => { if (n.codigo_novedad !== 'APD') (porCedula[n.cedula] = porCedula[n.cedula] || []).push(n.codigo_descripcion || n.codigo_novedad); });
+      }
+    } catch (e) { /* sin novedades: todos quedan pendientes por definir */ }
+    filas.forEach(p => {
+      const nov = [...new Set(porCedula[p.cedula] || [])];
+      p.motivo_pendiente = nov.length === 0;
+      p.motivo = nov.length ? nov.join(' · ') : 'Pendiente por definir';
+    });
+  }
+
   function filaSinEntrada(p) {
     return `<div class="alerta-fila">
       <span class="af-nombre" title="${p.nombre}">${p.nombre}</span>
       <span class="af-area">${p.area || '—'}</span>
       <span class="af-sede">${p.sede || '—'}</span>
+      <span class="af-motivo ${p.motivo_pendiente ? 'pendiente' : ''}" title="Motivo de la no marcación">${p.motivo}</span>
     </div>`;
   }
 
@@ -655,16 +688,17 @@ AUTH_READY.then(async function () {
     const textoOriginal = btn.textContent;
     try {
       btn.disabled = true;
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = hoyLocalISO();
       const filasExcel = ultimasSinEntrada.map(p => ({
         'Cédula': p.cedula,
         'Nombre': p.nombre,
         'Área': p.area || '',
         'Sede': p.sede || '',
+        'Motivo de la no marcación': p.motivo || 'Pendiente por definir',
         'Fecha': hoy,
       }));
       const ws = XLSX.utils.json_to_sheet(filasExcel);
-      ws['!cols'] = [{ wch: 12 }, { wch: 32 }, { wch: 20 }, { wch: 10 }, { wch: 12 }];
+      ws['!cols'] = [{ wch: 12 }, { wch: 32 }, { wch: 20 }, { wch: 10 }, { wch: 34 }, { wch: 12 }];
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, 'Sin entrada hoy');
       XLSX.writeFile(wb, `sin_entrada_hoy_${hoy}.xlsx`);
@@ -683,6 +717,7 @@ AUTH_READY.then(async function () {
       });
       if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
       const filas = await resp.json();
+      await agregarMotivos(filas);
       ultimasSinEntrada = filas;
 
       elAlerta.hidden = false;
