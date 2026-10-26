@@ -541,6 +541,7 @@
         </div>
       </div>
       <p class="card-hint" id="hint-hora-extra" hidden style="margin: 6px 0 16px;"></p>
+      <div class="card-hint" id="aviso-habilitadas" hidden style="margin: 0 0 16px; padding: 8px 12px; border: 1px solid var(--warn-soft); background: var(--warn-soft); border-radius: 8px; color: var(--ink);"></div>
       <div class="card-hint" id="hint-jornada" hidden style="margin: 0 0 16px; padding: 8px 12px; border: 1px solid var(--accent-soft-line); background: var(--accent-soft); border-radius: 8px; color: var(--ink);"></div>
       <p class="card-hint" id="hint-horas-sistema" hidden style="margin: 6px 0 16px;">Las horas de cada día las asigna el sistema según las horas esperadas de ese día de la semana (Configuraciones), por eso no se escriben.</p>
       <div class="horas-habilitadas" id="horas-habilitadas" hidden></div>
@@ -1222,7 +1223,7 @@ AUTH_READY.then(async function () {
       hintHoraExtra.textContent = `"${cod.codigo_descripcion}" solo se puede cargar entre ${minima} y ${maxima}, máximo ${MAX_HORAS_HORA_EXTRA} horas por colaborador.`;
       hintHoraExtra.hidden = false;
     } else {
-      inFecha.min = minimaGeneral;
+      inFecha.min = typeof minimaConHabilitadas === "function" ? minimaConHabilitadas(minimaGeneral) : minimaGeneral;
       inFecha.max = "";
       inHora.max = "";
       hintHoraExtra.hidden = true;
@@ -1298,6 +1299,7 @@ AUTH_READY.then(async function () {
   AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
   document.getElementById("e-area").innerHTML = selArea.innerHTML;
 
+  let HABILITADAS = {};        // habilitaciones puntuales: "cedula|fecha" -> [codigos] (ver cargarHabilitaciones)
   let codigosPorValor = {};
   let codigoDOR = null;   // DOR esta deshabilitada en el catalogo (solo la crea el sistema); se carga aparte para poder editar las existentes
   let empleadosPorCedula = {};
@@ -1347,6 +1349,30 @@ AUTH_READY.then(async function () {
     } catch { /* sin habilitacion: rige la regla normal */ }
   })();
 
+  // Habilitaciones puntuales: dias de una persona que el Super Admin abrio para ciertos conceptos aunque ya esten fuera de la ventana
+  // de fechas (por ejemplo la parte festiva de un turno nocturno que quedo sin cargar). La base las valida de nuevo al guardar.
+  const avisoHabilitadas = document.getElementById("aviso-habilitadas");
+  async function cargarHabilitaciones(cedulas) {
+    HABILITADAS = {};
+    try {
+      if (cedulas.length) {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/habilitaciones_novedad?select=cedula,fecha,codigos&revocada=eq.false&cedula=in.(${cedulas.join(",")})&order=fecha.asc&limit=1000`, { headers: authHeaders() });
+        if (r.ok) (await r.json()).forEach((h) => { HABILITADAS[`${h.cedula}|${String(h.fecha).slice(0, 10)}`] = h.codigos || []; });
+      }
+    } catch { /* sin habilitaciones: rige la ventana normal */ }
+    const fuera = Object.keys(HABILITADAS).filter((k) => k.split("|")[1] < fechaMinimaGeneral());
+    avisoHabilitadas.hidden = fuera.length === 0;
+    avisoHabilitadas.innerHTML = fuera.length ? `<b>Días habilitados fuera de la fecha límite para esta área</b> (solo esos conceptos y ese día): ` +
+      fuera.slice(0, 10).map((k) => { const [c, f] = k.split("|"); return `${escaparTexto((empleadosPorCedula[c] || {}).nombre || c)} · ${fmtFechaCorta(f)} (${HABILITADAS[k].join(", ")})`; }).join("; ") + (fuera.length > 10 ? ` y ${fuera.length - 10} más` : "") + "." : "";
+    actualizarLimitesHoraExtra();
+  }
+  const todosHabilitados = (cedulas, fecha, codigo) => cedulas.length > 0 && cedulas.every((c) => (HABILITADAS[`${c}|${fecha}`] || []).includes(codigo));
+  // la fecha minima que acepta el calendario: la general, o una mas antigua si hay dias habilitados
+  function minimaConHabilitadas(minimaGeneral) {
+    const fechas = Object.keys(HABILITADAS).map((k) => k.split("|")[1]).filter((f) => f < minimaGeneral).sort();
+    return fechas.length ? fechas[0] : minimaGeneral;
+  }
+
   async function cargarColaboradores() {
     empleadosPorCedula = {};
     if (!selArea.value) {
@@ -1366,6 +1392,7 @@ AUTH_READY.then(async function () {
       filas.map(f => [f.cedula, f.nombre]),
       "Sin colaboradores activos en esta área"
     );
+    await cargarHabilitaciones(filas.map(f => f.cedula));
   }
 
   // Gate de presupuesto de horas extra: en vez de esperar a "Guardar novedad"
@@ -1876,7 +1903,7 @@ AUTH_READY.then(async function () {
         msgNovedad.className = "form-msg error";
         return;
       }
-    } else if (inFecha.value < minimaGeneral) {
+    } else if (inFecha.value < minimaGeneral && !todosHabilitados(cedulasSeleccionadas, inFecha.value, cod.codigo)) {
       msgNovedad.textContent = `La fecha ${motivoLimite(minimaGeneral)}.`;
       msgNovedad.className = "form-msg error";
       return;
