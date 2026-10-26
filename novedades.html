@@ -348,8 +348,8 @@
   .ley-p { color: var(--ink-faint); text-align: right; font-variant-numeric: tabular-nums; }
   .dash-tabla-wrap { flex: 1; min-height: 0; overflow: auto; border: 1px solid var(--line); border-radius: 8px; }
   .dash-tabla2 { width: 100%; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
-  .dash-tabla2 th:nth-child(1) { width: 27%; } .dash-tabla2 th:nth-child(2) { width: 16%; } .dash-tabla2 th:nth-child(3) { width: 27%; }
-  .dash-tabla2 th:nth-child(4), .dash-tabla2 th:nth-child(5) { width: 10%; } .dash-tabla2 th:nth-child(6) { width: 10%; }
+  .dash-tabla2 th:nth-child(1) { width: 24%; } .dash-tabla2 th:nth-child(2) { width: 14%; } .dash-tabla2 th:nth-child(3) { width: 24%; }
+  .dash-tabla2 th:nth-child(4), .dash-tabla2 th:nth-child(5) { width: 10%; } .dash-tabla2 th:nth-child(6), .dash-tabla2 th:nth-child(7) { width: 9%; }
   .dash-tabla2 td { overflow-wrap: anywhere; white-space: normal; overflow: visible; text-overflow: clip; }
   .dash-tabla2 th { white-space: normal; line-height: 1.2; overflow-wrap: normal; }
   .dash-tabla2 th { position: sticky; top: 0; z-index: 1; background: var(--ink); color: var(--paper); text-align: left; padding: 7px 9px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.02em; cursor: pointer; user-select: none; }
@@ -631,7 +631,7 @@
     <div class="dash-activos" id="dash-activos"></div>
     <div class="dash-kpis" id="dash-kpis"></div>
     <div class="dash-grid">
-      <div class="dash-panel p-dias"><h3>Novedades por persona <small id="dash-tabla-n"></small></h3><div class="dash-tabla-wrap"><table class="dash-tabla2"><thead><tr><th data-ord="nombre">Nombre <i></i></th><th data-ord="area">Área <i></i></th><th data-ord="novedad">Novedad <i></i></th><th data-ord="ini">Fecha inicio <i></i></th><th data-ord="fin">Fecha fin <i></i></th><th data-ord="dias" class="num">Días total <i></i></th></tr></thead><tbody id="dash-tabla-tb"></tbody></table></div></div>
+      <div class="dash-panel p-dias"><h3>Novedades por persona <small id="dash-tabla-n"></small></h3><div class="dash-tabla-wrap"><table class="dash-tabla2"><thead><tr><th data-ord="nombre">Nombre <i></i></th><th data-ord="area">Área <i></i></th><th data-ord="novedad">Novedad <i></i></th><th data-ord="ini">Fecha inicio <i></i></th><th data-ord="fin">Fecha fin <i></i></th><th data-ord="dias" class="num">Días total <i></i></th><th data-ord="horas" class="num">Horas total <i></i></th></tr></thead><tbody id="dash-tabla-tb"></tbody></table></div></div>
       <div class="dash-panel p-novedad"><h3>Distribución por novedad</h3><div class="dona-wrap"><div class="dash-lienzo"><canvas id="ch-novedad"></canvas></div><div class="leyenda" id="leyenda-novedad"></div></div></div>
       <div class="dash-panel p-areas"><h3>Top 10 áreas</h3><div class="dash-lienzo"><canvas id="ch-areas"></canvas></div></div>
       <div class="dash-panel p-personas"><h3>Top 10 personas</h3><div class="dash-lienzo"><canvas id="ch-personas"></canvas></div></div>
@@ -2560,19 +2560,19 @@ AUTH_READY.then(async function () {
   let dashOrden = { clave: "ini", dir: -1 };
   function episodios(filas) {
     const grupos = new Map();
-    filas.forEach((f) => { const k = f.cedula + "|" + f.codigo_novedad; let g = grupos.get(k); if (!g) { g = { f, dias: new Set() }; grupos.set(k, g); } g.dias.add(f._dia); });
+    filas.forEach((f) => { const k = f.cedula + "|" + f.codigo_novedad; let g = grupos.get(k); if (!g) { g = { f, dias: new Set(), horas: {} }; grupos.set(k, g); } g.dias.add(f._dia); g.horas[f._dia] = (g.horas[f._dia] || 0) + Number(f.hora || 0); });
     const out = [];
-    grupos.forEach(({ f, dias }) => {
+    grupos.forEach(({ f, dias, horas }) => {
       const lista = [...dias].sort(), habil = (codigosPorValor[f.codigo_novedad] || {}).conteo_dias === "habil";
       const sinLabor = (iso) => FESTIVOS.has(iso) || new Date(iso + "T00:00:00").getDay() === 0;
-      const cerrar = (ini, fin, n) => out.push({ cedula: f.cedula, nombre: f.nombre_colaborador || String(f.cedula), area: f.area || "—", codigo: f.codigo_novedad, novedad: f.codigo_descripcion || f.codigo_novedad, ini, fin, dias: n });
-      let ini = lista[0], prev = lista[0], n = 1;
+      const cerrar = (ini, fin, n, h) => out.push({ cedula: f.cedula, nombre: f.nombre_colaborador || String(f.cedula), area: f.area || "—", codigo: f.codigo_novedad, novedad: f.codigo_descripcion || f.codigo_novedad, ini, fin, dias: n, horas: h });
+      let ini = lista[0], prev = lista[0], n = 1, h = horas[lista[0]];
       for (let i = 1; i < lista.length; i++) {
         const d = lista[i]; let continuo = diasEntre(prev, d) === 1;
         if (!continuo && habil && diasEntre(prev, d) > 1) { continuo = true; for (let x = 1; x < diasEntre(prev, d); x++) if (!sinLabor(restarDias(prev, -x))) { continuo = false; break; } }
-        if (continuo) { prev = d; n++; } else { cerrar(ini, prev, n); ini = prev = d; n = 1; }
+        if (continuo) { prev = d; n++; h += horas[d]; } else { cerrar(ini, prev, n, h); ini = prev = d; n = 1; h = horas[d]; }
       }
-      cerrar(ini, prev, n);
+      cerrar(ini, prev, n, h);
     });
     return out;
   }
@@ -2584,12 +2584,12 @@ AUTH_READY.then(async function () {
     document.querySelectorAll(".dash-tabla2 th[data-ord]").forEach((th) => { const on = th.dataset.ord === clave; th.classList.toggle("orden", on); th.querySelector("i").textContent = on ? (dir === 1 ? "▲" : "▼") : "↕"; });
     document.getElementById("dash-tabla-tb").innerHTML = eps.length ? eps.slice(0, LIM).map((e) => `<tr data-ced="${e.cedula}" class="${sel.cedula === e.cedula ? "sel" : ""}"><td><b>${escaparTexto(e.nombre)}</b><span class="ced">${e.cedula}</span></td>` +
       `<td>${escaparTexto(e.area)}</td><td><i class="pto" style="background:${colorCodigo(claveCodigo({ codigo_novedad: e.codigo }))}"></i>${escaparTexto(e.novedad)}</td>` +
-      `<td class="f">${fmtDiaCorto(e.ini)}</td><td class="f">${fmtDiaCorto(e.fin)}</td><td class="num"><span class="dias-b">${e.dias}</span></td></tr>`).join("")
-      : `<tr><td colspan="6" style="padding:18px;text-align:center;color:var(--ink-faint)">Sin novedades con estos filtros.</td></tr>`;
+      `<td class="f">${fmtDiaCorto(e.ini)}</td><td class="f">${fmtDiaCorto(e.fin)}</td><td class="num"><span class="dias-b">${e.dias}</span></td><td class="num">${fmtNum(e.horas)}</td></tr>`).join("")
+      : `<tr><td colspan="7" style="padding:18px;text-align:center;color:var(--ink-faint)">Sin novedades con estos filtros.</td></tr>`;
   }
   document.querySelector(".dash-tabla2 thead").addEventListener("click", (e) => {
     const th = e.target.closest("th[data-ord]"); if (!th) return;
-    dashOrden = { clave: th.dataset.ord, dir: dashOrden.clave === th.dataset.ord ? -dashOrden.dir : (["ini", "fin", "dias"].includes(th.dataset.ord) ? -1 : 1) };
+    dashOrden = { clave: th.dataset.ord, dir: dashOrden.clave === th.dataset.ord ? -dashOrden.dir : (["ini", "fin", "dias", "horas"].includes(th.dataset.ord) ? -1 : 1) };
     pintarTabla(filasPara(null));
   });
   document.getElementById("dash-tabla-tb").addEventListener("click", (e) => { const tr = e.target.closest("tr[data-ced]"); if (tr) alternar("cedula", Number(tr.dataset.ced)); });
