@@ -300,6 +300,33 @@
   .diff-pos { color: var(--accent); font-weight: 500; }
   .diff-neg { color: var(--critical); font-weight: 500; }
 
+  #sec-pv table { min-width: 1000px; }
+  #sec-pv thead th { cursor: default; }
+  #sec-pv thead th:nth-child(1), #sec-pv tbody td:nth-child(1) { width: 7%; }
+  #sec-pv thead th:nth-child(2), #sec-pv tbody td:nth-child(2) { width: 18%; }
+  #sec-pv thead th:nth-child(3), #sec-pv tbody td:nth-child(3) { width: 12%; }
+  #sec-pv thead th:nth-child(4), #sec-pv tbody td:nth-child(4) { width: 6%; }
+  #sec-pv thead th:nth-child(5), #sec-pv tbody td:nth-child(5) { width: 7%; }
+  #sec-pv thead th:nth-child(6), #sec-pv tbody td:nth-child(6) { width: 8%; }
+  #sec-pv thead th:nth-child(7), #sec-pv tbody td:nth-child(7) { width: 8%; }
+  #sec-pv thead th:nth-child(8), #sec-pv tbody td:nth-child(8) { width: 6%; }
+  #sec-pv thead th:nth-child(9), #sec-pv tbody td:nth-child(9) { width: 6%; }
+  #sec-pv thead th:nth-child(10), #sec-pv tbody td:nth-child(10) { width: 16%; }
+  #sec-pv thead th:nth-child(11), #sec-pv tbody td:nth-child(11) { width: 6%; }
+  #sec-pv tbody td:nth-child(10) { white-space: normal; }
+  #sec-reg-filtros[hidden], #sec-reg-tabla[hidden], #sec-pv[hidden] { display: none !important; }
+  .tabs-reg { display: flex; gap: 8px; margin: 2px 0 10px; }
+  .tabs-reg button { font: inherit; font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .tabs-reg button.activo { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  .pv-resumen { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 10px; }
+  .pv-resumen button { font: inherit; font-size: 12.5px; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; display: flex; gap: 7px; align-items: center; }
+  .pv-resumen button b { font-size: 15px; font-variant-numeric: tabular-nums; }
+  .pv-resumen button.sel { border-color: var(--accent); background: var(--accent-soft); }
+  .pv-badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .pv-badge.coincide { background: var(--accent-soft); color: var(--accent); }
+  .pv-badge.excedio { background: var(--critical-soft); color: var(--critical); }
+  .pv-badge.menos, .pv-badge.sinpausa, .pv-badge.sinpermiso, .pv-badge.sinmarca { background: var(--warn-soft); color: var(--warn); }
+  .pv-ayuda { font-size: 12px; color: var(--ink-faint); margin: 0 0 10px; }
   .empty-state, .error-state { padding: 48px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
   .error-state { color: var(--critical); }
 
@@ -402,7 +429,12 @@
     <div class="alerta-lista" id="alerta-lista"></div>
   </div>
 
-  <div class="filters">
+  <div class="tabs-reg">
+    <button type="button" class="activo" id="tab-reg">Registro</button>
+    <button type="button" id="tab-pv">Permisos vs biométrico</button>
+  </div>
+
+  <div class="filters" id="sec-reg-filtros">
     <div class="field">
       <label for="f-desde">Desde</label>
       <input type="date" id="f-desde">
@@ -436,7 +468,7 @@
     <span class="result-count" id="result-count"></span>
   </div>
 
-  <div class="table-scroll">
+  <div class="table-scroll" id="sec-reg-tabla">
     <table data-principales="Fecha,Nombre,Entrada,Salida,Horas Laboradas,Diferencia">
       <thead>
         <tr>
@@ -448,13 +480,35 @@
           <th data-key="sede">Sede <span class="arrow">↕</span></th>
           <th data-key="hora_entrada">Entrada <span class="arrow">↕</span></th>
           <th data-key="hora_salida">Salida <span class="arrow">↕</span></th>
-          <th data-key="horas_trabajadas" title="Tiempo entre la entrada y la salida menos 0.5 h de alimentación">Horas Laboradas <span class="arrow">↕</span></th>
+          <th data-key="horas_trabajadas" title="Tiempo entre la entrada y la salida menos 0.5 h de alimentación. Si el día tiene un permiso con salida y reingreso (4 marcaciones), también se descuenta el tiempo fuera.">Horas Laboradas <span class="arrow">↕</span></th>
           <th data-key="diferencia_tiempo">Diferencia <span class="arrow">↕</span></th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
   </div>
+
+  <section id="sec-pv" hidden>
+    <p class="pv-ayuda">Compara las horas del permiso cargado (PCM, PCE, PCJ, PR, HL, OPNR) con el tiempo que la persona estuvo fuera según el biométrico: salida por el permiso y reingreso. Tolerancia de 15 minutos. Si se excede y ese día no tiene otra novedad cargada, el exceso se descuenta con una DOR automática.</p>
+    <div class="filters">
+      <div class="field"><label for="pv-desde">Desde</label><input type="date" id="pv-desde"></div>
+      <div class="field"><label for="pv-hasta">Hasta</label><input type="date" id="pv-hasta"></div>
+      <div class="field"><label for="pv-area">Área</label><select id="pv-area"><option value="">Todas</option></select></div>
+      <div class="field grow"><label for="pv-buscar">Cédula o nombre</label><input type="text" id="pv-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off"></div>
+      <button class="clear-btn" id="pv-actualizar" type="button">Actualizar</button>
+      <button class="excel-btn" id="pv-excel" type="button">Descargar Excel</button>
+      <span class="result-count" id="pv-count"></span>
+    </div>
+    <div class="pv-resumen" id="pv-resumen"></div>
+    <div class="table-scroll">
+      <table data-principales="Fecha,Nombre,Permiso,Horas fuera,Estado">
+        <thead><tr>
+          <th>Fecha</th><th>Nombre</th><th>Área</th><th>Permiso</th><th>Horas asignadas</th><th>Salida permiso</th><th>Reingreso</th><th>Horas fuera</th><th>Diferencia</th><th>Estado</th><th>DOR por exceso</th>
+        </tr></thead>
+        <tbody id="pv-tbody"></tbody>
+      </table>
+    </div>
+  </section>
 
   <footer>
     Datos desde Supabase &middot; última consulta: <strong id="ultima-actualizacion">—</strong>
@@ -895,6 +949,75 @@ AUTH_READY.then(async function () {
   }
 
   document.getElementById('btn-excel').addEventListener('click', exportarExcel);
+
+  // ---------- Permisos vs biometrico ----------
+  const ESTADO_CLASE = { 'Coincide': 'coincide', 'Excedió el permiso': 'excedio', 'Menos de lo asignado': 'menos', 'Sin pausa marcada': 'sinpausa', 'Pausa sin permiso': 'sinpermiso', 'Sin marcación ese día': 'sinmarca' };
+  const pvDesde = document.getElementById('pv-desde'), pvHasta = document.getElementById('pv-hasta'), pvArea = document.getElementById('pv-area'), pvBuscar = document.getElementById('pv-buscar');
+  let pvFilas = [], pvEstado = '', pvCargado = false;
+  const fmtH2 = (v) => (v == null ? '—' : Number(v).toFixed(2));
+  function hoyLocalISO(desplazar = 0) { const d = new Date(); d.setDate(d.getDate() + desplazar); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`; }
+  { const h = hoyLocalISO(); pvDesde.value = `${h.slice(0, 7)}-${Number(h.slice(8)) <= 15 ? '01' : '16'}`; pvHasta.value = h; }
+
+  async function cargarPermisosVsBiometrico() {
+    const msg = document.getElementById('pv-count');
+    if (!pvDesde.value || !pvHasta.value) { msg.textContent = 'Elige las fechas.'; return; }
+    msg.textContent = 'Cargando…';
+    try {
+      const filas = [];
+      for (let off = 0; ; off += 1000) {
+        const r = await fetch(`${SUPABASE_URL}/rest/v1/permisos_vs_biometrico?select=*&fecha=gte.${pvDesde.value}&fecha=lte.${pvHasta.value}&order=fecha.desc,nombre.asc&limit=1000&offset=${off}`, { headers: authHeaders() });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const p = await r.json(); filas.push(...p); if (p.length < 1000) break;
+      }
+      pvFilas = filas; pvCargado = true;
+      const areas = [...new Set(filas.map(f => f.area))].sort((a, b) => a.localeCompare(b, 'es'));
+      const actual = pvArea.value;
+      pvArea.innerHTML = '<option value="">Todas</option>' + areas.map(a => `<option value="${a.replace(/"/g, '&quot;')}">${a}</option>`).join('');
+      pvArea.value = areas.includes(actual) ? actual : '';
+      pintarPermisosVsBiometrico();
+    } catch (err) {
+      msg.textContent = 'No se pudo cargar: ' + (err.message || err);
+    }
+  }
+
+  function pintarPermisosVsBiometrico() {
+    const q = pvBuscar.value.trim().toLowerCase(), area = pvArea.value;
+    const base = pvFilas.filter(f => (!area || f.area === area) && (!q || String(f.cedula).includes(q) || String(f.nombre).toLowerCase().includes(q)));
+    const cuenta = {}; base.forEach(f => { cuenta[f.estado] = (cuenta[f.estado] || 0) + 1; });
+    const orden = ['Coincide', 'Excedió el permiso', 'Menos de lo asignado', 'Sin pausa marcada', 'Pausa sin permiso', 'Sin marcación ese día'];
+    document.getElementById('pv-resumen').innerHTML = `<button type="button" class="${pvEstado === '' ? 'sel' : ''}" data-e=""><b>${base.length}</b> Todos</button>` +
+      orden.filter(e => cuenta[e]).map(e => `<button type="button" class="${pvEstado === e ? 'sel' : ''}" data-e="${e}"><b>${cuenta[e]}</b> <span class="pv-badge ${ESTADO_CLASE[e]}">${e}</span></button>`).join('');
+    const filas = base.filter(f => !pvEstado || f.estado === pvEstado);
+    document.getElementById('pv-count').textContent = `${filas.length} resultado${filas.length === 1 ? '' : 's'}`;
+    document.getElementById('pv-tbody').innerHTML = filas.length ? filas.map(f => {
+      const dif = f.diferencia == null ? '—' : `<span class="${Number(f.diferencia) > 0.25 ? 'diff-neg' : (Number(f.diferencia) < -0.25 ? 'diff-pos' : '')}">${Number(f.diferencia) > 0 ? '+' : ''}${fmtH2(f.diferencia)}</span>`;
+      return `<tr><td class="num">${fmtDate(f.fecha)}</td><td class="nombre" title="${f.nombre}"><b>${f.nombre}</b><br><span class="cedula">${f.cedula}</span></td><td>${f.area}</td><td>${f.permisos || '—'}</td>` +
+        `<td class="num">${fmtH2(f.horas_asignadas)}</td><td class="num">${fmtHora(f.pausa_desde) || '—'}</td><td class="num">${fmtHora(f.pausa_hasta) || '—'}</td><td class="num">${fmtH2(f.horas_fuera)}</td><td class="num">${dif}</td>` +
+        `<td><span class="pv-badge ${ESTADO_CLASE[f.estado] || ''}">${f.estado}</span></td><td class="num">${Number(f.horas_dor) ? fmtH2(f.horas_dor) : '—'}</td></tr>`;
+    }).join('') : `<tr><td colspan="11"><div class="empty-state">Sin permisos ni pausas en este rango con estos filtros.</div></td></tr>`;
+    return filas;
+  }
+  document.getElementById('pv-resumen').addEventListener('click', (e) => { const b = e.target.closest('button[data-e]'); if (b) { pvEstado = b.dataset.e === pvEstado ? '' : b.dataset.e; pintarPermisosVsBiometrico(); } });
+  [pvArea].forEach(el => el.addEventListener('change', pintarPermisosVsBiometrico));
+  let pvT; pvBuscar.addEventListener('input', () => { clearTimeout(pvT); pvT = setTimeout(pintarPermisosVsBiometrico, 250); });
+  [pvDesde, pvHasta].forEach(el => el.addEventListener('change', cargarPermisosVsBiometrico));
+  document.getElementById('pv-actualizar').addEventListener('click', cargarPermisosVsBiometrico);
+  document.getElementById('pv-excel').addEventListener('click', () => {
+    const q = pvBuscar.value.trim().toLowerCase(), area = pvArea.value;
+    const filas = pvFilas.filter(f => (!area || f.area === area) && (!pvEstado || f.estado === pvEstado) && (!q || String(f.cedula).includes(q) || String(f.nombre).toLowerCase().includes(q)));
+    const ws = XLSX.utils.json_to_sheet(filas.map(f => ({ 'Fecha': f.fecha, 'Cédula': f.cedula, 'Nombre': f.nombre, 'Área': f.area, 'Permiso': f.permisos || '', 'Horas asignadas': Number(f.horas_asignadas), 'Salida permiso': fmtHora(f.pausa_desde) || '',
+      'Reingreso': fmtHora(f.pausa_hasta) || '', 'Horas fuera': f.horas_fuera != null ? Number(f.horas_fuera) : '', 'Diferencia': f.diferencia != null ? Number(f.diferencia) : '', 'Estado': f.estado, 'DOR por exceso (h)': Number(f.horas_dor) || '' })));
+    ws['!cols'] = [{ wch: 11 }, { wch: 12 }, { wch: 32 }, { wch: 22 }, { wch: 14 }, { wch: 10 }, { wch: 12 }, { wch: 11 }, { wch: 10 }, { wch: 10 }, { wch: 22 }, { wch: 12 }];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Permisos vs biometrico'); XLSX.writeFile(wb, `permisos_vs_biometrico_${pvDesde.value}_${pvHasta.value}.xlsx`);
+  });
+  function mostrarPestanaRegistro(cual) {
+    const pv = cual === 'pv';
+    document.getElementById('tab-reg').classList.toggle('activo', !pv); document.getElementById('tab-pv').classList.toggle('activo', pv);
+    document.getElementById('sec-reg-filtros').hidden = pv; document.getElementById('sec-reg-tabla').hidden = pv; document.getElementById('sec-pv').hidden = !pv;
+    if (pv && !pvCargado) cargarPermisosVsBiometrico();
+  }
+  document.getElementById('tab-reg').addEventListener('click', () => mostrarPestanaRegistro('reg'));
+  document.getElementById('tab-pv').addEventListener('click', () => mostrarPestanaRegistro('pv'));
 
   fechasPorDefecto();
   cargar();
