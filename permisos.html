@@ -290,9 +290,11 @@
   .badge.coincide { background: var(--accent-soft); color: var(--accent); }
   .badge.excedio { background: var(--critical-soft); color: var(--critical); }
   .badge.menos, .badge.sinpausa, .badge.sinpermiso, .badge.sinmarca { background: var(--warn-soft); color: var(--warn); }
+  .perm-desc { font-size: 13px; font-weight: 500; line-height: 1.3; }
+  .perm-desc + .perm-desc { margin-top: 4px; padding-top: 4px; border-top: 1px dashed var(--line); }
   .badge.cod { background: var(--paper); border: 1px solid var(--line-strong); color: var(--ink); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; margin: 1px 3px 1px 0; }
 
-  table.tabla-permisos { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1080px; font-size: 14px; }
+  table.tabla-permisos { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1160px; font-size: 14px; }
   .wrap { max-width: 1760px; padding-left: 14px; padding-right: 14px; }
   .table-scroll { max-height: calc(100vh - 250px); min-height: 420px; }
   .tabla-permisos thead th { position: sticky; top: 0; z-index: 2; background: var(--ink); color: var(--paper); text-align: left; padding: 12px 8px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.25; vertical-align: bottom; }
@@ -309,7 +311,7 @@
   .tabla-permisos thead th { word-break: keep-all; overflow-wrap: normal; }
   .tabla-permisos thead th:nth-child(1) { min-width: 92px; }
   .tabla-permisos thead th:nth-child(2) { min-width: 210px; }
-  .tabla-permisos thead th:nth-child(3) { min-width: 92px; }
+  .tabla-permisos thead th:nth-child(3) { min-width: 170px; }
   .tabla-permisos thead th:nth-child(9) { min-width: 150px; }
   .tabla-permisos thead th:nth-child(4), .tabla-permisos thead th:nth-child(7) { min-width: 84px; }
   .tabla-permisos thead th:nth-child(5), .tabla-permisos thead th:nth-child(6) { min-width: 96px; }
@@ -403,7 +405,8 @@
   </div>
 
   <p class="ayuda">Compara las <b>horas del permiso cargado</b> (PCM, PCE, PCJ, PR, HL u OPNR) con el <b>tiempo que la persona estuvo fuera</b> según el biométrico: la salida por el permiso y el reingreso.
-    Se acepta una diferencia de hasta 15 minutos. Si se excede y ese día no hay otra novedad cargada, el exceso se descuenta con una DOR automática.</p>
+    Se acepta una diferencia de hasta 15 minutos. Si se excede, o si salió y volvió sin permiso cargado, y ese día no hay otra novedad, el tiempo de más (o todo el tiempo fuera) se descuenta con una <b>DOR automática</b>;
+    al cargar el permiso la DOR se recalcula sola y desaparece si el tiempo coincide.</p>
 
   <div class="filters">
     <div class="field"><label for="f-desde">Desde</label><input type="date" id="f-desde"></div>
@@ -474,7 +477,7 @@ AUTH_READY.then(async function () {
     'Excedió el permiso': 'Estuvo fuera más tiempo del que dura el permiso.',
     'Menos de lo asignado': 'Estuvo fuera menos tiempo del que dura el permiso.',
     'Sin pausa marcada': 'Hay permiso cargado, pero el biométrico no muestra salida y reingreso (se necesitan las 4 marcaciones).',
-    'Pausa sin permiso': 'Salió y volvió, pero ese día no hay permiso cargado.',
+    'Pausa sin permiso': 'Salió y volvió, pero ese día no hay permiso cargado: todo el tiempo fuera queda como DOR automática hasta que se cargue el permiso.',
     'Sin marcación ese día': 'Hay permiso cargado, pero no hay marcaciones ese día.'
   };
   const $ = (id) => document.getElementById(id);
@@ -486,6 +489,8 @@ AUTH_READY.then(async function () {
   function diaSemana(iso) { const [y, m, d] = iso.split('-').map(Number); return DIAS[new Date(y, m - 1, d).getDay()]; }
   function fmtHora(naive) { return naive ? new Date(naive).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true }) : null; }
   const h2 = (v) => Number(v).toFixed(2);
+  // descripcion de la novedad (viene de la vista); si la vista aun no la trae, se muestra el codigo
+  const listaPermisos = (f) => (f.permisos_descripcion ? f.permisos_descripcion.split('|') : (f.permisos ? f.permisos.split(',') : [])).map((x) => x.trim()).filter(Boolean);
 
   { const h = fechaISO(); $('f-desde').value = `${h.slice(0, 7)}-${Number(h.slice(8)) <= 15 ? '01' : '16'}`; $('f-hasta').value = h; }
 
@@ -532,7 +537,7 @@ AUTH_READY.then(async function () {
     const lista = filtradas(true);
     $('conteo').textContent = `${lista.length} resultado${lista.length === 1 ? '' : 's'}`;
     $('tbody').innerHTML = lista.length ? lista.map((f) => {
-      const cods = f.permisos ? f.permisos.split(',').map((c) => `<span class="badge cod">${esc(c.trim())}</span>`).join('') : '<span class="nada">—</span>';
+      const cods = listaPermisos(f).length ? listaPermisos(f).map((d) => `<div class="perm-desc">${esc(d)}</div>`).join('') : '<span class="nada">—</span>';
       const sal = f.pausa_desde ? fmtHora(f.pausa_desde) : '<span class="nada">—</span>';
       const rei = f.pausa_hasta ? fmtHora(f.pausa_hasta) : '<span class="nada">—</span>';
       const td = (cls, inner) => `<td class="${cls}"><div class="v">${inner}</div></td>`;
@@ -557,7 +562,7 @@ AUTH_READY.then(async function () {
   $('btn-actualizar').addEventListener('click', cargar);
   $('btn-excel').addEventListener('click', () => {
     const ws = XLSX.utils.json_to_sheet(filtradas(true).map((f) => ({
-      'Fecha': f.fecha, 'Cédula': f.cedula, 'Nombre': f.nombre, 'Área': f.area, 'Permiso cargado': f.permisos || '', 'Horas del permiso': Number(f.horas_asignadas),
+      'Fecha': f.fecha, 'Cédula': f.cedula, 'Nombre': f.nombre, 'Área': f.area, 'Permiso cargado': listaPermisos(f).join(', '), 'Horas del permiso': Number(f.horas_asignadas),
       'Salida por permiso': fmtHora(f.pausa_desde) || '', 'Reingreso': fmtHora(f.pausa_hasta) || '', 'Tiempo fuera (h)': f.horas_fuera != null ? Number(f.horas_fuera) : '',
       'Diferencia (h)': f.diferencia != null ? Number(f.diferencia) : '', 'Estado': f.estado, 'DOR por exceso (h)': Number(f.horas_dor) || '' })));
     ws['!cols'] = [{ wch: 11 }, { wch: 12 }, { wch: 34 }, { wch: 24 }, { wch: 15 }, { wch: 12 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 22 }, { wch: 14 }];
