@@ -292,10 +292,12 @@
   .badge.menos, .badge.sinpausa, .badge.sinpermiso, .badge.sinmarca { background: var(--warn-soft); color: var(--warn); }
   .badge.cod { background: var(--paper); border: 1px solid var(--line-strong); color: var(--ink); font-family: "IBM Plex Mono", ui-monospace, monospace; font-size: 12px; margin: 1px 3px 1px 0; }
 
-  table.tabla-permisos { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 980px; font-size: 14px; }
-  .tabla-permisos thead th { position: sticky; top: 0; z-index: 2; background: var(--ink); color: var(--paper); text-align: left; padding: 11px 14px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.25; vertical-align: bottom; }
+  table.tabla-permisos { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 1080px; font-size: 14px; }
+  .wrap { max-width: 1760px; padding-left: 14px; padding-right: 14px; }
+  .table-scroll { max-height: calc(100vh - 250px); min-height: 420px; }
+  .tabla-permisos thead th { position: sticky; top: 0; z-index: 2; background: var(--ink); color: var(--paper); text-align: left; padding: 12px 8px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.25; vertical-align: bottom; }
   .tabla-permisos thead th.der, .tabla-permisos td.der { text-align: right; }
-  .tabla-permisos tbody td { padding: 11px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--ink); line-height: 1.35; }
+  .tabla-permisos tbody td { padding: 12px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--ink); line-height: 1.35; }
   .tabla-permisos tbody tr:hover td { background: var(--accent-soft); }
   .tabla-permisos td.fecha { white-space: nowrap; font-weight: 600; }
   .tabla-permisos td.fecha small { display: block; font-weight: 400; color: var(--ink-faint); font-size: 12px; text-transform: capitalize; }
@@ -304,10 +306,14 @@
   .tabla-permisos td.horas { font-variant-numeric: tabular-nums; white-space: nowrap; }
   .tabla-permisos td.horas small { color: var(--ink-faint); font-size: 12px; margin-left: 2px; }
   .tabla-permisos td.salida { white-space: nowrap; font-variant-numeric: tabular-nums; }
-  .tabla-permisos td.salida small { display: block; color: var(--ink-faint); font-size: 12px; }
   .tabla-permisos thead th { word-break: keep-all; overflow-wrap: normal; }
-  .tabla-permisos thead th:nth-child(7), .tabla-permisos thead th:nth-child(9) { min-width: 108px; }
-  .tabla-permisos thead th:nth-child(4), .tabla-permisos thead th:nth-child(6) { min-width: 84px; }
+  .tabla-permisos thead th:nth-child(1) { min-width: 92px; }
+  .tabla-permisos thead th:nth-child(2) { min-width: 210px; }
+  .tabla-permisos thead th:nth-child(3) { min-width: 92px; }
+  .tabla-permisos thead th:nth-child(9) { min-width: 150px; }
+  .tabla-permisos thead th:nth-child(4), .tabla-permisos thead th:nth-child(7) { min-width: 84px; }
+  .tabla-permisos thead th:nth-child(5), .tabla-permisos thead th:nth-child(6) { min-width: 96px; }
+  .tabla-permisos thead th:nth-child(8), .tabla-permisos thead th:nth-child(10) { min-width: 108px; }
   .dif-mas { color: var(--critical); font-weight: 700; }
   .dif-menos { color: var(--warn); font-weight: 700; }
   .dif-ok { color: var(--accent); font-weight: 700; }
@@ -418,7 +424,8 @@
         <th>Persona</th>
         <th>Permiso cargado</th>
         <th class="der">Horas del permiso</th>
-        <th>Salida y reingreso</th>
+        <th>Salida por permiso</th>
+        <th>Reingreso</th>
         <th class="der">Tiempo fuera</th>
         <th class="der">Diferencia</th>
         <th>Estado</th>
@@ -526,19 +533,21 @@ AUTH_READY.then(async function () {
     $('conteo').textContent = `${lista.length} resultado${lista.length === 1 ? '' : 's'}`;
     $('tbody').innerHTML = lista.length ? lista.map((f) => {
       const cods = f.permisos ? f.permisos.split(',').map((c) => `<span class="badge cod">${esc(c.trim())}</span>`).join('') : '<span class="nada">—</span>';
-      const salida = f.pausa_desde ? `${fmtHora(f.pausa_desde)}<small>a ${fmtHora(f.pausa_hasta)}</small>` : '<span class="nada">—</span>';
+      const sal = f.pausa_desde ? fmtHora(f.pausa_desde) : '<span class="nada">—</span>';
+      const rei = f.pausa_hasta ? fmtHora(f.pausa_hasta) : '<span class="nada">—</span>';
       const td = (cls, inner) => `<td class="${cls}"><div class="v">${inner}</div></td>`;
       return `<tr>` +
         td('fecha', `${fmtFecha(f.fecha)}<small>${diaSemana(f.fecha)}</small>`) +
         td('persona', `<b>${esc(f.nombre)}</b><small>${f.cedula} · ${esc(f.area)}</small>`) +
         td('', cods) +
         td('horas der', Number(f.horas_asignadas) ? `${h2(f.horas_asignadas)}<small>h</small>` : '<span class="nada">—</span>') +
-        td('salida', salida) +
+        td('salida', sal) +
+        td('salida', rei) +
         td('horas der', f.horas_fuera == null ? '<span class="nada">—</span>' : `${h2(f.horas_fuera)}<small>h</small>`) +
         td('horas der', celdaDif(f)) +
         td('', `<span class="badge ${CLASE[f.estado] || ''}" title="${esc(AYUDA_ESTADO[f.estado] || '')}">${esc(f.estado)}</span>`) +
         td('horas der', Number(f.horas_dor) ? `<b>${h2(f.horas_dor)}</b><small>h</small>` : '<span class="nada">—</span>') + '</tr>';
-    }).join('') : `<tr><td colspan="9"><div class="empty-state">Sin permisos ni pausas en este rango con estos filtros.</div></td></tr>`;
+    }).join('') : `<tr><td colspan="10"><div class="empty-state">Sin permisos ni pausas en este rango con estos filtros.</div></td></tr>`;
   }
 
   $('resumen').addEventListener('click', (e) => { const b = e.target.closest('button[data-e]'); if (b) { estadoSel = b.dataset.e === estadoSel ? '' : b.dataset.e; pintar(); } });
