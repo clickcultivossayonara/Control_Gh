@@ -175,6 +175,12 @@
   }
   .alerta-excel-btn:hover { border-color: var(--accent); }
   .alerta-excel-btn:disabled { opacity: 0.6; cursor: wait; }
+  .alerta-sync { border: 1px solid var(--critical-soft); border-radius: var(--radius); background: var(--critical-soft); padding: 10px 14px; display: flex; gap: 10px; align-items: flex-start; }
+  .alerta-sync .as-icono { font-size: 15px; line-height: 1.3; color: var(--critical); }
+  .alerta-sync .as-titulo { font-weight: 700; font-size: 13px; color: var(--critical); }
+  .alerta-sync .as-texto { font-size: 12.5px; color: var(--ink); margin-top: 3px; line-height: 1.45; }
+  .alerta-sync[hidden] { display: none; }
+  .sync-pie { display: block; margin-top: 4px; font-size: 11.5px; color: var(--ink-faint); }
   .alerta-lista { margin-top: 9px; max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
   .alerta-lista[hidden] { display: none; }
   .alerta-fila { display: flex; gap: 10px; align-items: baseline; font-size: 12.5px; padding: 5px 9px; border-radius: 6px; background: var(--surface); }
@@ -396,6 +402,14 @@
     <h1>Registro Biométrico</h1>
   </div>
 
+  <div class="alerta-sync" id="alerta-sync" role="alert" hidden>
+    <span class="as-icono">⚠</span>
+    <div>
+      <div class="as-titulo" id="as-titulo"></div>
+      <div class="as-texto" id="as-texto"></div>
+    </div>
+  </div>
+
   <div class="alerta-sin-entrada" id="alerta-sin-entrada" hidden>
     <div class="alerta-header" id="alerta-header">
       <span class="alerta-icono" id="alerta-icono">⚠</span>
@@ -462,6 +476,7 @@
 
   <footer>
     Datos desde Supabase &middot; última consulta: <strong id="ultima-actualizacion">—</strong>
+    <span class="sync-pie" id="sync-pie"></span>
   </footer>
 </div>
 </div>
@@ -899,6 +914,40 @@ AUTH_READY.then(async function () {
   }
 
   document.getElementById('btn-excel').addEventListener('click', exportarExcel);
+
+  // ---------- Estado de la sincronizacion con los lectores ----------
+  const NOMBRE_SEDE_SYNC = { union: 'Unión', ceja: 'Cejas' };
+  const fmtMarca = (iso) => {
+    if (!iso) return 'sin datos';
+    const d = new Date(iso);
+    return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${d.toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit', hour12: true })}`;
+  };
+  async function cargarEstadoSync() {
+    const aviso = document.getElementById('alerta-sync'), pie = document.getElementById('sync-pie');
+    if (window.SESION.rol !== 'super_admin') return;           // el aviso es solo para el Super Admin (la base tambien lo restringe)
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/estado_sincronizacion`, { method: 'POST', headers: { ...authHeaders(), 'Content-Type': 'application/json' }, body: '{}' });
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+      const filas = await resp.json();
+      // por sede (Unión tiene dos lectores): se muestra la peor situación y la ultima marcacion recibida mas reciente
+      const sedes = {};
+      filas.forEach((f) => {
+        const s = sedes[f.grupo] || (sedes[f.grupo] = { grupo: f.grupo, ultima: null, motivos: [] });
+        if (f.ultima_marca && (!s.ultima || f.ultima_marca > s.ultima)) s.ultima = f.ultima_marca;
+        if (f.alerta && f.motivo && !s.motivos.includes(f.motivo)) s.motivos.push(f.motivo);
+      });
+      const lista = Object.values(sedes);
+      pie.textContent = 'Última marcación recibida: ' + lista.map((s) => `${NOMBRE_SEDE_SYNC[s.grupo] || s.grupo} ${fmtMarca(s.ultima)}`).join(' · ');
+      const afectadas = lista.filter((s) => s.motivos.length);
+      if (!afectadas.length) { aviso.hidden = true; return; }
+      document.getElementById('as-titulo').textContent = 'Sincronización con retraso: ' + afectadas.map((s) => NOMBRE_SEDE_SYNC[s.grupo] || s.grupo).join(', ');
+      document.getElementById('as-texto').innerHTML = afectadas.map((s) => `<b>${NOMBRE_SEDE_SYNC[s.grupo] || s.grupo}</b>: ${s.motivos.join('; ')} (última marcación recibida: ${fmtMarca(s.ultima)})`).join('<br>') +
+        '<br>Los registros de ese periodo pueden estar incompletos. Mientras tanto no se crean DOR por omisión de registro para esa sede; cuando lleguen las marcaciones, las DOR que no correspondan se corrigen solas.';
+      aviso.hidden = false;
+    } catch (err) { aviso.hidden = true; }
+  }
+  cargarEstadoSync();
+  setInterval(cargarEstadoSync, 5 * 60 * 1000);
 
   fechasPorDefecto();
   cargar();
