@@ -281,6 +281,18 @@
   .tabla-bono { min-width: 880px; }
   .tabla-bono td.valor, .tabla-bono th.valor { text-align: right; }
   .tabla-bono tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); background: var(--accent-soft); }
+  .copia-barra { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 10px 0 4px; }
+  .copia-barra .field { min-width: 180px; }
+  .chip-est { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; margin-left: 6px; }
+  .chip-est.nuevo { background: var(--accent-soft, #e3eee6); color: var(--accent, #2f6b45); }
+  .chip-est.cambio { background: var(--warn-soft, #f6e9d7); color: var(--warn, #9a6a1a); }
+  .chip-est.aviso { background: var(--critical-soft, #f6e0e0); color: var(--critical, #a33); }
+  .tabla-copia td.recibe, .tabla-copia th.recibe { text-align: center; width: 70px; }
+  .tabla-copia input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent, #2f6b45); }
+  .tabla-copia tr.descartada td { opacity: 0.55; }
+  .tabla-copia .inp-copia { width: 130px; text-align: right; }
+  .tabla-copia .inp-obs { width: 100%; min-width: 140px; }
+  .tabla-copia td small { display: block; color: var(--ink-faint); font-size: 11.5px; }
   .titulo-seccion { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 4px; }
   .form-bono { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
   .form-bono .ancho2 { grid-column: span 2; }
@@ -436,6 +448,54 @@
         <span class="form-msg" id="msg-form"></span>
       </div>
     </form>
+  </section>
+
+  <section class="card" id="card-copiar">
+    <p class="titulo-seccion">Copiar la quincena anterior</p>
+    <p class="card-hint">Carga la lista de la quincena anterior como una lista de chequeo: deja marcado a quien sigue recibiendo la bonificación, desmarca a quien no y corrige el valor de quien cambió. Solo se guardan los marcados.</p>
+    <div class="copia-barra">
+      <div class="field">
+        <label for="c-tipo">Tipo de bonificación</label>
+        <select id="c-tipo">
+          <option value="BONO">AUXILIO POR MERA LIBERALIDAD</option>
+          <option value="VIAJES_MULA">ACOMPAÑAMIENTO DE TRACTO MULA</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="c-fecha">Fecha de esta quincena</label>
+        <input type="date" id="c-fecha">
+      </div>
+      <button type="button" class="btn-primary" id="c-cargar">Cargar lista anterior</button>
+    </div>
+    <p class="form-msg" id="c-msg"></p>
+    <div id="c-panel" hidden>
+      <div class="resumen-bono">
+        <div class="cifra-bono"><span>Quincena de origen</span><b id="c-origen">—</b></div>
+        <div class="cifra-bono"><span>Reciben</span><b id="c-reciben">—</b></div>
+        <div class="cifra-bono"><span>Total a registrar</span><b id="c-total">—</b></div>
+        <div class="cifra-bono"><span>Cambios vs. la anterior</span><b id="c-cambios">—</b></div>
+      </div>
+      <div class="field" style="max-width:420px;margin-bottom:10px">
+        <label for="c-agregar">Agregar a alguien que no estaba en la lista anterior</label>
+        <div class="sugerencias">
+          <input type="text" id="c-agregar" inputmode="text" placeholder="Cédula o nombre…" autocomplete="off">
+          <div class="sug-lista" id="c-sug" hidden></div>
+        </div>
+      </div>
+      <div class="table-scroll">
+        <table class="tabla-bono tabla-copia" data-principales="Recibe,Nombre,Quincenal">
+          <thead><tr>
+            <th class="recibe">Recibe</th><th>Nombre</th><th>Cédula</th><th>Labor</th><th class="valor">Anterior</th><th class="valor">Quincenal ($)</th><th>Observaciones</th>
+          </tr></thead>
+          <tbody id="c-tbody"></tbody>
+        </table>
+      </div>
+      <div class="form-actions" style="margin-top:14px">
+        <button type="button" class="btn-primary" id="c-guardar">Guardar marcados</button>
+        <button type="button" class="clear-btn" id="c-cancelar">Cancelar</button>
+        <span class="form-msg" id="c-msg2"></span>
+      </div>
+    </div>
   </section>
 
   <section class="card">
@@ -611,10 +671,143 @@ AUTH_READY.then(async function () {
       $("f-cedula").focus();
       await cargarLista();
     } catch (err) {
-      falla("No se pudo guardar: " + (err.message || err));
+      const m = String(err.message || err);
+      falla(/23505|duplicate key|ux_bonificaciones/i.test(m) ? "Ya existe una bonificación de esa persona para ese tipo y fecha; edítala en la lista de abajo." : "No se pudo guardar: " + m);
     } finally {
       $("btn-guardar").disabled = false;
     }
+  });
+
+  // ---------- Copiar la quincena anterior (lista de chequeo) ----------
+  // Fecha propuesta: el cierre de la quincena en curso (15 o ultimo dia del mes).
+  function cierreQuincena() {
+    const d = new Date(); const y = d.getFullYear(), m = d.getMonth();
+    const dia = d.getDate() <= 15 ? 15 : new Date(y, m + 1, 0).getDate();
+    return `${y}-${String(m + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
+  }
+  $("c-fecha").value = cierreQuincena();
+  let copia = [];          // {cedula, nombre, labor, anterior, valor, recibe, obs, ya, retirado, nuevo}
+  let copiaOrigen = null;  // fecha de la quincena de la que se copio
+  const cmsg = (t, tipo) => { $("c-msg").textContent = t || ""; $("c-msg").className = "form-msg" + (tipo ? " " + tipo : ""); };
+  const cmsg2 = (t, tipo) => { $("c-msg2").textContent = t || ""; $("c-msg2").className = "form-msg" + (tipo ? " " + tipo : ""); };
+
+  async function cargarCopia() {
+    const tipo = $("c-tipo").value, fecha = $("c-fecha").value;
+    cmsg2("");
+    if (!fecha) return cmsg("Elige la fecha de esta quincena.", "error");
+    cmsg("Buscando la quincena anterior…");
+    $("c-panel").hidden = true;
+    try {
+      const ult = await get(`bonificaciones?select=fecha_actualizacion&grupo=eq.${tipo}&fecha_actualizacion=lt.${fecha}&order=fecha_actualizacion.desc&limit=1`);
+      if (!ult.length) return cmsg("No hay una quincena anterior de este tipo para copiar. Usa el formulario de arriba.", "error");
+      copiaOrigen = String(ult[0].fecha_actualizacion).slice(0, 10);
+      const previas = await get(`bonificaciones?select=cedula,nombre,labor,valor&grupo=eq.${tipo}&fecha_actualizacion=eq.${copiaOrigen}&cedula=not.is.null&order=nombre.asc&limit=1000`);
+      const ceds = [...new Set(previas.map((x) => x.cedula))];
+      const emp = {};
+      if (ceds.length) (await get(`employees_detalle?select=cedula,labor,activo&cedula=in.(${ceds.join(",")})&limit=1000`)).forEach((e) => { emp[e.cedula] = e; });
+      const existentes = new Set((await get(`bonificaciones?select=cedula&grupo=eq.${tipo}&fecha_actualizacion=eq.${fecha}&limit=1000`)).map((x) => x.cedula));
+      copia = previas.map((x) => {
+        const e = emp[x.cedula]; const retirado = !!e && e.activo === false; const ya = existentes.has(x.cedula);
+        return { cedula: x.cedula, nombre: x.nombre, labor: (e && e.labor) || x.labor || "", anterior: x.valor === null ? null : Number(x.valor), valor: x.valor === null ? null : Number(x.valor),
+                 recibe: !retirado && !ya, obs: "", ya, retirado, nuevo: false };
+      });
+      cmsg(existentes.size ? `Ya hay ${existentes.size} registro(s) cargados con la fecha ${fmtFecha(fecha)} para este tipo; esas personas aparecen bloqueadas para no duplicarlas.` : "");
+      $("c-origen").textContent = fmtFecha(copiaOrigen);
+      pintarCopia();
+      $("c-panel").hidden = false;
+    } catch (err) { cmsg("No se pudo cargar la lista anterior: " + (err.message || err), "error"); }
+  }
+
+  function pintarCopia() {
+    const sel = copia.filter((x) => x.recibe);
+    $("c-reciben").textContent = `${sel.length} de ${copia.length}`;
+    $("c-total").textContent = COP.format(sel.reduce((t, x) => t + Number(x.valor || 0), 0));
+    const nuevos = copia.filter((x) => x.nuevo && x.recibe).length, cambian = copia.filter((x) => !x.nuevo && x.recibe && x.valor !== x.anterior).length, salen = copia.filter((x) => !x.nuevo && !x.recibe && !x.ya).length;
+    $("c-cambios").textContent = `${nuevos} nuevo${nuevos === 1 ? "" : "s"} · ${cambian} con otro valor · ${salen} no continúa${salen === 1 ? "" : "n"}`;
+    $("c-tbody").innerHTML = copia.map((x, i) => {
+      const chip = x.ya ? `<span class="chip-est aviso">Ya cargada en esta fecha</span>` : x.retirado ? `<span class="chip-est aviso">Inactivo</span>` : x.nuevo ? `<span class="chip-est nuevo">Nuevo</span>`
+        : (x.recibe && x.valor !== x.anterior ? `<span class="chip-est cambio">Valor distinto</span>` : "");
+      return `<tr data-i="${i}" class="${x.recibe ? "" : "descartada"}">
+        <td class="recibe"><input type="checkbox" class="c-chk" ${x.recibe ? "checked" : ""} ${x.ya ? "disabled" : ""} aria-label="Recibe"></td>
+        <td class="nombre">${esc(x.nombre)}${chip}</td><td class="cedula">${x.cedula}</td><td>${esc(x.labor)}</td>
+        <td class="valor num">${x.anterior === null ? "—" : COP.format(x.anterior)}</td>
+        <td class="valor"><input type="text" class="inp-copia c-val" inputmode="numeric" value="${x.valor === null ? "" : COP.format(x.valor)}" ${x.recibe && !x.ya ? "" : "disabled"} aria-label="Quincenal"></td>
+        <td><input type="text" class="inp-obs c-obs" maxlength="300" value="${esc(x.obs)}" ${x.recibe && !x.ya ? "" : "disabled"} aria-label="Observaciones"></td></tr>`;
+    }).join("") || `<tr><td colspan="7"><div class="empty-state">La quincena anterior no tiene personas.</div></td></tr>`;
+  }
+
+  $("c-tbody").addEventListener("change", (e) => {
+    const tr = e.target.closest("tr[data-i]"); if (!tr) return;
+    if (e.target.classList.contains("c-chk")) { copia[Number(tr.dataset.i)].recibe = e.target.checked; pintarCopia(); }
+  });
+  $("c-tbody").addEventListener("input", (e) => {
+    const tr = e.target.closest("tr[data-i]"); if (!tr) return;
+    const x = copia[Number(tr.dataset.i)];
+    if (e.target.classList.contains("c-val")) {
+      const d = soloDigitos(e.target.value); x.valor = d === "" ? null : Number(d); e.target.value = d === "" ? "" : COP.format(Number(d));
+      const sel = copia.filter((y) => y.recibe);
+      $("c-total").textContent = COP.format(sel.reduce((t, y) => t + Number(y.valor || 0), 0));
+    }
+    if (e.target.classList.contains("c-obs")) x.obs = e.target.value;
+  });
+  $("c-tbody").addEventListener("focusout", (e) => { if (e.target.classList.contains("c-val")) pintarCopia(); });
+
+  // agregar a una persona que no estaba en la quincena anterior
+  let tAgr = null;
+  $("c-agregar").addEventListener("input", () => {
+    clearTimeout(tAgr);
+    const q = $("c-agregar").value.trim(), box = $("c-sug");
+    if (q.length < 3) { box.hidden = true; return; }
+    tAgr = setTimeout(async () => {
+      try {
+        const r = await buscarPersonas(q);
+        box.innerHTML = r.length ? r.map((p, i) => `<div class="sug-item" data-i="${i}"><span>${esc(p.nombre)}</span><small>${p.cedula} · ${esc(p.labor || p.area || "")}</small></div>`).join("")
+          : `<div class="sug-item"><small>Sin coincidencias entre los empleados activos de tus áreas.</small></div>`;
+        box._datos = r; box.hidden = false;
+      } catch (err) { box.innerHTML = `<div class="sug-item"><small>${esc(err.message || err)}</small></div>`; box.hidden = false; }
+    }, 250);
+  });
+  $("c-sug").addEventListener("mousedown", (e) => {
+    const it = e.target.closest(".sug-item[data-i]"); if (!it || !$("c-sug")._datos) return;
+    const p = $("c-sug")._datos[Number(it.dataset.i)];
+    $("c-sug").hidden = true; $("c-agregar").value = "";
+    if (copia.some((x) => Number(x.cedula) === Number(p.cedula))) return cmsg2(`${p.nombre} ya está en la lista.`, "error");
+    copia.push({ cedula: p.cedula, nombre: p.nombre, labor: p.labor || "", anterior: null, valor: null, recibe: true, obs: "", ya: false, retirado: false, nuevo: true });
+    cmsg2(""); pintarCopia();
+  });
+  document.addEventListener("click", (e) => { if (!e.target.closest("#card-copiar .sugerencias")) $("c-sug").hidden = true; });
+
+  $("c-cargar").addEventListener("click", cargarCopia);
+  $("c-tipo").addEventListener("change", () => { $("c-panel").hidden = true; cmsg(""); });
+  $("c-fecha").addEventListener("change", () => { $("c-panel").hidden = true; cmsg(""); });
+  $("c-cancelar").addEventListener("click", () => { $("c-panel").hidden = true; copia = []; cmsg(""); cmsg2(""); });
+
+  $("c-guardar").addEventListener("click", async () => {
+    const tipo = $("c-tipo").value, fecha = $("c-fecha").value;
+    const marcados = copia.filter((x) => x.recibe && !x.ya);
+    if (!marcados.length) return cmsg2("No hay nadie marcado para guardar.", "error");
+    const sinValor = marcados.filter((x) => !x.valor || x.valor <= 0);
+    if (sinValor.length) return cmsg2(`Falta el valor de: ${sinValor.slice(0, 4).map((x) => x.nombre).join(", ")}${sinValor.length > 4 ? "…" : ""}. Escribe el valor o desmarca a la persona.`, "error");
+    const total = marcados.reduce((t, x) => t + x.valor, 0);
+    if (!confirm(`Se registrarán ${marcados.length} bonificaciones de "${TIPOS[tipo]}" con fecha ${fmtFecha(fecha)} por un total de ${COP.format(total)}. ¿Confirmas?`)) return;
+    $("c-guardar").disabled = true; cmsg2("Guardando…");
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones`, {
+        method: "POST",
+        headers: { ...authHeaders(), "Content-Type": "application/json", Prefer: "return=minimal" },
+        body: JSON.stringify(marcados.map((x) => ({ fecha_actualizacion: fecha, grupo: tipo, nombre: x.nombre, cedula: Number(x.cedula), labor: x.labor || null,
+          valor: x.valor, observaciones: x.obs.trim() || null, creado_por: window.SESION.nombre || null }))),
+      });
+      if (!resp.ok) throw new Error(await resp.text());
+      cmsg2(""); $("c-panel").hidden = true; copia = [];
+      cmsg(`Guardado: ${marcados.length} bonificaciones por ${COP.format(total)} (${TIPOS[tipo]}, ${fmtFecha(fecha)}).`, "ok");
+      if ($("l-hasta").value < fecha) $("l-hasta").value = fecha;
+      if ($("l-desde").value > fecha) $("l-desde").value = fecha;
+      await cargarLista();
+    } catch (err) {
+      const m = String(err.message || err);
+      cmsg2(/23505|duplicate key|ux_bonificaciones/i.test(m) ? "Alguna de esas personas ya tiene una bonificación de este tipo y fecha; vuelve a cargar la lista." : "No se pudo guardar: " + m, "error");
+    } finally { $("c-guardar").disabled = false; }
   });
 
   // ---------- Lista ----------
