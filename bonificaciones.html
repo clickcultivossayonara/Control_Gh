@@ -287,6 +287,7 @@
   .chip-est.nuevo { background: var(--accent-soft, #e3eee6); color: var(--accent, #2f6b45); }
   .chip-est.cambio { background: var(--warn-soft, #f6e9d7); color: var(--warn, #9a6a1a); }
   .chip-est.aviso { background: var(--critical-soft, #f6e0e0); color: var(--critical, #a33); }
+  .form-msg.aviso { color: var(--warn, #9a6a1a); font-weight: 600; }
   .tabla-copia td.recibe, .tabla-copia th.recibe { text-align: center; width: 70px; }
   .tabla-copia input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent, #2f6b45); }
   .tabla-copia tr.descartada td { opacity: 0.55; }
@@ -443,6 +444,7 @@
           <input type="text" id="f-obs" maxlength="300">
         </div>
       </div>
+      <p class="form-msg aviso" id="f-plazo" style="margin-top:10px"></p>
       <div class="form-actions" style="margin-top:14px">
         <button type="submit" class="btn-primary" id="btn-guardar">Guardar bonificación</button>
         <span class="form-msg" id="msg-form"></span>
@@ -467,6 +469,7 @@
       </div>
       <button type="button" class="btn-primary" id="c-cargar">Cargar lista anterior</button>
     </div>
+    <p class="form-msg aviso" id="c-plazo"></p>
     <p class="form-msg" id="c-msg"></p>
     <div id="c-panel" hidden>
       <div class="resumen-bono">
@@ -505,6 +508,7 @@
       <div class="cifra-bono"><span>Auxilio por mera liberalidad</span><b id="r-bono">—</b></div>
       <div class="cifra-bono"><span>Acompañamiento de tracto mula</span><b id="r-mula">—</b></div>
       <div class="cifra-bono"><span>Total</span><b id="r-total">—</b></div>
+      <div class="cifra-bono"><span>Cargadas fuera de plazo</span><b id="r-tarde">—</b></div>
     </div>
     <div class="filters">
       <div class="field"><label for="l-desde">Desde</label><input type="date" id="l-desde"></div>
@@ -574,8 +578,20 @@ AUTH_READY.then(async function () {
   const hoyISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
   const haceISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
   const fmtFecha = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-"); return `${d}/${m}/${y}`; };
+  // Plazo de cargue (como el cierre de Nomina): las bonificaciones del 1 al 15 se cargan hasta el dia 12 y las del 16 a fin de mes hasta el dia 28.
+  // Solo se AVISA: se puede cargar despues, pero queda a la vista como "fuera de plazo".
+  const plazoDe = (fecha) => { const [y, m, d] = String(fecha).slice(0, 10).split("-").map(Number); return `${y}-${String(m).padStart(2, "0")}-${d <= 15 ? "12" : "28"}`; };
+  const tarde = (fecha, cargado) => (cargado ? String(cargado).slice(0, 10) : hoyISO()) > plazoDe(fecha);
+  function textoPlazo(fecha) {
+    if (!fecha) return "";
+    return tarde(fecha) ? `⚠ Fuera de plazo: el cargue de esta quincena cerraba el ${fmtFecha(plazoDe(fecha))}. Puedes cargarla igual, pero quedará registrada como cargada fuera de plazo.`
+                        : `Plazo de cargue de esta quincena: hasta el ${fmtFecha(plazoDe(fecha))}.`;
+  }
 
   $("f-fecha").value = hoyISO();
+  const avisoFormulario = () => { $("f-plazo").textContent = textoPlazo($("f-fecha").value); };
+  $("f-fecha").addEventListener("change", avisoFormulario);
+  avisoFormulario();
   $("l-desde").value = haceISO(45);
   $("l-hasta").value = hoyISO();
 
@@ -662,7 +678,7 @@ AUTH_READY.then(async function () {
         }]),
       });
       if (!resp.ok) throw new Error(await resp.text());
-      msg.textContent = `Guardado: ${elegido.nombre} · ${COP.format(valor)} (${TIPOS[$("f-tipo").value]}).`;
+      msg.textContent = `Guardado: ${elegido.nombre} · ${COP.format(valor)} (${TIPOS[$("f-tipo").value]}).${tarde(fecha) ? " Quedó registrada fuera de plazo." : ""}`;
       msg.className = "form-msg ok";
       limpiarPersona();
       $("f-cedula").value = "";
@@ -686,6 +702,8 @@ AUTH_READY.then(async function () {
     return `${y}-${String(m + 1).padStart(2, "0")}-${String(dia).padStart(2, "0")}`;
   }
   $("c-fecha").value = cierreQuincena();
+  const avisoCopia = () => { $("c-plazo").textContent = textoPlazo($("c-fecha").value); };
+  avisoCopia();
   let copia = [];          // {cedula, nombre, labor, anterior, valor, recibe, obs, ya, retirado, nuevo}
   let copiaOrigen = null;  // fecha de la quincena de la que se copio
   const cmsg = (t, tipo) => { $("c-msg").textContent = t || ""; $("c-msg").className = "form-msg" + (tipo ? " " + tipo : ""); };
@@ -779,7 +797,7 @@ AUTH_READY.then(async function () {
 
   $("c-cargar").addEventListener("click", cargarCopia);
   $("c-tipo").addEventListener("change", () => { $("c-panel").hidden = true; cmsg(""); });
-  $("c-fecha").addEventListener("change", () => { $("c-panel").hidden = true; cmsg(""); });
+  $("c-fecha").addEventListener("change", () => { $("c-panel").hidden = true; cmsg(""); avisoCopia(); });
   $("c-cancelar").addEventListener("click", () => { $("c-panel").hidden = true; copia = []; cmsg(""); cmsg2(""); });
 
   $("c-guardar").addEventListener("click", async () => {
@@ -789,7 +807,7 @@ AUTH_READY.then(async function () {
     const sinValor = marcados.filter((x) => !x.valor || x.valor <= 0);
     if (sinValor.length) return cmsg2(`Falta el valor de: ${sinValor.slice(0, 4).map((x) => x.nombre).join(", ")}${sinValor.length > 4 ? "…" : ""}. Escribe el valor o desmarca a la persona.`, "error");
     const total = marcados.reduce((t, x) => t + x.valor, 0);
-    if (!confirm(`Se registrarán ${marcados.length} bonificaciones de "${TIPOS[tipo]}" con fecha ${fmtFecha(fecha)} por un total de ${COP.format(total)}. ¿Confirmas?`)) return;
+    if (!confirm(`Se registrarán ${marcados.length} bonificaciones de "${TIPOS[tipo]}" con fecha ${fmtFecha(fecha)} por un total de ${COP.format(total)}.${tarde(fecha) ? `\n\n⚠ Está fuera de plazo (el cargue cerraba el ${fmtFecha(plazoDe(fecha))}); quedará registrado así.` : ""}\n\n¿Confirmas?`)) return;
     $("c-guardar").disabled = true; cmsg2("Guardando…");
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones`, {
@@ -845,6 +863,7 @@ AUTH_READY.then(async function () {
     $("r-bono").textContent = COP.format(suma(l.filter((x) => x.grupo === "BONO")));
     $("r-mula").textContent = COP.format(suma(l.filter((x) => x.grupo === "VIAJES_MULA")));
     $("r-total").textContent = COP.format(suma(l));
+    $("r-tarde").textContent = l.filter((x) => tarde(x.fecha_actualizacion, x.created_at)).length.toLocaleString("es-CO");
     $("l-count").textContent = l.length.toLocaleString("es-CO") + " registro" + (l.length === 1 ? "" : "s");
     $("l-tbody").innerHTML = l.length === 0
       ? `<tr><td colspan="8"><div class="empty-state">Sin bonificaciones para estos filtros.</div></td></tr>`
@@ -857,7 +876,7 @@ AUTH_READY.then(async function () {
             ? `<button type="button" class="btn-ok l-guardar">Guardar</button> <button type="button" class="btn-neutro l-cancelar">Cancelar</button>`
             : `<button type="button" class="btn-neutro l-editar">Editar</button> <button type="button" class="btn-peq l-eliminar">Eliminar</button>`;
           return `<tr data-id="${x.id}">
-          <td class="num">${fmtFecha(x.fecha_actualizacion)}</td>
+          <td class="num">${fmtFecha(x.fecha_actualizacion)}${tarde(x.fecha_actualizacion, x.created_at) ? `<span class="chip-est aviso" title="Cargada el ${fmtFecha(x.created_at)}; el plazo era el ${fmtFecha(plazoDe(x.fecha_actualizacion))}">Fuera de plazo</span>` : ""}</td>
           <td>${esc(TIPOS[x.grupo] || x.grupo)}</td>
           <td class="nombre">${esc(x.nombre)}</td>
           <td class="cedula">${x.cedula ?? ""}</td>
@@ -957,8 +976,9 @@ AUTH_READY.then(async function () {
     const ws = XLSX.utils.json_to_sheet(l.map((x) => ({
       "Fecha": x.fecha_actualizacion, "Tipo": TIPOS[x.grupo] || x.grupo, "Nombre": x.nombre, "Cédula": x.cedula, "Labor": x.labor || "",
       "Quincenal": Number(x.valor || 0), "Observaciones": x.observaciones || "", "Registró": x.creado_por || "",
+      "Cargada el": x.created_at ? String(x.created_at).slice(0, 10) : "", "Fuera de plazo": tarde(x.fecha_actualizacion, x.created_at) ? "Sí" : "No",
     })));
-    ws["!cols"] = [{ wch: 12 }, { wch: 38 }, { wch: 38 }, { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 32 }, { wch: 24 }];
+    ws["!cols"] = [{ wch: 12 }, { wch: 38 }, { wch: 38 }, { wch: 14 }, { wch: 26 }, { wch: 14 }, { wch: 32 }, { wch: 24 }, { wch: 12 }, { wch: 14 }];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Bonificaciones");
     XLSX.writeFile(wb, `Bonificaciones ${$("l-desde").value || "inicio"} a ${$("l-hasta").value || "hoy"}.xlsx`);
