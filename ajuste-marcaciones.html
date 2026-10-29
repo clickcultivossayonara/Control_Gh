@@ -387,7 +387,7 @@
     <div class="table-scroll" style="margin-top:8px">
       <table class="tabla-aj" data-principales="Fecha,Nombre,Entrada,Salida,Horas,Diferencia,Acción">
         <thead><tr>
-          <th>Fecha</th><th>Cédula</th><th>Nombre</th><th>Área</th><th>Entrada</th><th>Salida</th>
+          <th>Fecha</th><th>Cédula</th><th>Nombre</th><th>Área</th><th>Sede</th><th>Entrada</th><th>Salida</th>
           <th>Horas</th><th>Esperadas</th><th>Diferencia</th><th>Estado</th><th class="col-acciones">Acción</th>
         </tr></thead>
         <tbody id="reg-tbody"></tbody>
@@ -432,6 +432,7 @@
       <div class="filters">
         <div class="field grow"><label for="maj-entrada">Hora de entrada</label><input type="time" id="maj-entrada" step="1"></div>
         <div class="field grow"><label for="maj-salida">Hora de salida</label><input type="time" id="maj-salida" step="1"></div>
+        <div class="field" id="maj-sede-campo"><label for="maj-sede">Sede</label><select id="maj-sede"><option value="Union">Unión</option><option value="Ceja">Ceja</option></select></div>
       </div>
       <p class="sub" id="maj-hint" style="margin-top:8px">Solo se corrigen las horas; el día del registro no cambia. Si la salida es menor o igual a la entrada se toma como salida del día siguiente (turno nocturno).</p>
       <div class="preview" id="maj-preview" style="margin-top:10px"></div>
@@ -522,12 +523,12 @@ AUTH_READY.then(async function () {
       $("reg-msg").textContent = "";
       $("reg-count").textContent = registros.length + " resultado" + (registros.length === 1 ? "" : "s") + (registros.length >= 500 ? " (tope 500, afina el filtro)" : "");
       $("reg-tbody").innerHTML = registros.length === 0
-        ? `<tr><td colspan="11"><div class="empty-state">Sin registros para este filtro. Si la persona no marcó ese día, usa "Crear registro".</div></td></tr>`
+        ? `<tr><td colspan="12"><div class="empty-state">Sin registros para este filtro. Si la persona no marcó ese día, usa "Crear registro".</div></td></tr>`
         : registros.map((r, i) => {
             const dif = r.diferencia_tiempo == null ? "—" : `<span class="${Number(r.diferencia_tiempo) >= 0 ? "dif-pos" : "dif-neg"}">${Number(r.diferencia_tiempo) > 0 ? "+" : ""}${num2(r.diferencia_tiempo)}</span>`;
             return `<tr>
               <td class="num">${fmtFecha(r.fecha)}</td><td class="cedula">${r.cedula}</td>
-              <td class="nombre" title="${esc(r.nombre)}">${esc(r.nombre)}</td><td class="area">${esc(r.area || "—")}</td>
+              <td class="nombre" title="${esc(r.nombre)}">${esc(r.nombre)}</td><td class="area">${esc(r.area || "—")}</td><td>${esc(r.sede || "—")}</td>
               <td class="num">${fmtHora(r.hora_entrada) || "—"}</td><td class="num">${fmtHora(r.hora_salida) || "—"}</td>
               <td class="num">${num2(r.horas_trabajadas)}</td><td class="num">${num2(r.horas_esperadas)}</td><td class="num">${dif}</td>
               <td class="estado">${esc(r.estado)}${r.ajuste_manual ? ' <span class="badge ajustado">AJUSTADO</span>' : ""}</td>
@@ -625,6 +626,18 @@ AUTH_READY.then(async function () {
   }
   ["maj-entrada", "maj-salida", "maj-fecha"].forEach((id) => $(id).addEventListener("input", previewHoras));
 
+  // Sede del registro: Union o Ceja. Si el registro trae otra (p. ej. "Desconocida") se agrega como opcion para no perderla.
+  const sedeValor = (txt) => /ceja/i.test(txt || "") ? "Ceja" : /uni/i.test(txt || "") ? "Union" : "";
+  function ponerSede(txt) {
+    const sel = $("maj-sede");
+    [...sel.options].filter((o) => o.dataset.extra).forEach((o) => o.remove());
+    const v = sedeValor(txt);
+    if (!v && txt) { const o = document.createElement("option"); o.value = ""; o.textContent = txt + " (sin cambiar)"; o.dataset.extra = "1"; sel.prepend(o); sel.value = ""; }
+    else sel.value = v || "Union";
+  }
+  // Elegir la sede es solo para Nomina y Super Admin (la base tambien lo exige)
+  const PUEDE_SEDE = ["nomina", "super_admin"].includes(window.SESION.rol);
+  if (!PUEDE_SEDE) $("maj-sede-campo").hidden = true;
   let tEmp;
   $("maj-cedula").addEventListener("input", () => {
     clearTimeout(tEmp);
@@ -633,9 +646,10 @@ AUTH_READY.then(async function () {
       $("maj-emp").textContent = "";
       if (!/^\d{4,}$/.test(c)) return;
       try {
-        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=nombre,area&cedula=eq.${c}`, { headers: authHeaders() });
+        const resp = await fetch(`${SUPABASE_URL}/rest/v1/employees_detalle?select=nombre,area,sede&cedula=eq.${c}`, { headers: authHeaders() });
         const f = await resp.json();
-        $("maj-emp").textContent = f[0] ? `${f[0].nombre} — ${f[0].area || "sin área"}` : "No existe un empleado con esa cédula.";
+        $("maj-emp").textContent = f[0] ? `${f[0].nombre} — ${f[0].area || "sin área"}${f[0].sede ? " — " + f[0].sede : ""}` : "No existe un empleado con esa cédula.";
+        if (f[0]) ponerSede(f[0].sede);
       } catch {}
     }, 350);
   });
@@ -649,12 +663,13 @@ AUTH_READY.then(async function () {
       $("maj-titulo").textContent = "Ajustar marcación";
       $("maj-sub").textContent = `${c.reg.nombre} (${c.reg.cedula}) · día ${fmtFecha(c.reg.fecha)} (fijo) · estado actual: ${c.reg.estado}`;
       $("maj-entrada").value = horaDe(c.reg.hora_entrada); $("maj-salida").value = horaDe(c.reg.hora_salida);
+      ponerSede(c.reg.sede);
       $("maj-guardar").textContent = "Guardar ajuste";
     } else if (c.modo === "crear") {
       $("maj-titulo").textContent = "Crear registro de un día sin marcación";
       $("maj-sub").textContent = "Para un día en el que la persona sí trabajó pero el biométrico no tiene ningún registro.";
       $("maj-cedula").value = ""; $("maj-fecha").value = hoyISO(); $("maj-emp").textContent = "";
-      $("maj-entrada").value = ""; $("maj-salida").value = "";
+      $("maj-entrada").value = ""; $("maj-salida").value = ""; ponerSede("Union");
       $("maj-guardar").textContent = "Crear registro";
     } else {
       const a = c.ajuste;
@@ -692,7 +707,7 @@ AUTH_READY.then(async function () {
         }
         const { entrada, salida } = calcularMarcas();
         if (!entrada && !salida) { $("maj-guardar").disabled = false; return falla("Indica al menos la hora de entrada o la de salida."); }
-        await rpc("ajustar_registro_horas", { p_cedula: Number(cedula), p_fecha: fecha, p_entrada: entrada, p_salida: salida, p_motivo: motivo });
+        await rpc("ajustar_registro_horas", { p_cedula: Number(cedula), p_fecha: fecha, p_entrada: entrada, p_salida: salida, p_motivo: motivo, p_sede: PUEDE_SEDE ? ($("maj-sede").value || null) : null });
         toast(ctx.modo === "crear" ? "Registro creado." : "Ajuste guardado.");
         if (ctx.modo === "crear") { $("f-texto").value = cedula; $("f-desde").value = fecha; $("f-hasta").value = fecha; }
         buscar();
