@@ -1,0 +1,782 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Colillas de pago</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+<style>
+  :root {
+    --paper: #f6f5f0;
+    --surface: #ffffff;
+    --ink: #1d2420;
+    --ink-soft: #57625b;
+    --ink-faint: #8a9089;
+    --line: #dbdfd4;
+    --line-strong: #c4cabb;
+    --accent: #2e6b4e;
+    --accent-ink: #ffffff;
+    --accent-soft: #e3eee6;
+    --accent-soft-line: #c3ddca;
+    --warn: #b3742f;
+    --warn-soft: #f6e9d7;
+    --critical: #a23d3d;
+    --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+
+  * { box-sizing: border-box; }
+
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; align-items: stretch; }
+  .sidebar { width: 264px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; transition: width 0.16s ease; }
+  .sidebar.colapsado { width: 64px; }
+  .sidebar-top { display: flex; align-items: center; gap: 10px; padding: 16px 14px; border-bottom: 1px solid var(--line); min-height: 28px; }
+  .sidebar.colapsado .sidebar-top { justify-content: center; padding: 16px 10px; }
+  .sidebar-logo { height: 26px; width: auto; flex-shrink: 0; border-radius: 4px; }
+  .sidebar-brand { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-toggle { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 6px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0; }
+  .sidebar.colapsado .sidebar-toggle { margin-left: 0; }
+  .sidebar-toggle:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-toggle svg { width: 18px; height: 18px; }
+  .sidebar-nav { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-link { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; text-decoration: none; color: var(--ink-soft); font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; }
+  .sidebar-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-link span { overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-link:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-link.activo { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .sidebar.colapsado .sidebar-link { justify-content: center; padding: 9px; }
+  .sidebar.colapsado .sidebar-link span { display: none; }
+  .sidebar-footer { border-top: 1px solid var(--line); padding: 10px 10px; }
+  .sidebar.colapsado .sidebar-footer { padding: 10px 6px; }
+  .sidebar-footer .sesion-box { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; justify-content: flex-start !important; margin-top: 0 !important; }
+  .sidebar.colapsado .sidebar-footer .sesion-usuario { display: none; }
+  .sidebar-footer .sesion-usuario { white-space: normal; line-height: 1.4; }
+  .sidebar.colapsado .sidebar-footer .sesion-salir { width: 100%; padding: 8px 0; }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(20, 24, 15, 0.45); z-index: 40; }
+  .sidebar-backdrop.visible { display: block; }
+  .menu-toggle-movil { display: none; position: fixed; top: 14px; left: 14px; z-index: 30; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer; color: var(--ink-soft); padding: 8px; align-items: center; justify-content: center; box-shadow: var(--shadow); }
+  .menu-toggle-movil:hover { border-color: var(--accent); color: var(--accent); }
+  .menu-toggle-movil svg { width: 20px; height: 20px; }
+  .page-content { flex: 1; min-width: 0; display: flex; justify-content: center; }
+
+  .wrap {
+    width: 100%;
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 22px 24px 48px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .page-header { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+  .page-header .page-logo { height: 36px; width: auto; }
+  .page-header .page-brand { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+  .page-header h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(24px, 3.4vw, 32px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; }
+
+  @media (max-width: 880px) {
+    body { display: block; }
+    .sidebar { position: fixed; left: 0; top: 0; width: 270px !important; height: 100vh; transform: translateX(-100%); transition: transform 0.2s ease; z-index: 50; }
+    .sidebar.abierto-movil { transform: translateX(0); }
+    .sidebar.colapsado .sidebar-link span, .sidebar.colapsado .sidebar-brand, .sidebar.colapsado .sesion-usuario { display: initial; }
+    .sidebar.colapsado .sidebar-top { justify-content: flex-start; padding: 16px 14px; }
+    .sidebar.colapsado .sidebar-link { justify-content: flex-start; padding: 9px 10px; }
+    .sidebar-toggle { display: none; }
+    .menu-toggle-movil { display: flex; }
+    .page-content { display: block; }
+    .wrap { max-width: none; padding-top: 64px; }
+  }
+  @media (max-width: 520px) {
+    .page-header h1 { font-size: 21px; }
+    .filters { flex-direction: column; align-items: stretch; }
+    .filters .field, .filters .multiselect, .ms-trigger, .field input { width: 100%; min-width: 0; }
+    .result-count { margin-left: 0; }
+  }
+  .filters {
+    position: sticky;
+    top: 0;
+    z-index: 5;
+    background: var(--paper);
+    padding: 8px 0 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: flex-end;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 140px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
+
+  .field select, .field input {
+    font: inherit; font-size: 13.5px; padding: 8px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--surface); color: var(--ink); min-width: 140px;
+  }
+  .field select:focus, .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field.grow { flex: 1; min-width: 200px; }
+  #f-buscar { width: 100%; }
+
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 13.5px; padding: 8px 30px 8px 10px;
+    border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--surface); color: var(--ink); min-width: 140px;
+    text-align: left; cursor: pointer; position: relative;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .ms-trigger::after { content: "▾"; position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); font-size: 10px; }
+  .ms-trigger:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .multiselect.open .ms-trigger { border-color: var(--accent); }
+
+  .ms-panel {
+    display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20;
+    min-width: 200px; max-height: 280px; overflow-y: auto;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); padding: 4px;
+  }
+  .multiselect.open .ms-panel { display: block; }
+
+  .ms-option { display: flex; align-items: center; gap: 7px; padding: 6px 8px; border-radius: 5px; cursor: pointer; font-size: 13px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { margin: 0; accent-color: var(--accent); }
+
+  .clear-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--line-strong);
+    background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .excel-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px;
+    border-radius: 7px; border: 1px solid var(--accent-soft-line);
+    background: var(--accent-soft); color: var(--accent); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .excel-btn:hover { border-color: var(--accent); }
+  .excel-btn:disabled { opacity: 0.6; cursor: wait; }
+
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll {
+    overflow: auto; max-height: 68vh; border: 1px solid var(--line); border-radius: var(--radius);
+    background: var(--surface); box-shadow: var(--shadow); position: relative;
+  }
+
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .nombre { font-weight: 500; }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); font-size: 12.5px; }
+  .muted { color: var(--ink-faint); }
+  .diff-pos { color: var(--accent); font-weight: 500; }
+  .diff-neg { color: var(--critical); font-weight: 500; }
+
+  .empty-state, .error-state { padding: 48px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+  .error-state { color: var(--critical); }
+
+  .load-more-row td { text-align: center; padding: 14px; background: var(--paper) !important; }
+  .load-more-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 7px;
+    border: 1px solid var(--accent-soft-line); background: var(--accent-soft); color: var(--accent); cursor: pointer;
+  }
+  .load-more-btn:hover { border-color: var(--accent); }
+  footer { font-size: 12px; color: var(--ink-faint); text-align: center; padding-top: 8px; }
+
+  .ayuda { font-size: 13px; color: var(--ink-soft); margin: 14px 0 4px; line-height: 1.5; }
+  .ayuda b { color: var(--ink); }
+  .wrap { max-width: 1400px; }
+  .table-scroll { max-height: calc(100vh - 330px); min-height: 300px; }
+  .field select, .field input { min-width: 150px; }
+
+  .tabla-colillas { border-collapse: separate; border-spacing: 0; width: 100%; min-width: 860px; font-size: 14px; }
+  .tabla-colillas thead th { position: sticky; top: 0; z-index: 2; background: var(--ink); color: var(--paper); text-align: left; padding: 12px 10px; font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.25; }
+  .tabla-colillas thead th.der, .tabla-colillas td.der { text-align: right; }
+  .tabla-colillas tbody td { padding: 10px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; color: var(--ink); }
+  .tabla-colillas tbody tr:hover td { background: var(--accent-soft); }
+  .tabla-colillas td.persona b { display: block; font-weight: 600; }
+  .tabla-colillas td.persona small { display: block; color: var(--ink-soft); font-size: 12.5px; margin-top: 2px; }
+  .tabla-colillas td.der { font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .tabla-colillas td.neto { font-weight: 700; }
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+  .badge.operario { background: var(--accent-soft); color: var(--accent); }
+  .badge.admon { background: var(--warn-soft); color: var(--warn); }
+  .badge.aprendiz { background: var(--paper); border: 1px solid var(--line-strong); color: var(--ink); }
+  .ver-btn { font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 7px; border: 1px solid var(--accent-soft-line); background: var(--accent-soft); color: var(--accent); cursor: pointer; white-space: nowrap; }
+  .ver-btn:hover { border-color: var(--accent); }
+
+  .totales { display: flex; flex-wrap: wrap; gap: 10px; }
+  .total-card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 10px 16px; min-width: 160px; box-shadow: var(--shadow); }
+  .total-card span { display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
+  .total-card b { font-size: 18px; font-variant-numeric: tabular-nums; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px 18px; }
+  .card h2 { font-family: "Fraunces", Georgia, serif; font-size: 18px; margin: 0 0 4px; }
+  .card .sub { font-size: 13px; color: var(--ink-soft); margin: 0 0 12px; line-height: 1.5; }
+  .carga-fila { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .primary-btn { font: inherit; font-size: 13px; font-weight: 600; padding: 9px 16px; border-radius: 7px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+  .primary-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .msg { font-size: 13px; margin-top: 10px; line-height: 1.5; }
+  .msg.ok { color: var(--accent); }
+  .msg.warn { color: var(--warn); }
+  .msg.error { color: var(--critical); }
+  .msg ul { margin: 4px 0 0 18px; padding: 0; }
+
+  /* colilla (pantalla e impresion) */
+  .modal { position: fixed; inset: 0; z-index: 60; background: rgba(20, 24, 15, 0.55); display: flex; align-items: flex-start; justify-content: center; overflow-y: auto; padding: 24px 12px; }
+  .modal[hidden] { display: none; }
+  .modal-card { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; max-width: 760px; padding: 20px 24px 24px; }
+  .modal-barra { display: flex; gap: 8px; justify-content: flex-end; margin-bottom: 12px; }
+  .colilla-cab { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid var(--ink); padding-bottom: 10px; margin-bottom: 12px; }
+  .colilla-cab img { height: 40px; width: auto; }
+  .colilla-cab .tit { flex: 1; }
+  .colilla-cab .tit b { display: block; font-family: "Fraunces", Georgia, serif; font-size: 20px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .colilla-cab .tit span { font-size: 13px; color: var(--ink-soft); }
+  .colilla-datos { display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 20px; font-size: 13px; margin-bottom: 14px; }
+  .colilla-datos div { display: flex; gap: 6px; }
+  .colilla-datos span { color: var(--ink-faint); min-width: 92px; }
+  .colilla-datos b { font-weight: 600; }
+  .colilla-bloque { margin-bottom: 12px; }
+  .colilla-bloque h3 { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-soft); margin: 0 0 4px; }
+  .colilla-tabla { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  .colilla-tabla td, .colilla-tabla th { padding: 5px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+  .colilla-tabla th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); font-weight: 600; }
+  .colilla-tabla .der { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .colilla-tabla tr.sub td { font-weight: 700; border-bottom: 2px solid var(--line-strong); }
+  .colilla-neto { display: flex; justify-content: space-between; align-items: center; background: var(--accent-soft); border: 1px solid var(--accent-soft-line); border-radius: 8px; padding: 12px 16px; margin-top: 14px; }
+  .colilla-neto span { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 700; }
+  .colilla-neto b { font-size: 22px; font-variant-numeric: tabular-nums; }
+  .colilla-pie { margin-top: 12px; font-size: 11.5px; color: var(--ink-faint); }
+  @media (max-width: 560px) { .colilla-datos { grid-template-columns: 1fr; } .modal-card { padding: 16px 14px 20px; } }
+
+  @media print {
+    @page { margin: 14mm; }
+    html, body { background: #fff !important; }
+    .sidebar, .sidebar-backdrop, .menu-toggle-movil, .wrap, .modal-barra { display: none !important; }
+    .modal { position: static; background: none; padding: 0; overflow: visible; display: block; }
+    .modal-card { box-shadow: none; max-width: none; padding: 0; border-radius: 0; background: #fff !important; }
+    .modal-card, .modal-card * { color: #000 !important; border-color: #888 !important; }
+    .colilla-neto { background: #f0f0f0 !important; }
+    .colilla-cab { border-bottom-color: #000 !important; }
+  }
+
+</style>
+<link rel="stylesheet" href="responsive.css">
+<script src="responsive.js" defer></script>
+<link rel="stylesheet" href="tema-claro.css">
+</head>
+<body>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+<button type="button" class="menu-toggle-movil" id="menu-toggle-movil" aria-label="Abrir menú">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+</button>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="sidebar-logo">
+    <span class="sidebar-brand">Cultivos Sayonara</span>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Colapsar menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+  </div>
+  <div class="sidebar-nav" id="sidebar-nav">
+    <a class="sidebar-link" href="index.html" data-pagina="inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-6h6v6"></path></svg>
+      <span>Inicio</span>
+    </a>
+    <a class="sidebar-link" href="empleados.html" data-pagina="empleados">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Empleados</span>
+    </a>
+    <a class="sidebar-link" href="registro-biometrico.html" data-pagina="registro_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+      <span>Registro Biométrico</span>
+    </a>
+    <a class="sidebar-link" href="permisos.html" data-pagina="permisos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
+      <span>Permisos</span>
+    </a>
+    <a class="sidebar-link" href="novedades.html" data-pagina="novedades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
+      <span>Novedades</span>
+    </a>
+    <a class="sidebar-link" href="ausentismo.html" data-pagina="ausentismo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.17 9.17a3 3 0 1 1 4.24 4.24M12 8v1M15 15l6 6"></path></svg>
+      <span>Ausentismo</span>
+    </a>
+    <a class="sidebar-link" href="nomina.html" data-pagina="nomina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg>
+      <span>Nómina</span>
+    </a>
+    <a class="sidebar-link" href="configuraciones.html" data-pagina="configuraciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span>Configuraciones</span>
+    </a>
+    <a class="sidebar-link" href="usuarios.html" data-pagina="usuarios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="5"></circle></svg>
+      <span>Usuarios</span>
+    </a>
+    <a class="sidebar-link" href="ajuste-marcaciones.html" data-pagina="ajuste_marcaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>
+      <span>Ajuste de marcaciones</span>
+    </a>
+    <a class="sidebar-link" href="cruce-biometrico.html" data-pagina="cruce_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M1 21a8 8 0 0 1 16 0"></path><path d="M17 11l2 2 4-4"></path></svg>
+      <span>Cruce con el biométrico</span>
+    </a>
+    <a class="sidebar-link" href="bonificaciones.html" data-pagina="bonificaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M14.8 9.2a3 3 0 0 0-2.8-1.7c-1.7 0-3 .9-3 2.1 0 3 5.9 1.4 5.9 4.5 0 1.2-1.3 2.1-2.9 2.1a3 3 0 0 1-2.9-1.7M12 6v1.5M12 16.5V18"></path></svg>
+      <span>Bonificaciones</span>
+    </a>
+    <a class="sidebar-link activo" href="colillas.html" data-pagina="colillas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg>
+      <span>Colillas de pago</span>
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+</nav>
+
+<div class="page-content">
+<div class="wrap">
+  <div class="page-header">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="page-logo">
+    <span class="page-brand">Cultivos Sayonara</span>
+    <h1>Colillas de pago</h1>
+  </div>
+
+  <p class="ayuda">Aquí se consultan e imprimen las <b>colillas de pago de cada quincena</b>. Nómina sube el archivo de la quincena (Excel, con la plantilla de esta página) y cada persona queda con su colilla.
+    Esta página solo la ven <b>Nómina, Administrador y Super Admin</b>.</p>
+
+  <div class="filters">
+    <div class="field"><label for="f-quincena">Quincena</label><select id="f-quincena"><option value="">Sin quincenas cargadas</option></select></div>
+    <div class="field"><label for="f-tipo">Tipo</label>
+      <select id="f-tipo"><option value="">Todos</option><option value="operario">Operario</option><option value="admon">Admon</option><option value="aprendiz">Aprendiz</option></select></div>
+    <div class="field grow"><label for="f-buscar">Cédula o nombre</label><input type="text" id="f-buscar" placeholder="Ej. 1193599748 o Roqueme…" autocomplete="off"></div>
+    <button class="clear-btn" id="btn-limpiar" type="button">Limpiar</button>
+    <button class="excel-btn" id="btn-excel" type="button">Descargar Excel</button>
+    <button class="excel-btn" id="btn-abrir-carga" type="button">Cargar quincena</button>
+    <span class="result-count" id="conteo"></span>
+  </div>
+
+  <section class="card" id="card-carga" hidden>
+    <h2>Cargar la colilla de una quincena</h2>
+    <p class="sub">Descarga la plantilla, llénala con la liquidación (una fila por concepto de cada persona) y súbela. Si la quincena ya estaba cargada, <b>se reemplaza completa</b> con el archivo nuevo.</p>
+    <div class="carga-fila">
+      <div class="field"><label for="c-mes">Mes</label><input type="month" id="c-mes"></div>
+      <div class="field"><label for="c-mitad">Quincena</label>
+        <select id="c-mitad"><option value="1">Primera (1 al 15)</option><option value="2">Segunda (16 a fin de mes)</option></select></div>
+      <div class="field grow"><label for="c-archivo">Archivo Excel</label><input type="file" id="c-archivo" accept=".xlsx,.xls,.csv"></div>
+      <button class="clear-btn" id="btn-plantilla" type="button">Descargar plantilla</button>
+      <button class="primary-btn" id="btn-cargar" type="button" disabled>Cargar quincena</button>
+    </div>
+    <div class="msg" id="c-msg"></div>
+  </section>
+
+  <div class="totales" id="totales" hidden>
+    <div class="total-card"><span>Personas</span><b id="t-personas">0</b></div>
+    <div class="total-card"><span>Devengado</span><b id="t-dev">$ 0</b></div>
+    <div class="total-card"><span>Deducciones</span><b id="t-ded">$ 0</b></div>
+    <div class="total-card"><span>Neto a pagar</span><b id="t-neto">$ 0</b></div>
+  </div>
+
+  <div class="table-scroll">
+    <table class="tabla-colillas" data-principales="Persona,Tipo,Neto">
+      <thead><tr>
+        <th>Persona</th>
+        <th>Área</th>
+        <th>Tipo</th>
+        <th class="der">Devengado</th>
+        <th class="der">Deducciones</th>
+        <th class="der">Neto</th>
+        <th></th>
+      </tr></thead>
+      <tbody id="tbody"><tr><td colspan="7"><div class="empty-state">Cargando…</div></td></tr></tbody>
+    </table>
+  </div>
+
+  <footer>Datos desde Supabase</footer>
+</div>
+</div>
+
+<div class="modal" id="modal" hidden>
+  <div class="modal-card">
+    <div class="modal-barra">
+      <button class="primary-btn" id="btn-imprimir" type="button">Imprimir / guardar PDF</button>
+      <button class="clear-btn" id="btn-cerrar" type="button">Cerrar</button>
+    </div>
+    <div id="colilla"></div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+AUTH_READY.then(async function () {
+  if (!requierePagina("colillas")) return;
+  pintarSesion("sesion-box");
+
+  filtrarSidebar();
+  const sidebar = document.getElementById("sidebar");
+  const btnColapsar = document.getElementById("sidebar-toggle");
+  function aplicarColapso(colapsado) {
+    sidebar.classList.toggle("colapsado", colapsado);
+    try { localStorage.setItem("sidebar-colapsado", colapsado ? "1" : "0"); } catch {}
+  }
+  let colapsadoGuardado = null;
+  try { colapsadoGuardado = localStorage.getItem("sidebar-colapsado"); } catch {}
+  aplicarColapso(colapsadoGuardado === "1");
+  btnColapsar.addEventListener("click", () => aplicarColapso(!sidebar.classList.contains("colapsado")));
+  const backdrop = document.getElementById("sidebar-backdrop");
+  const btnMenuMovil = document.getElementById("menu-toggle-movil");
+  function abrirMenuMovil(abrir) {
+    sidebar.classList.toggle("abierto-movil", abrir);
+    backdrop.classList.toggle("visible", abrir);
+  }
+  btnMenuMovil.addEventListener("click", () => abrirMenuMovil(!sidebar.classList.contains("abierto-movil")));
+  backdrop.addEventListener("click", () => abrirMenuMovil(false));
+
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const COP = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+  const NUM = (v) => (v == null || v === "" ? "" : Number(v).toLocaleString("es-CO", { maximumFractionDigits: 2 }));
+  const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+  const TIPOS = { operario: "Operario", admon: "Admon", aprendiz: "Aprendiz" };
+  const norm = (s) => String(s == null ? "" : s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+
+  function etiquetaQuincena(ini, fin) {
+    const [y, m, d] = ini.split("-").map(Number);
+    return `${d}–${Number(fin.split("-")[2])} ${MESES[m - 1]} ${y}`;
+  }
+  function fmtFecha(iso) {
+    if (!iso) return "";
+    const [y, m, d] = String(iso).slice(0, 10).split("-");
+    return `${d}/${m}/${y}`;
+  }
+  // mismo criterio que la base: aprendiz = contrato APRENDIZAJE; admon = marcado Administrativo; operario = los demas
+  function tipoDe(e) {
+    if (String(e.tipo_contrato || "").toUpperCase().startsWith("APRENDIZ")) return "aprendiz";
+    return e.administrativo ? "admon" : "operario";
+  }
+
+  async function rpc(nombre, cuerpo) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${nombre}`, {
+      method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" }, body: JSON.stringify(cuerpo || {}),
+    });
+    const t = await r.text();
+    let d; try { d = JSON.parse(t); } catch { d = t; }
+    if (!r.ok) throw new Error((d && d.message) || String(t).slice(0, 200) || ("HTTP " + r.status));
+    return d;
+  }
+  async function get(ruta) {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/${ruta}`, { headers: authHeaders() });
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    return r.json();
+  }
+
+  let quincenas = [], resumen = [], pedido = 0;
+
+  // ---------------- listado ----------------
+  async function cargarQuincenas(seleccionar) {
+    quincenas = await rpc("colillas_quincenas");
+    const sel = $("f-quincena");
+    const actual = seleccionar || sel.value;
+    sel.innerHTML = quincenas.length
+      ? quincenas.map((q) => `<option value="${q.quincena_inicio}">${esc(etiquetaQuincena(q.quincena_inicio, q.quincena_fin))} · ${q.personas} personas</option>`).join("")
+      : '<option value="">Sin quincenas cargadas</option>';
+    if (actual && quincenas.some((q) => q.quincena_inicio === actual)) sel.value = actual;
+  }
+
+  async function cargarResumen() {
+    const ini = $("f-quincena").value;
+    const mio = ++pedido;
+    if (!ini) {
+      resumen = [];
+      $("totales").hidden = true;
+      $("conteo").textContent = "";
+      $("tbody").innerHTML = `<tr><td colspan="7"><div class="empty-state">Aún no hay quincenas cargadas. Usa «Cargar quincena» para subir la primera.</div></td></tr>`;
+      return;
+    }
+    $("conteo").textContent = "Cargando…";
+    try {
+      const datos = await rpc("colillas_resumen", { p_inicio: ini, p_tipo: $("f-tipo").value || null, p_busqueda: $("f-buscar").value.trim() || null });
+      if (mio !== pedido) return;
+      resumen = datos;
+      pintar();
+    } catch (err) {
+      if (mio !== pedido) return;
+      $("conteo").textContent = "No se pudo cargar: " + (err.message || err);
+    }
+  }
+
+  function pintar() {
+    const sum = (k) => resumen.reduce((a, f) => a + Number(f[k] || 0), 0);
+    $("t-personas").textContent = resumen.length.toLocaleString("es-CO");
+    $("t-dev").textContent = COP.format(sum("devengado"));
+    $("t-ded").textContent = COP.format(sum("deducciones"));
+    $("t-neto").textContent = COP.format(sum("neto"));
+    $("totales").hidden = false;
+    $("conteo").textContent = `${resumen.length} resultado${resumen.length === 1 ? "" : "s"}`;
+    $("tbody").innerHTML = resumen.length ? resumen.map((f) => `<tr>
+      <td class="persona"><b>${esc(f.nombre)}</b><small>${f.cedula} · ${esc(f.cargo || "")}</small></td>
+      <td>${esc(f.area || "")}</td>
+      <td><span class="badge ${esc(f.tipo)}">${esc(TIPOS[f.tipo] || f.tipo)}</span></td>
+      <td class="der">${COP.format(f.devengado)}</td>
+      <td class="der">${COP.format(f.deducciones)}</td>
+      <td class="der neto">${COP.format(f.neto)}</td>
+      <td class="der"><button type="button" class="ver-btn" data-ced="${f.cedula}">Ver colilla</button></td></tr>`).join("")
+      : `<tr><td colspan="7"><div class="empty-state">Sin colillas con estos filtros.</div></td></tr>`;
+  }
+
+  // ---------------- colilla de una persona ----------------
+  let colillaActual = null;
+  async function verColilla(cedula) {
+    const ini = $("f-quincena").value;
+    const q = quincenas.find((x) => x.quincena_inicio === ini);
+    $("colilla").innerHTML = '<div class="empty-state">Cargando…</div>';
+    $("modal").hidden = false;
+    try {
+      const [lineas, emps] = await Promise.all([
+        get(`colillas_pago?select=clase,concepto,cantidad,valor,orden&cedula=eq.${cedula}&quincena_inicio=eq.${ini}&order=orden.asc`),
+        get(`employees?select=nombre,cedula,cargo,area,tipo_contrato,administrativo,fecha_ingreso,banco,numero_cuenta&cedula=eq.${cedula}`),
+      ]);
+      const e = emps[0] || { nombre: "(sin datos)", cedula };
+      const por = (c) => lineas.filter((l) => l.clase === c);
+      const dev = por("devengado"), ded = por("deduccion"), inf = por("informativo");
+      const tot = (l) => l.reduce((a, x) => a + Number(x.valor || 0), 0);
+      const neto = tot(dev) - tot(ded);
+      const fila = (l) => `<tr><td>${esc(l.concepto)}</td><td class="der">${esc(NUM(l.cantidad))}</td><td class="der">${COP.format(l.valor)}</td></tr>`;
+      const bloque = (titulo, l) => `<div class="colilla-bloque"><h3>${titulo}</h3><table class="colilla-tabla">
+        <thead><tr><th>Concepto</th><th class="der">Cantidad</th><th class="der">Valor</th></tr></thead><tbody>
+        ${l.length ? l.map(fila).join("") : '<tr><td colspan="3" style="color:var(--ink-faint)">Sin conceptos</td></tr>'}
+        <tr class="sub"><td>Total ${titulo.toLowerCase()}</td><td></td><td class="der">${COP.format(tot(l))}</td></tr></tbody></table></div>`;
+      const infoTxt = (l) => (Number(l.valor) ? COP.format(l.valor) + (l.cantidad != null ? ` (${NUM(l.cantidad)})` : "") : NUM(l.cantidad));
+      const dato = (k, v) => (v ? `<div><span>${esc(k)}</span><b>${esc(v)}</b></div>` : "");
+      const label = q ? etiquetaQuincena(q.quincena_inicio, q.quincena_fin) : ini;
+      $("colilla").innerHTML = `
+        <div class="colilla-cab"><img src="logo-sayonara.png" alt=""><div class="tit"><b>Colilla de pago</b><span>Cultivos Sayonara · Quincena ${esc(label)}</span></div></div>
+        <div class="colilla-datos">
+          ${dato("Nombre", e.nombre)}${dato("Cédula", String(e.cedula))}${dato("Cargo", e.cargo)}${dato("Área", e.area)}
+          ${dato("Tipo", TIPOS[tipoDe(e)])}${dato("Contrato", e.tipo_contrato)}${dato("Fecha de ingreso", fmtFecha(e.fecha_ingreso))}
+          ${dato("Banco", e.banco)}${dato("Cuenta", e.numero_cuenta)}
+          ${inf.map((l) => dato(l.concepto, infoTxt(l))).join("")}
+        </div>
+        ${bloque("Devengados", dev)}
+        ${bloque("Deducciones", ded)}
+        <div class="colilla-neto"><span>Neto a pagar</span><b>${COP.format(neto)}</b></div>
+        <div class="colilla-pie">Documento generado desde el sistema de Cultivos Sayonara el ${new Date().toLocaleDateString("es-CO")}.</div>`;
+      colillaActual = { cedula, nombre: e.nombre, label };
+    } catch (err) {
+      $("colilla").innerHTML = `<div class="error-state">No se pudo cargar la colilla: ${esc(err.message || err)}</div>`;
+    }
+  }
+  function cerrarModal() { $("modal").hidden = true; }
+  $("btn-cerrar").addEventListener("click", cerrarModal);
+  $("modal").addEventListener("click", (e) => { if (e.target === $("modal")) cerrarModal(); });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarModal(); });
+  $("tbody").addEventListener("click", (e) => { const b = e.target.closest("button[data-ced]"); if (b) verColilla(b.dataset.ced); });
+  $("btn-imprimir").addEventListener("click", () => {
+    const titulo = document.title;
+    if (colillaActual) document.title = `Colilla ${colillaActual.cedula} ${colillaActual.label}`;
+    window.addEventListener("afterprint", () => { document.title = titulo; }, { once: true });
+    window.print();
+  });
+
+  // ---------------- filtros ----------------
+  $("f-quincena").addEventListener("change", cargarResumen);
+  $("f-tipo").addEventListener("change", cargarResumen);
+  let t; $("f-buscar").addEventListener("input", () => { clearTimeout(t); t = setTimeout(cargarResumen, 300); });
+  $("btn-limpiar").addEventListener("click", () => { $("f-tipo").value = ""; $("f-buscar").value = ""; cargarResumen(); });
+  $("btn-excel").addEventListener("click", () => {
+    if (!resumen.length) return;
+    const ws = XLSX.utils.json_to_sheet(resumen.map((f) => ({ "Cédula": f.cedula, "Nombre": f.nombre, "Área": f.area, "Cargo": f.cargo, "Tipo": TIPOS[f.tipo] || f.tipo,
+      "Devengado": Number(f.devengado), "Deducciones": Number(f.deducciones), "Neto": Number(f.neto) })));
+    ws["!cols"] = [{ wch: 12 }, { wch: 34 }, { wch: 24 }, { wch: 24 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Colillas");
+    XLSX.writeFile(wb, `colillas_${$("f-quincena").value}.xlsx`);
+  });
+
+  // ---------------- carga de la quincena ----------------
+  const cmsg = (html, clase) => { $("c-msg").className = "msg " + (clase || ""); $("c-msg").innerHTML = html; };
+  let cargaFilas = null, cargaFaltan = [];
+
+  { const h = new Date(); let y = h.getFullYear(), m = h.getMonth() + 1, mitad = "1";
+    if (h.getDate() <= 15) { mitad = "2"; m -= 1; if (m === 0) { m = 12; y -= 1; } }
+    $("c-mes").value = `${y}-${String(m).padStart(2, "0")}`; $("c-mitad").value = mitad; }
+
+  function quincenaElegida() {
+    const mes = $("c-mes").value;
+    if (!mes) return null;
+    const [y, m] = mes.split("-").map(Number);
+    const ini = `${mes}-${$("c-mitad").value === "1" ? "01" : "16"}`;
+    const fin = $("c-mitad").value === "1" ? `${mes}-15` : `${mes}-${String(new Date(y, m, 0).getDate()).padStart(2, "0")}`;
+    return { ini, fin };
+  }
+
+  $("btn-abrir-carga").addEventListener("click", () => { $("card-carga").hidden = !$("card-carga").hidden; });
+
+  $("btn-plantilla").addEventListener("click", () => {
+    const ws = XLSX.utils.aoa_to_sheet([
+      ["Cédula", "Clase", "Concepto", "Cantidad", "Valor"],
+      [1234567890, "Informativo", "Salario base", "", 1300000],
+      [1234567890, "Informativo", "Días laborados", 15, ""],
+      [1234567890, "Devengado", "Sueldo", 15, 650000],
+      [1234567890, "Devengado", "Horas extras diurnas", 4, 32000],
+      [1234567890, "Deducción", "Salud", "", 27280],
+      [1234567890, "Deducción", "Pensión", "", 27280],
+    ]);
+    ws["!cols"] = [{ wch: 14 }, { wch: 14 }, { wch: 30 }, { wch: 10 }, { wch: 14 }];
+    const ayuda = XLSX.utils.aoa_to_sheet([
+      ["Cómo llenar la plantilla"],
+      ["Una fila por cada concepto de cada persona. La cédula se repite en cada fila de esa persona."],
+      ["Cédula: solo números. Debe existir en Empleados (las que no existan se omiten y se avisa)."],
+      ["Clase: Devengado, Deducción o Informativo. Informativo no suma ni resta (por ejemplo salario base o días laborados)."],
+      ["Concepto: el nombre que debe verse en la colilla."],
+      ["Cantidad: opcional (días, horas, etc.). Valor: el valor en pesos de ese concepto, en positivo."],
+      ["Borra las filas de ejemplo (cédula 1234567890) antes de subir el archivo."],
+      ["Neto a pagar = total Devengado − total Deducciones."],
+    ]);
+    ayuda["!cols"] = [{ wch: 110 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Colillas"); XLSX.utils.book_append_sheet(wb, ayuda, "Instrucciones");
+    XLSX.writeFile(wb, "plantilla_colillas.xlsx");
+  });
+
+  function parseNumero(v) {
+    if (typeof v === "number") return Number.isFinite(v) ? v : NaN;
+    let s = String(v == null ? "" : v).replace(/[$\s]/g, "");
+    if (s === "") return NaN;
+    if (/,\d{1,2}$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+    else s = s.replace(/,/g, "");
+    return /^-?\d+(\.\d+)?$/.test(s) ? Number(s) : NaN;
+  }
+  const CLASES = { devengado: "devengado", devengo: "devengado", devengados: "devengado", deduccion: "deduccion", deducciones: "deduccion", descuento: "deduccion", descuentos: "deduccion", informativo: "informativo", info: "informativo", informacion: "informativo" };
+  const ALIAS = { cedula: ["cedula", "identificacion", "documento", "cc", "nit"], clase: ["clase", "naturaleza", "tipo"], concepto: ["concepto", "descripcion", "detalle"], cantidad: ["cantidad", "dias", "horas"], valor: ["valor", "monto", "importe", "total"] };
+
+  async function revisarArchivo() {
+    cargaFilas = null; cargaFaltan = []; $("btn-cargar").disabled = true; cmsg("");
+    const f = $("c-archivo").files[0];
+    if (!f) return;
+    try {
+      cmsg("Leyendo el archivo…");
+      const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+      const crudo = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: "", raw: true });
+      if (!crudo.length) { cmsg("El archivo no trae filas.", "error"); return; }
+      const llaves = Object.keys(crudo[0]);
+      const col = {};
+      for (const campo of Object.keys(ALIAS)) col[campo] = llaves.find((k) => ALIAS[campo].includes(norm(k)));
+      const sinCol = ["cedula", "clase", "concepto", "valor"].filter((c) => !col[c]);
+      if (sinCol.length) { cmsg(`Al archivo le faltan columnas: ${sinCol.join(", ")}. Usa la plantilla.`, "error"); return; }
+
+      const filas = [], errores = [];
+      crudo.forEach((r, i) => {
+        if (Object.values(r).every((v) => String(v).trim() === "")) return;
+        const nfila = i + 2, ced = String(r[col.cedula]).replace(/[.\s,]/g, "");
+        const clase = CLASES[norm(r[col.clase])];
+        const concepto = String(r[col.concepto]).trim();
+        const cant = col.cantidad && String(r[col.cantidad]).trim() !== "" ? parseNumero(r[col.cantidad]) : null;
+        let valor = String(r[col.valor]).trim() === "" ? (clase === "informativo" ? 0 : NaN) : parseNumero(r[col.valor]);
+        if (!/^\d{5,12}$/.test(ced)) errores.push(`Fila ${nfila}: cédula no válida («${r[col.cedula]}»)`);
+        else if (!clase) errores.push(`Fila ${nfila}: la clase debe ser Devengado, Deducción o Informativo («${r[col.clase]}»)`);
+        else if (!concepto) errores.push(`Fila ${nfila}: falta el concepto`);
+        else if (Number.isNaN(valor)) errores.push(`Fila ${nfila}: el valor no es un número («${r[col.valor]}»)`);
+        else if (cant != null && Number.isNaN(cant)) errores.push(`Fila ${nfila}: la cantidad no es un número («${r[col.cantidad]}»)`);
+        else filas.push({ cedula: ced, clase, concepto, cantidad: cant, valor });
+      });
+      if (errores.length) {
+        cmsg(`No se puede cargar: ${errores.length} fila${errores.length === 1 ? "" : "s"} con problemas. Corrígelas y vuelve a subir el archivo.<ul>${errores.slice(0, 12).map((x) => `<li>${esc(x)}</li>`).join("")}</ul>${errores.length > 12 ? `… y ${errores.length - 12} más.` : ""}`, "error");
+        return;
+      }
+      if (!filas.length) { cmsg("El archivo no trae filas con datos.", "error"); return; }
+      if (filas.some((x) => x.cedula === "1234567890")) { cmsg("El archivo todavía tiene las filas de ejemplo (cédula 1234567890). Bórralas y vuelve a subirlo.", "error"); return; }
+
+      // cedulas que no existen en Empleados
+      const ceds = [...new Set(filas.map((x) => x.cedula))];
+      const existen = new Set();
+      for (let i = 0; i < ceds.length; i += 150) {
+        const r = await get(`employees?select=cedula&cedula=in.(${ceds.slice(i, i + 150).join(",")})`);
+        r.forEach((x) => existen.add(String(x.cedula)));
+      }
+      cargaFaltan = ceds.filter((c) => !existen.has(c));
+      cargaFilas = filas;
+      vistaPrevia();
+    } catch (err) {
+      cmsg("No se pudo leer el archivo: " + esc(err.message || err), "error");
+    }
+  }
+
+  function vistaPrevia() {
+    if (!cargaFilas) return;
+    const q = quincenaElegida();
+    if (!q) { cmsg("Elige el mes y la quincena.", "warn"); $("btn-cargar").disabled = true; return; }
+    const personas = new Set(cargaFilas.map((x) => x.cedula)).size;
+    const suma = (c) => cargaFilas.filter((x) => x.clase === c).reduce((a, x) => a + x.valor, 0);
+    const ya = quincenas.find((x) => x.quincena_inicio === q.ini);
+    let h = `Archivo leído: <b>${personas}</b> personas · <b>${cargaFilas.length}</b> filas · Devengado <b>${COP.format(suma("devengado"))}</b> · Deducciones <b>${COP.format(suma("deduccion"))}</b><br>Se cargará la quincena <b>${esc(etiquetaQuincena(q.ini, q.fin))}</b>.`;
+    let clase = "ok";
+    if (cargaFaltan.length) {
+      clase = "warn";
+      h += `<br>⚠ ${cargaFaltan.length} cédula${cargaFaltan.length === 1 ? "" : "s"} no existe${cargaFaltan.length === 1 ? "" : "n"} en Empleados y se omitirán: ${esc(cargaFaltan.slice(0, 10).join(", "))}${cargaFaltan.length > 10 ? "…" : ""}`;
+    }
+    if (ya) { clase = "warn"; h += `<br>⚠ Esa quincena ya está cargada (${ya.personas} personas): <b>se reemplazará completa</b> con este archivo.`; }
+    cmsg(h, clase);
+    $("btn-cargar").disabled = personas - cargaFaltan.length <= 0;
+  }
+
+  $("c-archivo").addEventListener("change", revisarArchivo);
+  $("c-mes").addEventListener("change", vistaPrevia);
+  $("c-mitad").addEventListener("change", vistaPrevia);
+
+  $("btn-cargar").addEventListener("click", async () => {
+    const q = quincenaElegida();
+    if (!cargaFilas || !q) return;
+    const ya = quincenas.find((x) => x.quincena_inicio === q.ini);
+    const personas = new Set(cargaFilas.map((x) => x.cedula)).size - cargaFaltan.length;
+    if (!confirm(`Vas a cargar las colillas de la quincena ${etiquetaQuincena(q.ini, q.fin)}: ${personas} personas.` +
+      (ya ? `\n\nEsa quincena ya estaba cargada (${ya.personas} personas) y se REEMPLAZARÁ completa.` : "") + "\n\n¿Confirmas?")) return;
+    $("btn-cargar").disabled = true;
+    cmsg("Cargando…");
+    try {
+      const r = await rpc("cargar_colillas", { p_inicio: q.ini, p_fin: q.fin, p_filas: cargaFilas });
+      cmsg(`Listo: quincena ${esc(etiquetaQuincena(q.ini, q.fin))} cargada con <b>${r.personas}</b> personas y ${r.filas} conceptos.` +
+        (r.omitidas && r.omitidas.length ? `<br>Se omitieron ${r.omitidas.length} cédulas que no están en Empleados.` : ""), "ok");
+      cargaFilas = null; $("c-archivo").value = "";
+      await cargarQuincenas(q.ini);
+      $("f-quincena").value = q.ini;
+      cargarResumen();
+    } catch (err) {
+      cmsg("No se pudo cargar: " + esc(err.message || err), "error");
+      $("btn-cargar").disabled = false;
+    }
+  });
+
+  try { await cargarQuincenas(); } catch (err) { $("conteo").textContent = "No se pudo cargar: " + (err.message || err); }
+  cargarResumen();
+});
+</script>
+</body>
+</html>
