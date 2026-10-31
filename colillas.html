@@ -562,7 +562,7 @@ AUTH_READY.then(async function () {
     try {
       const [lineas, emps] = await Promise.all([
         get(`colillas_pago?select=clase,concepto,cantidad,valor,orden&cedula=eq.${cedula}&quincena_inicio=eq.${ini}&order=orden.asc`),
-        get(`employees?select=nombre,cedula,cargo,area,tipo_contrato,administrativo,fecha_ingreso,banco,numero_cuenta&cedula=eq.${cedula}`),
+        get(`employees?select=nombre,cedula,cargo,area,tipo_contrato,administrativo,fecha_ingreso&cedula=eq.${cedula}`),
       ]);
       const e = emps[0] || { nombre: "(sin datos)", cedula };
       const por = (c) => lineas.filter((l) => l.clase === c);
@@ -582,7 +582,6 @@ AUTH_READY.then(async function () {
         <div class="colilla-datos">
           ${dato("Nombre", e.nombre)}${dato("Cédula", String(e.cedula))}${dato("Cargo", e.cargo)}${dato("Área", e.area)}
           ${dato("Tipo", TIPOS[tipoDe(e)])}${dato("Contrato", e.tipo_contrato)}${dato("Fecha de ingreso", fmtFecha(e.fecha_ingreso))}
-          ${dato("Banco", e.banco)}${dato("Cuenta", e.numero_cuenta)}
           ${inf.map((l) => dato(l.concepto, infoTxt(l))).join("")}
         </div>
         ${bloque("Devengados", dev)}
