@@ -465,11 +465,17 @@ AUTH_READY.then(async function () {
     : TODAS_LAS_AREAS;
 
   const NOVEDAD_PENDIENTE = "AUSENCIA PENDIENTE POR DEFINIR";
-  let codigosAusencia = [];
+  // Para elegir una novedad se ofrecen TODAS las habilitadas, menos las de tipo Horas y Bonificacion (no se pueden elegir en este modulo).
+  // El filtro "Novedad" de la tabla sigue usando solo Ausencia y Compensatorio, que son las que pueden aparecer como novedad de una ausencia.
+  const TIPOS_NO_ELEGIBLES = ["Horas", "Bonificación", "Bonificacion"];
+  let codigosElegibles = [], codigosAusencia = [];
   try {
-    const respCod = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,descripcion,codigo_descripcion,codigo_nomina,tipo&tipo=in.(Ausencia,Compensatorio)&habilitado=eq.true`, { headers: authHeaders() });
+    const respCod = await fetch(`${SUPABASE_URL}/rest/v1/codigos_novedad?select=codigo,descripcion,codigo_descripcion,codigo_nomina,tipo&habilitado=eq.true`, { headers: authHeaders() });
     const filasCod = await respCod.json();
-    if (respCod.ok && Array.isArray(filasCod)) codigosAusencia = filasCod;
+    if (respCod.ok && Array.isArray(filasCod)) {
+      codigosElegibles = filasCod.filter((c) => !TIPOS_NO_ELEGIBLES.includes(c.tipo));
+      codigosAusencia = filasCod.filter((c) => c.tipo === "Ausencia" || c.tipo === "Compensatorio");
+    }
   } catch {}
   // DOR no es elegible a mano (la crea el sistema) pero si se puede filtrar
   const OPCIONES_NOVEDAD = [...new Set([NOVEDAD_PENDIENTE, ...codigosAusencia.map(c => c.descripcion), "DEDUCCIÓN POR OMISIÓN DE REGISTRO"])];
@@ -560,15 +566,22 @@ AUTH_READY.then(async function () {
     params.set("order", `${sortKey}.${sortDir === 1 ? "asc" : "desc"}`);
   }
 
-  // Todas las novedades de tipo Ausencia y Compensatorio habilitadas (menos "pendiente por definir",
-  // que es el estado por defecto, no una novedad que se elija). "Injustificada" primero.
-  const NOVEDADES_ELEGIBLES = codigosAusencia
+  // Todas las novedades habilitadas menos las de tipo Horas y Bonificacion (y "pendiente por definir", que es el estado por defecto, no una
+  // novedad que se elija). Agrupadas por tipo (Ausencia, Compensatorio, Permiso y los demas); en Ausencia, "Injustificada" primero.
+  const ORDEN_TIPO = ["Ausencia", "Compensatorio", "Permiso"];
+  const rangoTipo = (t) => { const i = ORDEN_TIPO.indexOf(t); return i === -1 ? ORDEN_TIPO.length : i; };
+  const NOVEDADES_ELEGIBLES = codigosElegibles
     .filter((c) => c.codigo !== "APD")
     .sort((a, b) => {
       const ai = (a.descripcion || "").toUpperCase().includes("INJUSTIFICADA") ? 0 : 1;
       const bi = (b.descripcion || "").toUpperCase().includes("INJUSTIFICADA") ? 0 : 1;
-      return ai - bi || (a.descripcion || "").localeCompare(b.descripcion || "", "es");
+      return rangoTipo(a.tipo) - rangoTipo(b.tipo) || String(a.tipo).localeCompare(String(b.tipo), "es") || ai - bi || (a.descripcion || "").localeCompare(b.descripcion || "", "es");
     });
+  const opcionesNovedad = (actual) => {
+    const opt = (c) => `<option value="${escAttr(c.codigo)}"${(c.descripcion || "") === actual ? " disabled" : ""}>${escAttr(c.descripcion)}</option>`;
+    const tipos = [...new Set(NOVEDADES_ELEGIBLES.map((c) => c.tipo))];
+    return tipos.map((t) => `<optgroup label="${escAttr(t)}">${NOVEDADES_ELEGIBLES.filter((c) => c.tipo === t).map(opt).join("")}</optgroup>`).join("");
+  };
   const escAttr = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 
   function filaHTML(r) {
@@ -581,7 +594,7 @@ AUTH_READY.then(async function () {
     const accion = (puedeEditar && NOVEDADES_ELEGIBLES.length)
       ? `<select class="sel-novedad" data-cedula="${r.cedula}" data-fecha="${r.fecha}" data-nombre="${escAttr(r.nombre)}" data-actual="${escAttr(r.novedad)}" aria-label="Cambiar novedad">
            <option value="">${pendiente ? "Definir novedad…" : "Cambiar novedad…"}</option>
-           ${NOVEDADES_ELEGIBLES.map((c) => `<option value="${escAttr(c.codigo)}"${(c.descripcion || "") === r.novedad ? " disabled" : ""}>${escAttr(c.descripcion)}</option>`).join("")}
+           ${opcionesNovedad(r.novedad)}
          </select>`
       : "";
     return `<tr data-id="${r.id}">
