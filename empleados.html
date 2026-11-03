@@ -259,6 +259,10 @@
   .resultado-item .ced { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); margin-right: 8px; }
 
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; }
+  .reingreso-box { border: 1px solid var(--warn, #b3742f); background: var(--warn-soft, #f6e9d7); border-radius: 10px; padding: 12px 14px; margin-bottom: 14px; }
+  .reingreso-box[hidden] { display: none; }
+  .reingreso-txt { font-size: 13px; line-height: 1.5; margin-bottom: 10px; }
+  .reingreso-fila { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
 </style>
 <link rel="stylesheet" href="responsive.css">
 <script src="responsive.js" defer></script>
@@ -714,6 +718,14 @@
     <div class="resultados-busqueda" id="editar-resultados" hidden></div>
 
     <form id="form-editar-empleado" hidden novalidate>
+      <div class="reingreso-box" id="reingreso-box" hidden>
+        <div class="reingreso-txt"><b>Esta persona está retirada o inactiva.</b> Si vuelve a trabajar, registra el reingreso: se actualiza la fecha de ingreso, se activa
+          y se limpian el retiro y las prórrogas del contrato anterior. Después revisa el tipo y el tiempo de contrato y guarda los cambios.</div>
+        <div class="reingreso-fila">
+          <div class="field"><label for="e-reingreso-fecha">Fecha del reingreso</label><input type="date" id="e-reingreso-fecha"></div>
+          <button type="button" class="btn-primary" id="btn-reingreso" style="width:fit-content">Registrar reingreso</button>
+        </div>
+      </div>
       <div class="form-grid">
         <div class="field">
           <label for="e-area">Área</label>
@@ -758,7 +770,7 @@
         </div>
         <div class="field">
           <label for="e-fecha-ingreso">Fecha Ingreso</label>
-          <input type="date" id="e-fecha-ingreso" disabled>
+          <input type="date" id="e-fecha-ingreso">
         </div>
         <div class="field">
           <label for="e-fecha-cambio-area">Fecha último cambio de área</label>
@@ -1555,7 +1567,10 @@ AUTH_READY.then(async function () {
   // Campos que sugieren valores ya usados (datalist) pero sin restringir --
   // mezclan grado escolar con titulos (o varios deportes separados por coma),
   // no tiene sentido forzar una lista cerrada.
-  const CAMPOS_SUGERENCIA_LIBRE = new Set(["descripcion_escolaridad", "cual_ejercicio"]);
+  // Las ciudades (expedicion, nacimiento, residencia, trabajo) tambien sugieren pero dejan escribir una nueva
+  // (se guarda en MAYUSCULAS, formato "CIUDAD, DEPARTAMENTO"): antes no dejaba ingresar una ciudad que nadie tuviera.
+  const CAMPOS_CIUDAD = new Set(["lugar_expedicion", "lugar_nacimiento", "ciudad", "ciudad_trabajo"]);
+  const CAMPOS_SUGERENCIA_LIBRE = new Set(["descripcion_escolaridad", "cual_ejercicio", ...CAMPOS_CIUDAD]);
   const opcionesCombobox = {}; // campo -> Map(MAYUSCULAS -> valor canonico)
   const NOMBRES_CAMPO = {};    // id -> etiqueta, para los mensajes
 
@@ -1815,7 +1830,11 @@ AUTH_READY.then(async function () {
           }
         });
         if (CAMPOS_SUGERENCIA_LIBRE.has(campo)) {
-          ["f", "e"].forEach(pref => prepararSugerencia(pref, campo, mapa.values()));
+          ["f", "e"].forEach(pref => {
+            prepararSugerencia(pref, campo, mapa.values());
+            const el = document.getElementById(idRrhh(pref, campo));
+            if (el && CAMPOS_CIUDAD.has(campo)) el.placeholder = "CIUDAD, DEPARTAMENTO";
+          });
           return;
         }
         opcionesCombobox[campo] = mapa;
@@ -1874,6 +1893,24 @@ AUTH_READY.then(async function () {
   const btnGuardar = document.getElementById("btn-guardar");
   const msg = document.getElementById("form-msg");
 
+  // Cedula que ya existe (ej. una persona que vuelve a trabajar): en vez de dejar llenar todo el formulario para luego
+  // rechazarlo, se avisa apenas se escribe la cedula y se lleva a Editar -> Registrar reingreso.
+  function avisarCedulaExistente(cedula, emp) {
+    const quien = emp ? ` (${escaparHtml(emp.nombre)}${emp.activo ? "" : ", inactivo"}${emp.fecha_retiro ? ", retirado el " + String(emp.fecha_retiro).slice(0, 10).split("-").reverse().join("/") : ""})` : "";
+    msg.innerHTML = `Ya existe un empleado con la cédula ${escaparHtml(cedula)}${quien}. Si es un <b>reingreso</b>, <button type="button" class="link-btn" id="btn-ir-reingreso">ábrelo en Editar</button> y usa «Registrar reingreso»; no se crea un registro nuevo.`;
+    msg.className = "form-msg error";
+    document.getElementById("btn-ir-reingreso").addEventListener("click", () => irAEditar(cedula));
+  }
+  document.getElementById("f-cedula").addEventListener("change", async () => {
+    const c = document.getElementById("f-cedula").value.trim();
+    if (!/^\d{5,}$/.test(c)) return;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/employees?select=cedula,nombre,activo,fecha_retiro&cedula=eq.${c}`, { headers: authHeaders() });
+      const d = await r.json();
+      if (Array.isArray(d) && d.length && document.getElementById("f-cedula").value.trim() === c) avisarCedulaExistente(c, d[0]);
+    } catch {}
+  });
+
   form.addEventListener("submit", async (e) => {
     e.preventDefault();
 
@@ -1908,7 +1945,8 @@ AUTH_READY.then(async function () {
       administrativo: document.getElementById("f-administrativo").checked,
     };
     CAMPOS_RRHH.forEach(campo => {
-      const crudo = val(idRrhh("f", campo));
+      const crudo0 = val(idRrhh("f", campo));
+      const crudo = crudo0 !== null && CAMPOS_CIUDAD.has(campo) ? crudo0.toUpperCase() : crudo0;
       registro[campo] = CAMPOS_RRHH_NUMERICOS.includes(campo) && crudo !== null ? Number(crudo) : crudo;
     });
 
@@ -1926,7 +1964,9 @@ AUTH_READY.then(async function () {
       if (!resp.ok) {
         const texto = await resp.text();
         if (resp.status === 409 || texto.includes("duplicate key")) {
-          throw new Error(`Ya existe un empleado con la cédula ${cedula}.`);
+          const dup = new Error(`Ya existe un empleado con la cédula ${cedula}.`);
+          dup.duplicada = true;
+          throw dup;
         }
         throw new Error(texto);
       }
@@ -1939,8 +1979,12 @@ AUTH_READY.then(async function () {
       actualizarVisibilidadTurno("f");
       cargarEmpleados();
     } catch (err) {
-      msg.textContent = "No se pudo guardar: " + (err.message || err);
-      msg.className = "form-msg error";
+      if (err && err.duplicada) {
+        avisarCedulaExistente(cedula, null);
+      } else {
+        msg.textContent = "No se pudo guardar: " + (err.message || err);
+        msg.className = "form-msg error";
+      }
     } finally {
       btnGuardar.disabled = false;
     }
@@ -2025,7 +2069,36 @@ AUTH_READY.then(async function () {
     primeraSeccion.nextElementSibling.hidden = false;
     primeraSeccion.classList.add("expandida");
     formEditar.hidden = false;
+    // retirada o inactiva: se ofrece registrar el reingreso (fecha de ingreso nueva, contrato nuevo)
+    document.getElementById("reingreso-box").hidden = !(emp.fecha_retiro || !emp.activo);
+    document.getElementById("e-reingreso-fecha").value = fechaHoy();
   }
+
+  document.getElementById("btn-reingreso").addEventListener("click", () => {
+    const fecha = document.getElementById("e-reingreso-fecha").value;
+    if (!fecha) {
+      editarMsg.textContent = "Indica la fecha del reingreso.";
+      editarMsg.className = "form-msg error";
+      return;
+    }
+    document.getElementById("e-fecha-ingreso").value = fecha;
+    document.getElementById("e-activo").checked = true;
+    ["e-fecha-retiro", "e-motivo-retiro", "e-detalle-retiro", "e-prorroga-1", "e-prorroga-2", "e-prorroga-3", "e-prorroga-4"].forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ""; el.classList.remove("invalido"); }
+    });
+    const contrato = document.getElementById("e-tipo-contrato");
+    const grid = contrato.closest(".form-grid");
+    if (grid && grid.hidden) {
+      grid.hidden = false;
+      const boton = grid.previousElementSibling;
+      if (boton) boton.classList.add("expandida");
+    }
+    contrato.scrollIntoView({ behavior: "smooth", block: "center" });
+    contrato.focus();
+    editarMsg.textContent = "Reingreso preparado: revisa Tipo de Contrato y Tiempo de Contrato, y pulsa «Guardar cambios».";
+    editarMsg.className = "form-msg ok";
+  });
 
   async function buscarEmpleados(termino) {
     formEditar.hidden = true;
@@ -2132,7 +2205,8 @@ AUTH_READY.then(async function () {
       administrativo: document.getElementById("e-administrativo").checked,
     };
     CAMPOS_RRHH.forEach(campo => {
-      const crudo = val(idRrhh("e", campo));
+      const crudo0 = val(idRrhh("e", campo));
+      const crudo = crudo0 !== null && CAMPOS_CIUDAD.has(campo) ? crudo0.toUpperCase() : crudo0;
       cambios[campo] = CAMPOS_RRHH_NUMERICOS.includes(campo) && crudo !== null ? Number(crudo) : crudo;
     });
 
@@ -2594,6 +2668,7 @@ AUTH_READY.then(async function () {
     const cedula = btn.dataset.toggleCedula;
     const activoActual = btn.dataset.toggleActivo === "true";
     const nuevoEstado = !activoActual;
+    if (nuevoEstado) { irAEditar(cedula); return; }   // activar = reingreso: se hace en Editar para actualizar fecha de ingreso y contrato
     const accion = nuevoEstado ? "activar" : "desactivar";
     const ok = await pedirConfirmacion({
       titulo: nuevoEstado ? "¿Activar empleado?" : "¿Inactivar empleado?",
