@@ -1133,8 +1133,9 @@ AUTH_READY.then(async function () {
   }
   function horasDelDia(emp, fecha, cod) {
     if (CODIGOS_SIN_HORAS.includes(cod.codigo)) return 0;
-    // Las horas de una ausencia ya NO salen del turno: solo las horas esperadas del dia de la semana (Configuraciones).
-    const dow = (new Date(fecha + "T00:00:00").getDay() + 6) % 7;
+    // Las horas de una ausencia ya NO salen del turno: solo las horas esperadas del dia de la semana (Configuraciones);
+    // en un festivo (o domingo) son las del domingo (7 h), caiga el dia que caiga.
+    const dow = FESTIVOS.has(fecha) ? 6 : (new Date(fecha + "T00:00:00").getDay() + 6) % 7;
     return HORAS_ESPERADAS_DIA ? HORAS_ESPERADAS_DIA[dow] : undefined;
   }
 
@@ -1384,7 +1385,7 @@ AUTH_READY.then(async function () {
     } catch { /* sin DOR: no se podran editar, el resto sigue igual */ }
   }
   cargarCodigos();
-  cargarFestivos();
+  const festivosListos = cargarFestivos();
   cargarHorasEsperadas();
   // Dias hacia atras habilitados por el Super Admin para este usuario (vacio si no tiene ninguno vigente)
   (async function cargarHabilitacionDiasAtras() {
@@ -1925,6 +1926,7 @@ AUTH_READY.then(async function () {
     if (!cod) { msgNovedad.textContent = "Selecciona un código."; msgNovedad.className = "form-msg error"; return; }
     const horasSistema = usaHorasDelSistema(cod);
     if (!horasSistema && !inHora.value) { msgNovedad.textContent = "Las horas son obligatorias."; msgNovedad.className = "form-msg error"; return; }
+    if (horasSistema) await festivosListos;   // las horas de un festivo son las del domingo: hay que tener la lista de festivos
     if (horasSistema && HORAS_ESPERADAS_DIA === null) {
       await cargarHorasEsperadas();
       if (HORAS_ESPERADAS_DIA === null) { msgNovedad.textContent = "No se pudieron leer las horas esperadas para asignar las horas de cada día. No se guardó nada."; msgNovedad.className = "form-msg error"; return; }
@@ -2429,6 +2431,7 @@ AUTH_READY.then(async function () {
     const sistema = usaHorasDelSistema(cod);
     let hora;
     if (sistema) {
+      await festivosListos;
       if (HORAS_ESPERADAS_DIA === null) await cargarHorasEsperadas();
       hora = horasDelDia(edEmp || { cedula: f.cedula, area: f.area, turno: null }, fecha, cod);
       if (hora === undefined || hora === null || Number.isNaN(Number(hora))) { edMostrarMensaje("No se pudieron leer las horas esperadas de ese día. No se guardó nada.", "error"); return; }
