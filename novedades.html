@@ -1204,24 +1204,40 @@ AUTH_READY.then(async function () {
   // El Super Admin no tiene limite de fechas hacia atras (crear ni editar).
   const ES_SUPER_ADMIN = window.SESION.rol === "super_admin";
   if (ES_SUPER_ADMIN) DIAS_ATRAS_GENERAL = 36500;
-  // Cortes de nomina: dias 15 y ultimo dia de cada mes (quincenas 1-15 y 16-fin de mes). Aunque la ventana de dias
-  // alcance, NO se cargan ni modifican novedades de una quincena que ya cerro; solo la habilitacion de mas dias del
-  // Super Admin (o el propio Super Admin) puede pasar el corte. Misma regla que fecha_minima_novedades() en la base.
+  // Cierres de cargue de nomina: la quincena 1-15 cierra el dia 18 a las 10:00 a. m. y la quincena 16-fin de mes cierra el dia 3 del
+  // mes siguiente a las 10:00 a. m. Aunque la ventana de dias alcance, NO se cargan ni modifican novedades de una quincena que ya cerro;
+  // solo la habilitacion de mas dias del Super Admin (o el propio Super Admin) puede pasar el cierre. Misma regla que
+  // fecha_minima_novedades() en la base (hora de Colombia).
   let HABILITADO_MAS_DIAS = false;
   function inicioQuincena(fechaISO) {
     const [y, m, d] = fechaISO.split("-");
     return `${y}-${m}-${Number(d) <= 15 ? "01" : "16"}`;
   }
+  const CIERRE_HORA = 10;               // los cierres (dia 18 y dia 3) son a las 10:00 a. m.
+  const horaColombia = () => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "America/Bogota", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
+  // Primer dia que todavia se puede cargar segun el cierre de quincenas: mientras la quincena anterior siga abierta se puede llegar a su inicio.
+  function corteQuincenaAbierta(hoy = fechaHoy(), hora = horaColombia()) {
+    let [y, m, d] = hoy.split("-").map(Number);
+    const pad = (n) => String(n).padStart(2, "0");
+    if (d <= 15) {
+      const anteriorAbierta = d < 3 || (d === 3 && hora < CIERRE_HORA);   // la 16-fin del mes pasado cierra el dia 3 a las 10:00
+      if (!anteriorAbierta) return `${y}-${pad(m)}-01`;
+      if (m === 1) { y -= 1; m = 12; } else { m -= 1; }
+      return `${y}-${pad(m)}-16`;
+    }
+    const anteriorAbierta = d < 18 || (d === 18 && hora < CIERRE_HORA);   // la 1-15 cierra el dia 18 a las 10:00
+    return `${y}-${pad(m)}-${anteriorAbierta ? "01" : "16"}`;
+  }
   function fechaMinimaGeneral() {
     const porDias = restarDias(fechaHoy(), DIAS_ATRAS_GENERAL);
     if (ES_SUPER_ADMIN || HABILITADO_MAS_DIAS) return porDias;
-    const corte = inicioQuincena(fechaHoy());
+    const corte = corteQuincenaAbierta();
     return corte > porDias ? corte : porDias;
   }
   // Predicado para los mensajes de "fecha demasiado antigua": distingue la ventana de dias del corte de quincena.
   function motivoLimite(minima) {
     return minima > restarDias(fechaHoy(), DIAS_ATRAS_GENERAL)
-      ? `corresponde a una quincena ya cerrada (los cortes son el 15 y el último día de cada mes); lo mínimo permitido hoy es ${minima}`
+      ? `corresponde a una quincena ya cerrada (la quincena 1-15 cierra el día 18 y la 16-fin de mes cierra el día 3, ambas a las 10:00 a. m.); lo mínimo permitido hoy es ${minima}`
       : `no puede tener vigencia de más de ${DIAS_ATRAS_GENERAL} días atrás (mínimo ${minima})`;
   }
 
@@ -1251,6 +1267,24 @@ AUTH_READY.then(async function () {
     inFechaInicio.min = minimaGeneral;
     inFechaFinal.min = minimaGeneral;
   }
+
+  // La fecha de una novedad solo puede ser de hoy y los 3 dias anteriores (y, tras el cierre de las 10:00, sin entrar a la quincena cerrada);
+  // hacia adelante no hay limite. Si se escribe o elige una fecha fuera de la ventana, no se deja: se vuelve a la primera fecha permitida.
+  function forzarVentanaFecha(el) {
+    actualizarLimitesHoraExtra();                       // recalcula con la hora de ahora (el cierre es a las 10:00)
+    if (!el.value || !el.min || el.value >= el.min) return;
+    const elegida = el.value;
+    el.value = el.min;
+    msgNovedad.textContent = `La fecha ${fmtFechaDMA(elegida)} no está permitida: solo se pueden cargar novedades de hoy y los ${DIAS_ATRAS_GENERAL_BASE} días anteriores (sin pasar el cierre de la quincena). Se dejó ${fmtFechaDMA(el.min)}.`;
+    msgNovedad.className = "form-msg error";
+    el.dispatchEvent(new Event("change"));
+  }
+  const fmtFechaDMA = (iso) => iso.split("-").reverse().join("/");
+  [inFecha, inFechaInicio, inFechaFinal].forEach((el) => {
+    let espera;
+    el.addEventListener("change", () => { clearTimeout(espera); espera = setTimeout(() => forzarVentanaFecha(el), 700); });   // el navegador dispara "change" con cada digito del año
+    el.addEventListener("blur", () => { clearTimeout(espera); forzarVentanaFecha(el); });
+  });
 
   // Festivos de Colombia (editable por año desde Configuraciones), para que
   // "dias habiles" omita tambien festivos y no solo domingos.

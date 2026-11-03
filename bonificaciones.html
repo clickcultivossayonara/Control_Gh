@@ -582,14 +582,27 @@ AUTH_READY.then(async function () {
   const hoyISO = () => { const d = new Date(); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
   const haceISO = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10); };
   const fmtFecha = (iso) => { const [y, m, d] = String(iso).slice(0, 10).split("-"); return `${d}/${m}/${y}`; };
-  // Plazo de cargue (como el cierre de Nomina): las bonificaciones del 1 al 15 se cargan hasta el dia 12 y las del 16 a fin de mes hasta el dia 28.
+  // Plazo de cargue (mismo cierre que las novedades de Nomina): las bonificaciones del 1 al 15 se cargan hasta el dia 18 del mismo mes y las del
+  // 16 a fin de mes hasta el dia 3 del mes siguiente, ambos a las 10:00 a. m. (hora de Colombia).
   // Solo se AVISA: se puede cargar despues, pero queda a la vista como "fuera de plazo".
-  const plazoDe = (fecha) => { const [y, m, d] = String(fecha).slice(0, 10).split("-").map(Number); return `${y}-${String(m).padStart(2, "0")}-${d <= 15 ? "12" : "28"}`; };
-  const tarde = (fecha, cargado) => (cargado ? String(cargado).slice(0, 10) : hoyISO()) > plazoDe(fecha);
+  const CIERRE_HORA = "10:00:00";
+  const plazoDe = (fecha) => {
+    let [y, m, d] = String(fecha).slice(0, 10).split("-").map(Number);
+    if (d <= 15) return `${y}-${String(m).padStart(2, "0")}-18`;
+    if (m === 12) { y += 1; m = 1; } else { m += 1; }
+    return `${y}-${String(m).padStart(2, "0")}-03`;
+  };
+  const textoCierre = (fecha) => `${fmtFecha(plazoDe(fecha))} a las 10:00 a. m.`;
+  function ahoraColombiaISO() {
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })
+      .formatToParts(new Date()).map((x) => [x.type, x.value]));
+    return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
+  }
+  const tarde = (fecha, cargado) => (cargado ? String(cargado).slice(0, 19).replace(" ", "T") : ahoraColombiaISO()) >= `${plazoDe(fecha)}T${CIERRE_HORA}`;
   function textoPlazo(fecha) {
     if (!fecha) return "";
-    return tarde(fecha) ? `⚠ Fuera de plazo: el cargue de esta quincena cerraba el ${fmtFecha(plazoDe(fecha))}. Puedes cargarla igual, pero quedará registrada como cargada fuera de plazo.`
-                        : `Plazo de cargue de esta quincena: hasta el ${fmtFecha(plazoDe(fecha))}.`;
+    return tarde(fecha) ? `⚠ Fuera de plazo: el cargue de esta quincena cerraba el ${textoCierre(fecha)} Puedes cargarla igual, pero quedará registrada como cargada fuera de plazo.`
+                        : `Plazo de cargue de esta quincena: hasta el ${textoCierre(fecha)}`;
   }
 
   $("f-fecha").value = hoyISO();
@@ -811,7 +824,7 @@ AUTH_READY.then(async function () {
     const sinValor = marcados.filter((x) => !x.valor || x.valor <= 0);
     if (sinValor.length) return cmsg2(`Falta el valor de: ${sinValor.slice(0, 4).map((x) => x.nombre).join(", ")}${sinValor.length > 4 ? "…" : ""}. Escribe el valor o desmarca a la persona.`, "error");
     const total = marcados.reduce((t, x) => t + x.valor, 0);
-    if (!confirm(`Se registrarán ${marcados.length} bonificaciones de "${TIPOS[tipo]}" con fecha ${fmtFecha(fecha)} por un total de ${COP.format(total)}.${tarde(fecha) ? `\n\n⚠ Está fuera de plazo (el cargue cerraba el ${fmtFecha(plazoDe(fecha))}); quedará registrado así.` : ""}\n\n¿Confirmas?`)) return;
+    if (!confirm(`Se registrarán ${marcados.length} bonificaciones de "${TIPOS[tipo]}" con fecha ${fmtFecha(fecha)} por un total de ${COP.format(total)}.${tarde(fecha) ? `\n\n⚠ Está fuera de plazo (el cargue cerraba el ${textoCierre(fecha)}); quedará registrado así.` : ""}\n\n¿Confirmas?`)) return;
     $("c-guardar").disabled = true; cmsg2("Guardando…");
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/bonificaciones`, {
@@ -880,7 +893,7 @@ AUTH_READY.then(async function () {
             ? `<button type="button" class="btn-ok l-guardar">Guardar</button> <button type="button" class="btn-neutro l-cancelar">Cancelar</button>`
             : `<button type="button" class="btn-neutro l-editar">Editar</button> <button type="button" class="btn-peq l-eliminar">Eliminar</button>`;
           return `<tr data-id="${x.id}">
-          <td class="num">${fmtFecha(x.fecha_actualizacion)}${tarde(x.fecha_actualizacion, x.created_at) ? `<span class="chip-est aviso" title="Cargada el ${fmtFecha(x.created_at)}; el plazo era el ${fmtFecha(plazoDe(x.fecha_actualizacion))}">Fuera de plazo</span>` : ""}</td>
+          <td class="num">${fmtFecha(x.fecha_actualizacion)}${tarde(x.fecha_actualizacion, x.created_at) ? `<span class="chip-est aviso" title="Cargada el ${fmtFecha(x.created_at)}; el plazo era el ${textoCierre(x.fecha_actualizacion)}">Fuera de plazo</span>` : ""}</td>
           <td>${esc(TIPOS[x.grupo] || x.grupo)}</td>
           <td class="nombre">${esc(x.nombre)}</td>
           <td class="cedula">${x.cedula ?? ""}</td>
