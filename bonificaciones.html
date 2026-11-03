@@ -586,19 +586,21 @@ AUTH_READY.then(async function () {
   // 16 a fin de mes hasta el dia 3 del mes siguiente, ambos a las 10:00 a. m. (hora de Colombia).
   // Solo se AVISA: se puede cargar despues, pero queda a la vista como "fuera de plazo".
   const CIERRE_HORA = "10:00:00";
+  // EXCEPCION UNICA: el 3-nov-2026 el cierre de la quincena 16-31 oct se extiende hasta las 14:00 (solo ese dia).
+  const cierreDe = (plazoISO) => (plazoISO === "2026-11-03" ? "14:00:00" : CIERRE_HORA);
   const plazoDe = (fecha) => {
     let [y, m, d] = String(fecha).slice(0, 10).split("-").map(Number);
     if (d <= 15) return `${y}-${String(m).padStart(2, "0")}-18`;
     if (m === 12) { y += 1; m = 1; } else { m += 1; }
     return `${y}-${String(m).padStart(2, "0")}-03`;
   };
-  const textoCierre = (fecha) => `${fmtFecha(plazoDe(fecha))} a las 10:00 a. m.`;
+  const textoCierre = (fecha) => `${fmtFecha(plazoDe(fecha))} a las ${plazoDe(fecha) === "2026-11-03" ? "2:00 p. m." : "10:00 a. m."}`;
   function ahoraColombiaISO() {
     const p = Object.fromEntries(new Intl.DateTimeFormat("en-GB", { timeZone: "America/Bogota", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23" })
       .formatToParts(new Date()).map((x) => [x.type, x.value]));
     return `${p.year}-${p.month}-${p.day}T${p.hour}:${p.minute}:${p.second}`;
   }
-  const tarde = (fecha, cargado) => (cargado ? String(cargado).slice(0, 19).replace(" ", "T") : ahoraColombiaISO()) >= `${plazoDe(fecha)}T${CIERRE_HORA}`;
+  const tarde = (fecha, cargado) => (cargado ? String(cargado).slice(0, 19).replace(" ", "T") : ahoraColombiaISO()) >= `${plazoDe(fecha)}T${cierreDe(plazoDe(fecha))}`;
   function textoPlazo(fecha) {
     if (!fecha) return "";
     return tarde(fecha) ? `⚠ Fuera de plazo: el cargue de esta quincena cerraba el ${textoCierre(fecha)} Puedes cargarla igual, pero quedará registrada como cargada fuera de plazo.`

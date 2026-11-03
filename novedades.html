@@ -1214,18 +1214,20 @@ AUTH_READY.then(async function () {
     return `${y}-${m}-${Number(d) <= 15 ? "01" : "16"}`;
   }
   const CIERRE_HORA = 10;               // los cierres (dia 18 y dia 3) son a las 10:00 a. m.
+  // EXCEPCION UNICA: el 3-nov-2026 el cierre de la quincena 16-31 oct se extiende hasta las 14:00 (solo ese dia).
+  const cierreHoraDe = (hoy) => (hoy === "2026-11-03" ? 14 : CIERRE_HORA);
   const horaColombia = () => Number(new Intl.DateTimeFormat("en-GB", { timeZone: "America/Bogota", hour: "2-digit", hourCycle: "h23" }).format(new Date()));
   // Primer dia que todavia se puede cargar segun el cierre de quincenas: mientras la quincena anterior siga abierta se puede llegar a su inicio.
   function corteQuincenaAbierta(hoy = fechaHoy(), hora = horaColombia()) {
     let [y, m, d] = hoy.split("-").map(Number);
     const pad = (n) => String(n).padStart(2, "0");
     if (d <= 15) {
-      const anteriorAbierta = d < 3 || (d === 3 && hora < CIERRE_HORA);   // la 16-fin del mes pasado cierra el dia 3 a las 10:00
+      const anteriorAbierta = d < 3 || (d === 3 && hora < cierreHoraDe(hoy));   // la 16-fin del mes pasado cierra el dia 3 a las 10:00
       if (!anteriorAbierta) return `${y}-${pad(m)}-01`;
       if (m === 1) { y -= 1; m = 12; } else { m -= 1; }
       return `${y}-${pad(m)}-16`;
     }
-    const anteriorAbierta = d < 18 || (d === 18 && hora < CIERRE_HORA);   // la 1-15 cierra el dia 18 a las 10:00
+    const anteriorAbierta = d < 18 || (d === 18 && hora < cierreHoraDe(hoy));   // la 1-15 cierra el dia 18 a las 10:00
     return `${y}-${pad(m)}-${anteriorAbierta ? "01" : "16"}`;
   }
   function fechaMinimaGeneral() {
