@@ -603,6 +603,7 @@
         <div class="field">
           <label for="hd-dias">Días hacia atrás permitidos <span class="req">*</span></label>
           <input type="number" id="hd-dias" min="4" max="365" step="1" required placeholder="Ej. 10">
+          <span class="field-hint" id="hd-desde"></span>
         </div>
         <div class="field">
           <label for="hd-hasta">Vigente hasta <span class="req">*</span></label>
@@ -631,11 +632,12 @@
       <span class="result-count" id="hd-count"></span>
     </div>
     <div class="table-scroll">
-      <table data-principales="Usuario,Días atrás,Vigente hasta,Estado,Acciones">
+      <table data-principales="Usuario,Días atrás,Puede cargar desde,Vigente hasta,Estado,Acciones">
         <thead>
           <tr>
             <th>Usuario</th>
             <th>Días atrás</th>
+            <th title="Fecha más antigua con la que puede cargar novedades hoy: hoy menos los días habilitados. Se corre un día cada día mientras la habilitación esté vigente.">Puede cargar desde</th>
             <th>Vigente hasta</th>
             <th>Estado</th>
             <th>Motivo</th>
@@ -1942,6 +1944,14 @@ AUTH_READY.then(async function () {
     const escHd = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     const ROL_ETQ = { super_admin: "Super Admin", admin: "Administrador", nomina: "Nómina", rrhh: "RRHH", jefe_area: "Jefe de área", supervisor: "Supervisor", auxiliar: "Auxiliar" };
 
+    // Fecha mas antigua con la que el usuario puede cargar novedades: hoy menos los dias habilitados
+    // (igual que fecha_minima_novedades() en la base; se corre un dia cada dia mientras la habilitacion este vigente).
+    const desdeHd = (dias) => sumarDiasHd(hoyLocal(), -dias);
+    inHdDias.addEventListener("input", () => {
+      const n = Number(inHdDias.value);
+      document.getElementById("hd-desde").textContent = Number.isInteger(n) && n >= 4 && n <= 365 ? `Podrá cargar novedades desde el ${desdeHd(n)} (hoy menos ${n} días).` : "";
+    });
+
     inHdHasta.min = hoyLocal();
     inHdHasta.max = sumarDiasHd(hoyLocal(), 90);
     inHdHasta.value = sumarDiasHd(hoyLocal(), 7);
@@ -1974,13 +1984,14 @@ AUTH_READY.then(async function () {
       const soloVigentes = selHdFiltro.value === "vigentes";
       const filas = habilitaciones.filter((h) => !soloVigentes || estadoHd(h).clave === "vigente");
       hdTbody.innerHTML = filas.length === 0
-        ? `<tr><td colspan="7"><div class="empty-state">${soloVigentes ? "No hay habilitaciones vigentes." : "Aún no hay habilitaciones."}</div></td></tr>`
+        ? `<tr><td colspan="8"><div class="empty-state">${soloVigentes ? "No hay habilitaciones vigentes." : "Aún no hay habilitaciones."}</div></td></tr>`
         : filas.map((h) => {
             const u = usuariosHd[h.usuario_id] || {};
             const est = estadoHd(h);
             return `<tr data-id="${h.id}">
               <td class="nombre">${escHd(u.nombre || h.usuario_id)}<br><span style="font-size:11.5px;color:var(--ink-faint)">${escHd(ROL_ETQ[u.rol] || u.rol || "")}</span></td>
               <td class="num">${h.dias}</td>
+              <td class="num">${est.clave === "vigente" ? desdeHd(h.dias) : "—"}</td>
               <td class="num">${h.vigente_hasta}</td>
               <td>${est.chip}</td>
               <td>${escHd(h.motivo)}</td>
@@ -1999,7 +2010,7 @@ AUTH_READY.then(async function () {
         habilitaciones = filas;
       } catch (err) {
         const noInstalada = /habilitaciones_dias_atras|relation|PGRST205/i.test(String(err.message || err));
-        hdTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state">${noInstalada
+        hdTbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">${noInstalada
           ? "Falta instalar el módulo en la base de datos (schema_habilitar_dias_atras.sql)."
           : "Error al cargar: " + escHd(err.message || err)}</div></td></tr>`;
         hdCount.textContent = "";
@@ -2034,9 +2045,10 @@ AUTH_READY.then(async function () {
         });
         if (!resp.ok) throw new Error(await resp.text());
         const u = usuariosHd[usuario_id] || {};
-        msgHd.textContent = `Listo: ${u.nombre || "el usuario"} puede cargar novedades hasta ${dias} días atrás, hasta el ${vigente_hasta}.`;
+        msgHd.textContent = `Listo: ${u.nombre || "el usuario"} puede cargar novedades desde el ${desdeHd(dias)} (${dias} días atrás), hasta el ${vigente_hasta}.`;
         msgHd.className = "form-msg ok";
         inHdDias.value = "";
+        document.getElementById("hd-desde").textContent = "";
         inHdMotivo.value = "";
         selHdUsuario.value = "";
         await cargarHabilitaciones();
