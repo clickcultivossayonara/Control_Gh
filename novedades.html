@@ -1091,6 +1091,10 @@ AUTH_READY.then(async function () {
 
   // ---------------- formulario: novedad por colaborador ----------------
   const TIPOS_RANGO_FECHA = ["Ausencia", "Vacaciones"];
+  // TAJL (terminacion anticipada de jornada) es de tipo Ausencia pero se relaciona con UNA sola fecha y por horas: no usa fecha inicio/final
+  // y se carga aunque el dia tenga la marcacion completa (no pasa por la revision de "dia ya laborado" de los rangos).
+  const CODIGOS_UNA_FECHA = ["TAJL"];
+  const usaRangoFecha = (cod) => !!cod && TIPOS_RANGO_FECHA.includes(cod.tipo) && !CODIGOS_UNA_FECHA.includes(cod.codigo);
   // En las novedades por rango (vacaciones, incapacidades, licencias...) las horas de cada dia las pone el sistema:
   // las horas esperadas de ese dia de la semana (tabla de Configuraciones); el turno del area ya no interviene.
   // Excepciones: PCM (permiso por cita medica) y TAJL (terminacion anticipada de jornada) se dan por horas, asi que las piden; APD siempre es 0 h.
@@ -1323,7 +1327,7 @@ AUTH_READY.then(async function () {
   // los demas tipos usan el campo de fecha unica de siempre.
   function actualizarCamposFechaRango() {
     const cod = codigosPorValor[selCodigo.value];
-    const usaRango = cod && TIPOS_RANGO_FECHA.includes(cod.tipo);
+    const usaRango = usaRangoFecha(cod);
     campoFecha.hidden = usaRango;
     inFecha.required = !usaRango;
     campoFechaInicio.hidden = !usaRango;
@@ -1530,7 +1534,7 @@ AUTH_READY.then(async function () {
   let pistaToken = 0;
   async function actualizarPistaJornada() {
     const mio = ++pistaToken, cod = codigosPorValor[selCodigo.value], cedulas = [...msColaborador.seleccion], fecha = inFecha.value;
-    const aplica = cod && fecha && cedulas.length > 0 && cedulas.length <= 3 && !TIPOS_RANGO_FECHA.includes(cod.tipo) && (CODIGOS_TRABAJADOS.includes(cod.codigo) || CODIGOS_NOCTURNOS.includes(cod.codigo));
+    const aplica = cod && fecha && cedulas.length > 0 && cedulas.length <= 3 && !usaRangoFecha(cod) && (CODIGOS_TRABAJADOS.includes(cod.codigo) || CODIGOS_NOCTURNOS.includes(cod.codigo));
     if (!aplica) { hintJornada.hidden = true; return; }
     try {
       const jor = await jornadasQueCubren(cedulas, fecha);
@@ -1920,7 +1924,7 @@ AUTH_READY.then(async function () {
 
     const cedulasSeleccionadas = [...msColaborador.seleccion];
     const cod = codigosPorValor[selCodigo.value];
-    const usaRango = cod && TIPOS_RANGO_FECHA.includes(cod.tipo);
+    const usaRango = usaRangoFecha(cod);
 
     if (cedulasSeleccionadas.length === 0) { msgNovedad.textContent = "Selecciona al menos un colaborador."; msgNovedad.className = "form-msg error"; return; }
     if (!cod) { msgNovedad.textContent = "Selecciona un código."; msgNovedad.className = "form-msg error"; return; }
