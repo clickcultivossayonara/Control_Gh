@@ -693,7 +693,7 @@
           <input type="text" id="f-dosis" autocomplete="off">
         </div>
       </div>
-      <p class="card-hint" style="margin:14px 0 0"><span style="color:var(--critical)">*</span> Obligatorio. No aplican al ingreso: retiro, prórrogas y crédito Feser. Frecuencias de tabaco/alcohol/ejercicio, descripción de escolaridad y datos de hijos solo se exigen si corresponden.</p>
+      <p class="card-hint" style="margin:14px 0 0"><span style="color:var(--critical)">*</span> Obligatorio al ingreso (Identificación y Contrato). Datos personales, Contacto y residencia, Afiliaciones, Familia y Salud se pueden completar después desde Editar. No aplican al ingreso: retiro, prórrogas y crédito Feser.</p>
       <div class="form-actions">
         <button type="submit" class="btn-primary" id="btn-guardar">Guardar empleado</button>
         <span class="form-msg" id="form-msg"></span>
@@ -1692,11 +1692,12 @@ AUTH_READY.then(async function () {
   }
 
   // Campos basicos obligatorios ademas de cedula/nombre (que ya se validan
-  // aparte): area, cargo, tipo de documento, fecha de nacimiento y fecha de
-  // ingreso. El resto de los ~60 campos RRHH se queda opcional.
+  // aparte): area, cargo, tipo de documento y fecha de ingreso. El resto de los
+  // ~60 campos RRHH se queda opcional (la fecha de nacimiento ya no se exige: se
+  // completa despues del ingreso, igual que el resto de datos personales).
   const OBLIGATORIOS_BASICOS = [
     ["area", "Área"], ["cargo", "Cargo"], ["tipo-documento", "Tipo Documento"],
-    ["fecha-nacimiento", "Fecha de Nacimiento"], ["fecha-ingreso", "Fecha Ingreso"],
+    ["fecha-ingreso", "Fecha Ingreso"],
   ];
   function validarObligatorios(prefijo, msgEl) {
     const faltantes = OBLIGATORIOS_BASICOS.filter(([id]) => !document.getElementById(`${prefijo}-${id}`).value.trim());
@@ -1746,12 +1747,21 @@ AUTH_READY.then(async function () {
     return true;
   }
 
+  // Para agilizar el registro de nuevos ingresos, estas secciones se pueden completar despues:
+  // no se exigen al crear (Identificacion y Contrato si).
+  const SECCIONES_OPCIONALES_AL_INGRESO = new Set(["Datos personales", "Contacto y residencia", "Afiliaciones", "Familia", "Salud"]);
+  function seccionDeCampo(el) {
+    const boton = el.closest(".form-grid")?.previousElementSibling;
+    return boton && boton.classList.contains("seccion-rrhh") ? boton.firstChild.textContent.trim() : "";
+  }
+  const campoOpcionalAlIngreso = (campo) => SECCIONES_OPCIONALES_AL_INGRESO.has(seccionDeCampo(document.getElementById(idRrhh("f", campo))));
+
   // Ids (en orden de formulario) de los campos que hoy son obligatorios en Agregar.
   function idsObligatoriosAgregar() {
     const ids = ["f-area", "f-cargo", "f-labor", "f-eficiencia", "f-fecha-ingreso", "f-cedula", "f-nombre"];
     const selTurno = document.getElementById("f-turno");
     if (selTurno && !selTurno.closest(".field").hidden) ids.push("f-turno");
-    CAMPOS_RRHH.filter(aplicaCampoAgregar).forEach((campo) => ids.push(idRrhh("f", campo)));
+    CAMPOS_RRHH.filter(aplicaCampoAgregar).filter((c) => !campoOpcionalAlIngreso(c)).forEach((campo) => ids.push(idRrhh("f", campo)));
     return [...new Set(ids)]
       .map((id) => document.getElementById(id))
       .filter(Boolean)
@@ -1761,7 +1771,7 @@ AUTH_READY.then(async function () {
   // Asterisco rojo en la etiqueta de todo campo que pueda ser obligatorio en Agregar.
   function marcarObligatoriosAgregar() {
     const posibles = ["f-area", "f-cargo", "f-labor", "f-eficiencia", "f-fecha-ingreso", "f-turno"]
-      .concat(CAMPOS_RRHH.filter((c) => !NO_APLICAN_AL_INGRESO.has(c)).map((c) => idRrhh("f", c)));
+      .concat(CAMPOS_RRHH.filter((c) => !NO_APLICAN_AL_INGRESO.has(c) && !campoOpcionalAlIngreso(c)).map((c) => idRrhh("f", c)));
     posibles.forEach((id) => {
       const label = document.querySelector(`#form-empleado label[for="${id}"]`);
       if (label && !label.querySelector(".req")) label.insertAdjacentHTML("beforeend", ' <span class="req">*</span>');
