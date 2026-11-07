@@ -1486,7 +1486,8 @@ AUTH_READY.then(async function () {
   msFiltroArea.establecerOpciones(AREAS_FILTRO.map(a => [a, a]));
 
   // Turno: solo aplica a las areas que realmente trabajan por turnos.
-  const AREAS_CON_TURNO = ["CALDERA", "FITOSANIDAD ASPERSIÓN", "ESTERILIZACIÓN", "ASPERSIÓN"];
+  // FITOSANIDAD ASPERSIÓN quedo con horario abierto (sin turno): se usa el horario general por dia (miercoles 6,5 h, sabado 5,5 h).
+  const AREAS_CON_TURNO = ["CALDERA", "ESTERILIZACIÓN"];
   function actualizarVisibilidadTurno(prefijo) {
     const area = document.getElementById(`${prefijo}-area`).value;
     const selTurno = document.getElementById(`${prefijo}-turno`);
