@@ -205,6 +205,13 @@
   #tabla-nomina th:nth-child(8), #tabla-nomina td:nth-child(8) { width: 8%; }
   #tabla-nomina th:nth-child(9), #tabla-nomina td:nth-child(9) { width: 16%; }
   #tabla-nomina th:nth-child(10), #tabla-nomina td:nth-child(10) { width: 8%; }
+  /* Tabla legible: columnas que se ajustan al contenido y texto que se parte en varias lineas (nombre, area, novedad) en vez de cortarse con "..." */
+  #tabla-nomina { table-layout: auto; min-width: 1040px; }
+  #tabla-nomina tbody td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.35; }
+  #tabla-nomina td.nombre { min-width: 190px; }
+  #tabla-nomina td.col-area { min-width: 130px; }
+  #tabla-nomina td.col-nov { min-width: 170px; }
+  #tabla-nomina td.num, #tabla-nomina td.cedula { white-space: nowrap; }
   .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
   .nombre { font-weight: 500; }
   .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
@@ -590,11 +597,11 @@ AUTH_READY.then(async function () {
       <td class="num">${r.semana ?? "—"}</td>
       <td class="cedula">${r.cedula}</td>
       <td class="nombre" title="${r.nombre}">${r.nombre}</td>
-      <td title="${r.area || ""}">${r.area || "—"}</td>
+      <td class="col-area" title="${r.area || ""}">${r.area || "—"}</td>
       <td class="num">${he}</td>
       <td class="num">${ht}</td>
       <td class="num">${dt}</td>
-      <td title="${r.codigo_descripcion || ""}">${r.codigo_descripcion || "—"}</td>
+      <td class="col-nov" title="${r.codigo_descripcion || ""}">${r.codigo_descripcion || "—"}</td>
       <td class="num">${hn}</td>
     </tr>`;
   }

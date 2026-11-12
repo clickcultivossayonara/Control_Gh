@@ -294,6 +294,12 @@
   thead th:nth-child(8), tbody td:nth-child(8) { width: 9%; }
   thead th:nth-child(9), tbody td:nth-child(9) { width: 12%; white-space: normal; }
   thead th:nth-child(10), tbody td:nth-child(10) { width: 8%; }
+  /* Tabla legible: columnas que se ajustan al contenido y texto que se parte en varias lineas (nombre, area) en vez de cortarse con "..." */
+  table.tabla-legible { table-layout: auto; }
+  table.tabla-legible tbody td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.35; }
+  table.tabla-legible td.nombre { min-width: 190px; }
+  table.tabla-legible td.col-area { min-width: 130px; }
+  table.tabla-legible td.num, table.tabla-legible td.cedula { white-space: nowrap; }
 
   tbody tr:hover td { background: var(--accent-soft); }
   tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
@@ -459,7 +465,7 @@
   </div>
 
   <div class="table-scroll">
-    <table data-principales="Fecha,Nombre,Entrada,Salida,Horas Laboradas,Diferencia">
+    <table class="tabla-legible" data-principales="Fecha,Nombre,Entrada,Salida,Horas Laboradas,Diferencia">
       <thead>
         <tr>
           <th data-key="fecha">Fecha <span class="arrow">↕</span></th>
@@ -790,7 +796,7 @@ AUTH_READY.then(async function () {
       <td class="num">${r.semana ?? '—'}</td>
       <td class="cedula">${r.cedula}</td>
       <td class="nombre" title="${r.nombre}">${r.nombre}</td>
-      <td title="${r.area}">${r.area}</td>
+      <td class="col-area" title="${r.area}">${r.area}</td>
       <td>${r.sede || '—'}</td>
       <td class="num">${he || '—'}</td>
       <td class="num">${hs || '—'}</td>

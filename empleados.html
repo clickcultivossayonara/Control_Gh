@@ -225,6 +225,12 @@
   thead th .arrow { opacity: 0.5; font-size: 9px; margin-left: 3px; }
   thead th.sorted .arrow { opacity: 1; }
   tbody td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Tabla legible: columnas que se ajustan al contenido y texto que se parte en varias lineas (nombre, area, labor) en vez de cortarse con "..." */
+  table.tabla-legible { table-layout: auto; min-width: 900px; }
+  table.tabla-legible tbody td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.35; }
+  table.tabla-legible td.nombre { min-width: 190px; }
+  table.tabla-legible td.col-area, table.tabla-legible td.col-labor { min-width: 130px; }
+  table.tabla-legible td.cedula, table.tabla-legible td.col-nw { white-space: nowrap; }
   th:nth-child(1), td:nth-child(1) { width: 10%; }
   th:nth-child(2), td:nth-child(2) { width: 17%; }
   th:nth-child(3), td:nth-child(3) { width: 14%; }
@@ -1293,7 +1299,7 @@
       <span class="result-count" id="result-count"></span>
     </div>
     <div class="table-scroll">
-      <table data-principales="Cédula,Nombre,Área,Estado,Acciones">
+      <table class="tabla-legible" data-principales="Cédula,Nombre,Área,Estado,Acciones">
         <thead>
           <tr>
             <th data-key="cedula">Cédula <span class="arrow">↕</span></th>
@@ -2649,11 +2655,11 @@ AUTH_READY.then(async function () {
         elBody.innerHTML = filas.map(f => `<tr>
           <td class="cedula">${f.cedula}</td>
           <td class="nombre" title="${f.nombre}">${f.nombre}</td>
-          <td title="${f.area || ""}">${f.area || "—"}</td>
-          <td title="${f.labor || ""}">${f.labor || "—"}</td>
-          <td>${f.sede || "—"}</td>
-          <td>${f.fecha_ingreso ? f.fecha_ingreso.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
-          <td>${f.fecha_ultimo_cambio_area ? f.fecha_ultimo_cambio_area.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
+          <td class="col-area" title="${f.area || ""}">${f.area || "—"}</td>
+          <td class="col-labor" title="${f.labor || ""}">${f.labor || "—"}</td>
+          <td class="col-nw">${f.sede || "—"}</td>
+          <td class="col-nw">${f.fecha_ingreso ? f.fecha_ingreso.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
+          <td class="col-nw">${f.fecha_ultimo_cambio_area ? f.fecha_ultimo_cambio_area.slice(0, 10).split("-").reverse().join("/") : "—"}</td>
           <td>${f.activo ? '<span class="chip ok">Activo</span>' : '<span class="chip off">Inactivo</span>'}</td>
           <td>${puedeEditar ? `<button type="button" class="link-btn" data-toggle-cedula="${f.cedula}" data-toggle-activo="${f.activo}">${f.activo ? "Desactivar" : "Activar"}</button> &middot; <button type="button" class="link-btn" data-cedula="${f.cedula}">Editar</button>` : ""}</td>
         </tr>`).join("");
