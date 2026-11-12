@@ -278,7 +278,17 @@
   .cifra-bono { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
   .cifra-bono span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); font-weight: 600; }
   .cifra-bono b { font-size: 19px; }
-  .tabla-bono { min-width: 880px; }
+  /* Columnas que se ajustan al contenido y texto que se parte en varias lineas: nada queda recortado con "..." (nombre, tipo, labor, observaciones).
+     Se pisa el table-layout: fixed y el nowrap/ellipsis generales de la hoja, y el overflow-wrap: anywhere de responsive.css (que encogeria cada columna a 1 letra). */
+  .tabla-bono { min-width: 900px; table-layout: auto; }
+  .tabla-bono tbody td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.35; vertical-align: middle; }
+  .tabla-bono td.nombre { min-width: 190px; }
+  .tabla-bono td.labor { min-width: 130px; }
+  .tabla-bono td.tipo { min-width: 125px; }
+  .tabla-bono td.obs { min-width: 170px; }
+  .tabla-bono td.fecha, .tabla-bono td.cedula, .tabla-bono td.valor, .tabla-bono td.recibe { white-space: nowrap; }
+  .tabla-bono td.acc button { margin: 2px 4px 2px 0; }               /* los dos botones pasan a dos lineas si falta ancho, en vez de salirse de la tabla */
+  .tabla-bono td.fecha .chip-est { display: block; width: fit-content; margin: 4px 0 0; }
   .tabla-bono td.valor, .tabla-bono th.valor { text-align: right; }
   .tabla-bono tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); background: var(--accent-soft); }
   .copia-barra { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 10px 0 4px; }
@@ -766,10 +776,10 @@ AUTH_READY.then(async function () {
         : (x.recibe && x.valor !== x.anterior ? `<span class="chip-est cambio">Valor distinto</span>` : "");
       return `<tr data-i="${i}" class="${x.recibe ? "" : "descartada"}">
         <td class="recibe"><input type="checkbox" class="c-chk" ${x.recibe ? "checked" : ""} ${x.ya ? "disabled" : ""} aria-label="Recibe"></td>
-        <td class="nombre">${esc(x.nombre)}${chip}</td><td class="cedula">${x.cedula}</td><td>${esc(x.labor)}</td>
+        <td class="nombre">${esc(x.nombre)}${chip}</td><td class="cedula">${x.cedula}</td><td class="labor">${esc(x.labor)}</td>
         <td class="valor num">${x.anterior === null ? "—" : COP.format(x.anterior)}</td>
         <td class="valor"><input type="text" class="inp-copia c-val" inputmode="numeric" value="${x.valor === null ? "" : COP.format(x.valor)}" ${x.recibe && !x.ya ? "" : "disabled"} aria-label="Quincenal"></td>
-        <td><input type="text" class="inp-obs c-obs" maxlength="300" value="${esc(x.obs)}" ${x.recibe && !x.ya ? "" : "disabled"} aria-label="Observaciones"></td></tr>`;
+        <td class="obs"><input type="text" class="inp-obs c-obs" maxlength="300" value="${esc(x.obs)}" ${x.recibe && !x.ya ? "" : "disabled"} aria-label="Observaciones"></td></tr>`;
     }).join("") || `<tr><td colspan="7"><div class="empty-state">La quincena anterior no tiene personas.</div></td></tr>`;
   }
 
@@ -895,14 +905,14 @@ AUTH_READY.then(async function () {
             ? `<button type="button" class="btn-ok l-guardar">Guardar</button> <button type="button" class="btn-neutro l-cancelar">Cancelar</button>`
             : `<button type="button" class="btn-neutro l-editar">Editar</button> <button type="button" class="btn-peq l-eliminar">Eliminar</button>`;
           return `<tr data-id="${x.id}">
-          <td class="num">${fmtFecha(x.fecha_actualizacion)}${tarde(x.fecha_actualizacion, x.created_at) ? `<span class="chip-est aviso" title="Cargada el ${fmtFecha(x.created_at)}; el plazo era el ${textoCierre(x.fecha_actualizacion)}">Fuera de plazo</span>` : ""}</td>
-          <td>${esc(TIPOS[x.grupo] || x.grupo)}</td>
+          <td class="num fecha">${fmtFecha(x.fecha_actualizacion)}${tarde(x.fecha_actualizacion, x.created_at) ? `<span class="chip-est aviso" title="Cargada el ${fmtFecha(x.created_at)}; el plazo era el ${textoCierre(x.fecha_actualizacion)}">Fuera de plazo</span>` : ""}</td>
+          <td class="tipo">${esc(TIPOS[x.grupo] || x.grupo)}</td>
           <td class="nombre">${esc(x.nombre)}</td>
           <td class="cedula">${x.cedula ?? ""}</td>
-          <td>${esc(x.labor || "")}</td>
+          <td class="labor">${esc(x.labor || "")}</td>
           ${celdaValor}
-          <td>${esc(x.observaciones || "")}</td>
-          <td>${acciones}</td>
+          <td class="obs">${esc(x.observaciones || "")}</td>
+          <td class="acc">${acciones}</td>
         </tr>`;
         }).join("");
   }
