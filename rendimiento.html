@@ -114,8 +114,21 @@
   .operarios-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 14px 0 8px; }
   .operarios-cab input[type=search] { flex: 1; min-width: 180px; font: inherit; font-size: 15px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--ink); }
   .seleccionados { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; }
-  .lista-op { border: 1px solid var(--line); border-radius: 8px; max-height: 52vh; overflow-y: auto; }
-  .op { display: grid; grid-template-columns: 28px 1fr 96px 72px; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  /* Columnas: [marca] Operario | Horas | Presupuestado | Ejecucion real | Real por hora | % Cumplimiento.
+     En pantallas angostas la tabla se desliza de lado; el encabezado queda fijo arriba. */
+  .lista-op { border: 1px solid var(--line); border-radius: 8px; max-height: 60vh; overflow: auto; }
+  .op, .op-col { display: grid; grid-template-columns: 28px minmax(170px, 1fr) 76px 112px 112px 112px 100px; gap: 8px; align-items: center; min-width: 790px; }
+  .op { padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  /* la marca y el nombre quedan fijos a la izquierda al deslizar la tabla de lado */
+  .op > :nth-child(1), .op > :nth-child(2), .op-col > :nth-child(1), .op-col > :nth-child(2) { position: sticky; z-index: 1; background: var(--surface); align-self: stretch; display: flex; flex-direction: column; justify-content: center; }
+  .op > :nth-child(1), .op-col > :nth-child(1) { left: 0; margin: -8px 0 -8px -10px; padding: 8px 0 8px 10px; align-items: flex-start; cursor: pointer; }
+  .op-col > :nth-child(1) { margin: -9px 0 -9px -10px; padding: 9px 0 9px 10px; }
+  .op > :nth-child(2), .op-col > :nth-child(2) { left: 28px; margin: -8px 0; padding: 8px 6px 8px 8px; box-shadow: 6px 0 6px -6px rgba(0,0,0,0.18); }
+  .op-col > :nth-child(2) { margin: -9px 0; padding: 9px 6px 9px 8px; }
+  .op.sel > :nth-child(1), .op.sel > :nth-child(2) { background: var(--accent-soft); }
+  .op-col > :nth-child(1), .op-col > :nth-child(2) { background: var(--ink); }
+  .op .v { text-align: right; font-variant-numeric: tabular-nums; font-size: 14px; color: var(--ink); white-space: nowrap; }
+  .op .v.vacio-c { color: var(--ink-faint); }
   .op:last-child { border-bottom: none; }
   .op.sel { background: var(--accent-soft); }
   .op input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
@@ -124,10 +137,8 @@
   .op .nom .ya { display: inline-block; margin-left: 4px; font-family: "Archivo", sans-serif; font-size: 10.5px; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 10px; padding: 1px 7px; }
   .op input[type=number] { font: inherit; font-size: 15px; padding: 7px 6px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
   .op input[type=number]:disabled { opacity: 0.4; }
-  .op .calc { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
-  .op .calc b { color: var(--ink); }
-  .op-col { display: grid; grid-template-columns: 28px 1fr 96px 72px; gap: 8px; padding: 0 10px 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
-  .op-col span:nth-child(3), .op-col span:nth-child(4) { text-align: right; }
+  .op-col { position: sticky; top: 0; z-index: 2; background: var(--ink); color: var(--paper); padding: 9px 10px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 600; line-height: 1.2; }
+  .op-col span:nth-child(n+3) { text-align: right; }
   .acciones { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; align-items: center; }
   .msg { font-size: 13px; color: var(--ink-soft); margin-right: auto; }
   .msg.ok { color: var(--accent); font-weight: 600; }
@@ -160,7 +171,7 @@
   footer { font-size: 12px; color: var(--ink-faint); text-align: center; padding-top: 8px; }
   @media (max-width: 520px) {
     .page-header h1 { font-size: 21px; }
-    .op, .op-col { grid-template-columns: 26px 1fr 84px 62px; gap: 6px; padding-left: 8px; padding-right: 8px; }
+    .op, .op-col { grid-template-columns: 26px minmax(150px, 1fr) 68px 100px 100px 100px 88px; gap: 6px; min-width: 700px; padding-left: 8px; padding-right: 8px; }
     .acciones .btn { flex: 1; }
   }
 </style>
@@ -273,7 +284,6 @@
       <button type="button" class="btn peq" id="btn-todos">Marcar todos</button>
       <span class="seleccionados" id="seleccionados"></span>
     </div>
-    <div class="op-col"><span></span><span>Operario</span><span>Real</span><span>Horas</span></div>
     <div class="lista-op" id="lista-op"><div class="vacio">Cargando operarios…</div></div>
 
     <div class="acciones">
@@ -468,24 +478,23 @@
 
   // Igual que el formulario de AppSheet: Presupuestado = meta por hora x horas; Real por hora = real / horas;
   // % Cumplimiento = real / presupuestado. Son los mismos calculos que guarda la tabla rendimiento.
-  function calcHTML(m) {
+  function calcular(m) {
     const l = laborPorId.get($("f-labor").value);
-    if (!l) return "Elige la labor para ver el presupuestado.";
+    const vacio = { pres: "—", rph: "—", pct: "—", clase: "" };
+    if (!m || !l) return vacio;
     const horas = m.horas === "" || m.horas == null ? NaN : Number(m.horas);
     const real = m.real === "" || m.real == null ? NaN : Number(m.real);
     const obj = l.objetivo_hora != null ? Number(l.objetivo_hora) : null;
     const pres = obj != null && !isNaN(horas) ? obj * horas : null;
     const rph = !isNaN(real) && horas > 0 ? real / horas : null;
     const pct = !isNaN(real) && pres > 0 ? real / pres : null;
-    return `<span>Presupuestado <b>${pres == null ? (obj == null ? "sin meta" : "—") : fmtN(pres, 2)}</b></span>` +
-      `<span>Real por hora <b>${rph == null ? "—" : fmtN(rph, 2)}</b></span>` +
-      `<span>% Cumplimiento <b class="pct ${claseP(pct)}">${pct == null ? "—" : fmtN(pct * 100) + "%"}</b></span>`;
+    return { pres: pres == null ? (obj == null ? "sin meta" : "—") : fmtN(pres, 2), rph: rph == null ? "—" : fmtN(rph, 2),
+             pct: pct == null ? "—" : fmtN(pct * 100) + "%", clase: claseP(pct) };
   }
   function pintarCalc(fila) {
-    const m = marcados.get(Number(fila.dataset.c)); let c = fila.querySelector(".calc");
-    if (!m) { if (c) c.remove(); return; }
-    if (!c) { c = document.createElement("div"); c.className = "calc"; fila.appendChild(c); }
-    c.innerHTML = calcHTML(m);
+    const c = calcular(marcados.get(Number(fila.dataset.c)));
+    const pon = (sel, txt, extra = "") => { const el = fila.querySelector(sel); el.textContent = txt; el.className = `v ${sel.slice(1)}${txt === "—" ? " vacio-c" : ""}${extra}`; };
+    pon(".c-pres", c.pres); pon(".c-rph", c.rph); pon(".c-pct", c.pct, c.clase ? ` pct ${c.clase}` : "");
   }
 
   function yaRegistrados() {
@@ -501,14 +510,18 @@
     const area = $("f-area").value, q = $("f-buscar").value.trim().toLowerCase(), fecha = $("f-fecha").value;
     const ya = yaRegistrados();
     const lista = cat.empleados.filter((e) => e.area === area && (!q || String(e.cedula).includes(q) || e.nombre.toLowerCase().includes(q)));
-    $("lista-op").innerHTML = lista.length ? lista.map((e) => {
+    const cab = `<div class="op-col"><span></span><span>Nombre operario</span><span>Horas</span><span>Presupuestado</span><span>Ejecución real</span><span>Real por hora</span><span>% Cumplimiento</span></div>`;
+    $("lista-op").innerHTML = lista.length ? cab + lista.map((e) => {
       const m = marcados.get(Number(e.cedula)), h = m && m.horas !== "" && m.horas != null ? m.horas : horasDe(e, fecha);
+      const c = calcular(m), v = (cls, txt, extra = "") => `<span class="v ${cls}${txt === "—" ? " vacio-c" : ""}${extra}">${esc(txt)}</span>`;
       return `<div class="op${m ? " sel" : ""}" data-c="${e.cedula}">
-        <input type="checkbox" ${m ? "checked" : ""} aria-label="Seleccionar ${esc(e.nombre)}">
+        <label class="marca"><input type="checkbox" ${m ? "checked" : ""} aria-label="Seleccionar ${esc(e.nombre)}"></label>
         <div class="nom">${esc(e.nombre)}${ya.has(Number(e.cedula)) ? '<span class="ya">ya tiene esta labor</span>' : ""}<small>${e.cedula}</small></div>
-        <input type="number" inputmode="decimal" min="0" step="any" class="in-real" placeholder="—" value="${m && m.real != null ? esc(m.real) : ""}" ${m ? "" : "disabled"} aria-label="Real de ${esc(e.nombre)}">
         <input type="number" inputmode="decimal" min="0" max="24" step="0.25" class="in-horas" value="${esc(h)}" ${m ? "" : "disabled"} aria-label="Horas de ${esc(e.nombre)}">
-        ${m ? `<div class="calc">${calcHTML(m)}</div>` : ""}
+        ${v("c-pres", c.pres)}
+        <input type="number" inputmode="decimal" min="0" step="any" class="in-real" placeholder="—" value="${m && m.real != null ? esc(m.real) : ""}" ${m ? "" : "disabled"} aria-label="Ejecución real de ${esc(e.nombre)}">
+        ${v("c-rph", c.rph)}
+        ${v("c-pct", c.pct, c.clase ? ` pct ${c.clase}` : "")}
       </div>`;
     }).join("") : `<div class="vacio">${q ? "Ningún operario coincide con la búsqueda." : "No hay operarios activos en esta área."}</div>`;
     contar();
@@ -541,7 +554,7 @@
     });
     // tocar el nombre marca o desmarca
     $("lista-op").addEventListener("click", (ev) => {
-      if (ev.target.closest("input")) return;
+      if (ev.target.closest("input, label")) return;      // la casilla y su etiqueta ya marcan solas
       const fila = ev.target.closest(".op"); if (!fila) return;
       const cb = fila.querySelector("input[type=checkbox]"); cb.checked = !cb.checked; cb.dispatchEvent(new Event("change", { bubbles: true }));
     });
