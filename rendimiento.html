@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#2e6b4e">
+<title>Rendimiento</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; align-items: stretch; }
+  .sidebar { width: 264px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto; transition: width 0.16s ease; }
+  .sidebar.colapsado { width: 64px; }
+  .sidebar-top { display: flex; align-items: center; gap: 10px; padding: 16px 14px; border-bottom: 1px solid var(--line); min-height: 28px; }
+  .sidebar.colapsado .sidebar-top { justify-content: center; padding: 16px 10px; }
+  .sidebar-logo { height: 26px; width: auto; flex-shrink: 0; border-radius: 4px; }
+  .sidebar-brand { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-toggle { margin-left: auto; background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 6px; display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0; }
+  .sidebar.colapsado .sidebar-toggle { margin-left: 0; }
+  .sidebar-toggle:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-toggle svg { width: 18px; height: 18px; }
+  .sidebar-nav { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-link { display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; text-decoration: none; color: var(--ink-soft); font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden; }
+  .sidebar-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-link span { overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-link:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-link.activo { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .sidebar.colapsado .sidebar-link { justify-content: center; padding: 9px; }
+  .sidebar.colapsado .sidebar-link span { display: none; }
+  .sidebar-footer { border-top: 1px solid var(--line); padding: 10px 10px; }
+  .sidebar.colapsado .sidebar-footer { padding: 10px 6px; }
+  .sidebar-footer .sesion-box { display: flex !important; flex-direction: column !important; align-items: flex-start !important; gap: 8px !important; justify-content: flex-start !important; margin-top: 0 !important; }
+  .sidebar.colapsado .sidebar-footer .sesion-usuario { display: none; }
+  .sidebar-footer .sesion-usuario { white-space: normal; line-height: 1.4; }
+  .sesion-box { display:flex; align-items:center; gap:12px; font-size:12.5px; color:var(--ink-faint); }
+  .sesion-usuario { font-weight:600; color:var(--ink-soft); }
+  .sesion-salir { font:inherit; font-size:12px; font-weight:600; padding:5px 12px; border-radius:20px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); cursor:pointer; }
+  .sesion-salir:hover { border-color:var(--accent); color:var(--accent); }
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(20, 24, 15, 0.45); z-index: 40; }
+  .sidebar-backdrop.visible { display: block; }
+  .menu-toggle-movil { display: none; position: fixed; top: 14px; left: 14px; z-index: 30; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer; color: var(--ink-soft); padding: 8px; align-items: center; justify-content: center; box-shadow: var(--shadow); }
+  .menu-toggle-movil svg { width: 20px; height: 20px; }
+  .page-content { flex: 1; min-width: 0; display: flex; justify-content: center; }
+  .wrap { width: 100%; max-width: 1100px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 14px; }
+  .page-header { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+  .page-header .page-logo { height: 36px; width: auto; }
+  .page-header .page-brand { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+  .page-header h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(24px, 3.4vw, 32px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; }
+  @media (max-width: 880px) {
+    body { display: block; }
+    .sidebar { position: fixed; left: 0; top: 0; width: 270px !important; height: 100vh; transform: translateX(-100%); transition: transform 0.2s ease; z-index: 50; }
+    .sidebar.abierto-movil { transform: translateX(0); }
+    .sidebar.colapsado .sidebar-link span, .sidebar.colapsado .sidebar-brand, .sidebar.colapsado .sesion-usuario { display: initial; }
+    .sidebar.colapsado .sidebar-top { justify-content: flex-start; padding: 16px 14px; }
+    .sidebar.colapsado .sidebar-link { justify-content: flex-start; padding: 9px 10px; }
+    .sidebar-toggle { display: none; }
+    .menu-toggle-movil { display: flex; }
+    .page-content { display: block; }
+    .wrap { max-width: none; padding: 64px 16px 40px; }
+  }
+
+  /* --- estado de conexion --- */
+  .conexion { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; font-size: 13px; color: var(--ink-soft); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); flex-shrink: 0; }
+  .dot.off { background: var(--warn); box-shadow: 0 0 0 3px var(--warn-soft); }
+  .pendientes { font-weight: 600; color: var(--warn); }
+  .btn { font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 16px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; }
+  .btn:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: 0.55; cursor: default; }
+  .btn.primario { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  .btn.primario:hover { filter: brightness(1.07); color: var(--accent-ink); }
+  .btn.peq { font-size: 12.5px; padding: 6px 12px; border-radius: 20px; }
+  .btn.peligro:hover { border-color: var(--critical); color: var(--critical); }
+
+  /* --- tarjetas --- */
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 16px; }
+  .card h2 { font-family: "Fraunces", Georgia, serif; font-size: 18px; margin: 0 0 12px; font-weight: 600; }
+  .campos { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
+  .field select, .field input { font: inherit; font-size: 15px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--ink); width: 100%; min-width: 0; }
+  .field select:focus, .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .field.ancho { grid-column: 1 / -1; }
+  .info-labor { font-size: 12.5px; color: var(--ink-soft); margin-top: 8px; min-height: 18px; }
+  .info-labor b { color: var(--ink); }
+
+  .operarios-cab { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 14px 0 8px; }
+  .operarios-cab input[type=search] { flex: 1; min-width: 180px; font: inherit; font-size: 15px; padding: 9px 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--ink); }
+  .seleccionados { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; }
+  .lista-op { border: 1px solid var(--line); border-radius: 8px; max-height: 52vh; overflow-y: auto; }
+  .op { display: grid; grid-template-columns: 28px 1fr 96px 72px; gap: 8px; align-items: center; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .op:last-child { border-bottom: none; }
+  .op.sel { background: var(--accent-soft); }
+  .op input[type=checkbox] { width: 20px; height: 20px; accent-color: var(--accent); margin: 0; }
+  .op .nom { font-size: 14px; font-weight: 500; line-height: 1.25; min-width: 0; }
+  .op .nom small { display: block; font-size: 11.5px; color: var(--ink-faint); font-weight: 400; font-family: "IBM Plex Mono", ui-monospace, monospace; }
+  .op .nom .ya { display: inline-block; margin-left: 4px; font-family: "Archivo", sans-serif; font-size: 10.5px; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 10px; padding: 1px 7px; }
+  .op input[type=number] { font: inherit; font-size: 15px; padding: 7px 6px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
+  .op input[type=number]:disabled { opacity: 0.4; }
+  .op-col { display: grid; grid-template-columns: 28px 1fr 96px 72px; gap: 8px; padding: 0 10px 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
+  .op-col span:nth-child(3), .op-col span:nth-child(4) { text-align: right; }
+  .acciones { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; align-items: center; }
+  .msg { font-size: 13px; color: var(--ink-soft); margin-right: auto; }
+  .msg.ok { color: var(--accent); font-weight: 600; }
+  .msg.err { color: var(--critical); font-weight: 600; }
+  .vacio { padding: 26px 12px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+
+  /* --- registros --- */
+  .reg-cab { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .reg-cab h2 { margin: 0; margin-right: auto; }
+  .reg-cab .field { min-width: 150px; }
+  .totales { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+  .tot { border: 1px solid var(--line); border-radius: 8px; padding: 6px 12px; font-size: 12px; color: var(--ink-faint); }
+  .tot b { display: block; font-size: 17px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .grupo { margin-top: 12px; }
+  .grupo-tit { font-size: 12.5px; font-weight: 700; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.05em; margin: 0 0 6px; display: flex; justify-content: space-between; gap: 8px; }
+  .grupo-tit span { font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--ink-faint); }
+  .reg { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; padding: 9px 10px; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 6px; background: var(--surface); }
+  .reg.pend { border-style: dashed; border-color: var(--warn); }
+  .reg.error { border-color: var(--critical); background: var(--critical-soft); }
+  .reg .quien { font-weight: 600; font-size: 14px; }
+  .reg .det { font-size: 12.5px; color: var(--ink-soft); grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 14px; font-variant-numeric: tabular-nums; }
+  .reg .det b { color: var(--ink); }
+  .reg .acc { display: flex; gap: 6px; align-items: start; }
+  .pct { font-weight: 700; }
+  .pct.alto { color: var(--accent); } .pct.medio { color: var(--warn); } .pct.bajo { color: var(--critical); }
+  .etq { font-size: 10.5px; font-weight: 700; padding: 1px 8px; border-radius: 10px; background: var(--warn-soft); color: var(--warn); margin-left: 6px; vertical-align: 1px; }
+  .etq.err { background: var(--critical); color: #fff; }
+  .editar { grid-column: 1 / -1; display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; margin-top: 4px; }
+  .editar .field { width: 120px; }
+  footer { font-size: 12px; color: var(--ink-faint); text-align: center; padding-top: 8px; }
+  @media (max-width: 520px) {
+    .page-header h1 { font-size: 21px; }
+    .op, .op-col { grid-template-columns: 26px 1fr 84px 62px; gap: 6px; padding-left: 8px; padding-right: 8px; }
+    .acciones .btn { flex: 1; }
+  }
+</style>
+<link rel="stylesheet" href="responsive.css">
+<script src="responsive.js" defer></script>
+<link rel="stylesheet" href="tema-claro.css">
+</head>
+<body>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+<button type="button" class="menu-toggle-movil" id="menu-toggle-movil" aria-label="Abrir menú">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+</button>
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="sidebar-logo">
+    <span class="sidebar-brand">Cultivos Sayonara</span>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Colapsar menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+  </div>
+  <div class="sidebar-nav" id="sidebar-nav">
+    <a class="sidebar-link" href="index.html" data-pagina="inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-6h6v6"></path></svg>
+      <span>Inicio</span>
+    </a>
+    <a class="sidebar-link" href="empleados.html" data-pagina="empleados">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Empleados</span>
+    </a>
+    <a class="sidebar-link" href="registro-biometrico.html" data-pagina="registro_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+      <span>Registro Biométrico</span>
+    </a>
+    <a class="sidebar-link" href="permisos.html" data-pagina="permisos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
+      <span>Permisos</span>
+    </a>
+    <a class="sidebar-link" href="novedades.html" data-pagina="novedades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
+      <span>Novedades</span>
+    </a>
+    <a class="sidebar-link" href="ausentismo.html" data-pagina="ausentismo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.17 9.17a3 3 0 1 1 4.24 4.24M12 8v1M15 15l6 6"></path></svg>
+      <span>Ausentismo</span>
+    </a>
+    <a class="sidebar-link" href="nomina.html" data-pagina="nomina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg>
+      <span>Nómina</span>
+    </a>
+    <a class="sidebar-link" href="configuraciones.html" data-pagina="configuraciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span>Configuraciones</span>
+    </a>
+    <a class="sidebar-link" href="usuarios.html" data-pagina="usuarios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="5"></circle></svg>
+      <span>Usuarios</span>
+    </a>
+    <a class="sidebar-link" href="ajuste-marcaciones.html" data-pagina="ajuste_marcaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>
+      <span>Ajuste de marcaciones</span>
+    </a>
+    <a class="sidebar-link" href="cruce-biometrico.html" data-pagina="cruce_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M1 21a8 8 0 0 1 16 0"></path><path d="M17 11l2 2 4-4"></path></svg>
+      <span>Cruce con el biométrico</span>
+    </a>
+    <a class="sidebar-link" href="bonificaciones.html" data-pagina="bonificaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M14.8 9.2a3 3 0 0 0-2.8-1.7c-1.7 0-3 .9-3 2.1 0 3 5.9 1.4 5.9 4.5 0 1.2-1.3 2.1-2.9 2.1a3 3 0 0 1-2.9-1.7M12 6v1.5M12 16.5V18"></path></svg>
+      <span>Bonificaciones</span>
+    </a>
+    <a class="sidebar-link" href="colillas.html" data-pagina="colillas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg>
+      <span>Colillas de pago</span>
+    </a>
+    <a class="sidebar-link activo" href="rendimiento.html" data-pagina="rendimiento">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-6"></path></svg>
+      <span>Rendimiento</span>
+    </a>
+  </div>
+  <div class="sidebar-footer">
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+</nav>
+
+<div class="page-content">
+<div class="wrap">
+  <div class="page-header">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="page-logo">
+    <span class="page-brand">Cultivos Sayonara</span>
+    <h1>Rendimiento</h1>
+  </div>
+
+  <div class="conexion" id="conexion">
+    <span class="dot" id="dot"></span><span id="estado-red">Cargando…</span>
+    <span class="pendientes" id="pendientes"></span>
+    <button type="button" class="btn peq" id="btn-enviar" hidden>Enviar ahora</button>
+  </div>
+
+  <section class="card">
+    <h2>Registrar</h2>
+    <div class="campos">
+      <div class="field"><label for="f-fecha">Fecha</label><input type="date" id="f-fecha"></div>
+      <div class="field"><label for="f-area">Área</label><select id="f-area"></select></div>
+      <div class="field ancho"><label for="f-labor">Labor</label><select id="f-labor"></select></div>
+    </div>
+    <div class="info-labor" id="info-labor"></div>
+
+    <div class="operarios-cab">
+      <input type="search" id="f-buscar" placeholder="Buscar operario por nombre o cédula" autocomplete="off">
+      <button type="button" class="btn peq" id="btn-todos">Marcar todos</button>
+      <span class="seleccionados" id="seleccionados"></span>
+    </div>
+    <div class="op-col"><span></span><span>Operario</span><span>Real</span><span>Horas</span></div>
+    <div class="lista-op" id="lista-op"><div class="vacio">Cargando operarios…</div></div>
+
+    <div class="acciones">
+      <span class="msg" id="msg"></span>
+      <button type="button" class="btn" id="btn-limpiar">Limpiar</button>
+      <button type="button" class="btn primario" id="btn-guardar">Guardar</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="reg-cab">
+      <h2>Registros</h2>
+      <div class="field"><label for="v-fecha">Fecha</label><input type="date" id="v-fecha"></div>
+      <div class="field"><label for="v-area">Área</label><select id="v-area"></select></div>
+    </div>
+    <div class="totales" id="totales"></div>
+    <div id="registros"><div class="vacio">Cargando…</div></div>
+  </section>
+
+  <footer>Los registros se guardan en este celular y se envían solos cuando hay señal.</footer>
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+(async function () {
+  "use strict";
+  // Misma conexion que auth.js. Esta pagina no usa auth.js porque auth.js cierra la sesion si no puede
+  // consultar el perfil (sin senal); aqui, sin senal, se trabaja con el perfil guardado de la ultima vez.
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtndHdxeXdib3dobGx4cWRqZWdpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODczMzQ4NjUsImV4cCI6MjEwMjkxMDg2NX0.NsrxM2EdIDvnmCPWjiNR3pBpcMXgPy8bQwagMOYAHHQ";
+  const CLAVE_TOKEN = "sb-kgtwqywbowhllxqdjegi-auth-token";
+  const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const LS = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } },
+  };
+  const ROL_ETIQUETA = { super_admin: "Super Admin", admin: "Administrador", nomina: "Nómina", rrhh: "RRHH", jefe_area: "Jefe de área", supervisor: "Supervisor", auxiliar: "Auxiliar" };
+  const ROL_BASE = { super_admin: "admin", rrhh: "nomina", auxiliar: "supervisor" };
+  const fmtN = (v, d = 0) => v == null || v === "" || isNaN(v) ? "—" : Number(v).toLocaleString("es-CO", { maximumFractionDigits: d, minimumFractionDigits: 0 });
+  const hoyISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const uuid = () => (crypto.randomUUID ? crypto.randomUUID() : "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => { const r = Math.random() * 16 | 0; return (c === "x" ? r : (r & 0x3 | 0x8)).toString(16); }));
+  const enLinea = () => navigator.onLine !== false;
+  const esErrorRed = (e) => !enLinea() || /fetch|network|load failed|conexi/i.test(String((e && (e.message || e)) || ""));
+
+  // ---------------------------------------------------------------- sesion (funciona sin senal)
+  let uid = null;
+  { const { data } = await sb.auth.getSession().catch(() => ({ data: {} }));
+    uid = data && data.session ? data.session.user.id : null;
+    if (!uid) { const t = LS.get(CLAVE_TOKEN, null); if (t && t.user && !enLinea()) uid = t.user.id; } }
+  if (!uid) { location.href = "login.html?next=rendimiento.html"; return; }
+
+  const CLAVE_PERFIL = "rend_perfil_" + uid;
+  let perfil = null;
+  try {
+    const { data, error } = await sb.from("usuarios_perfil").select("nombre,email,rol,areas,activo,debe_cambiar_password").eq("id", uid).single();
+    if (error) throw error;
+    perfil = data;
+    if (!perfil.activo) { await sb.auth.signOut(); location.href = "login.html?motivo=desactivada"; return; }
+    if (perfil.debe_cambiar_password) { location.href = "restablecer.html?motivo=temporal"; return; }
+    perfil.permisos = {};
+    if (perfil.rol !== "super_admin") {
+      const [a, b] = await Promise.all([
+        sb.from("permisos_rol").select("pagina,puede_ver").eq("rol", perfil.rol),
+        sb.from("permisos_usuario").select("pagina,puede_ver").then((r) => r, () => ({ data: null })),
+      ]);
+      (a.data || []).forEach((f) => { perfil.permisos[f.pagina] = f.puede_ver; });
+      (b.data || []).forEach((f) => { perfil.permisos[f.pagina] = f.puede_ver; });
+    }
+    LS.set(CLAVE_PERFIL, perfil);
+  } catch (e) {
+    perfil = LS.get(CLAVE_PERFIL, null);
+    if (!perfil) {
+      if (esErrorRed(e)) { document.querySelector(".wrap").insertAdjacentHTML("beforeend", '<div class="card vacio">Sin señal. Abre esta página una vez con internet para poder usarla después sin señal.</div>'); return; }
+      await sb.auth.signOut(); location.href = "login.html?motivo=sin_perfil"; return;
+    }
+  }
+  const esSuper = perfil.rol === "super_admin";
+  const puede = (p) => esSuper || !!perfil.permisos[p];
+  if (!puede("rendimiento")) { location.href = "index.html"; return; }
+  const rolBase = ROL_BASE[perfil.rol] || perfil.rol;
+  const veTodo = rolBase === "admin" || rolBase === "nomina";
+  const puedeRegistrar = rolBase === "admin" || rolBase === "jefe_area" || rolBase === "supervisor";
+
+  // menu lateral (igual que las demas paginas)
+  document.querySelectorAll("#sidebar-nav [data-pagina]").forEach((a) => { if (!puede(a.dataset.pagina)) a.remove(); });
+  $("sesion-box").innerHTML = `<span class="sesion-usuario">${esc(perfil.nombre)} &middot; ${esc(ROL_ETIQUETA[perfil.rol] || perfil.rol)}</span><button type="button" class="sesion-salir" id="btn-cerrar-sesion">Cerrar sesión</button>`;
+  $("btn-cerrar-sesion").addEventListener("click", async () => {
+    if (pendientes().length && !confirm("Hay registros sin enviar en este celular. Si cierras sesión no se pierden, pero no se envían hasta que vuelvas a entrar. ¿Cerrar sesión?")) return;
+    await sb.auth.signOut(); location.href = "login.html";
+  });
+  { const sidebar = $("sidebar"), backdrop = $("sidebar-backdrop");
+    const colapsar = (c) => { sidebar.classList.toggle("colapsado", c); try { localStorage.setItem("sidebar-colapsado", c ? "1" : "0"); } catch (e) {} };
+    colapsar((() => { try { return localStorage.getItem("sidebar-colapsado") === "1"; } catch (e) { return false; } })());
+    $("sidebar-toggle").addEventListener("click", () => colapsar(!sidebar.classList.contains("colapsado")));
+    const movil = (a) => { sidebar.classList.toggle("abierto-movil", a); backdrop.classList.toggle("visible", a); };
+    $("menu-toggle-movil").addEventListener("click", () => movil(!sidebar.classList.contains("abierto-movil")));
+    backdrop.addEventListener("click", () => movil(false)); }
+
+  // ---------------------------------------------------------------- catalogos (se guardan para usarlos sin senal)
+  const CLAVE_CAT = "rend_catalogos_" + uid;
+  let cat = LS.get(CLAVE_CAT, null);
+
+  async function todo(tabla, select, filtros = "") {
+    const out = [];
+    for (let off = 0; ; off += 1000) {
+      const { data: { session } } = await sb.auth.getSession();
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/${tabla}?select=${select}${filtros}&limit=1000&offset=${off}`,
+        { headers: { apikey: SUPABASE_ANON_KEY, Authorization: "Bearer " + (session ? session.access_token : SUPABASE_ANON_KEY) } });
+      if (!r.ok) throw new Error(`${tabla}: HTTP ${r.status}`);
+      const p = await r.json(); out.push(...p); if (p.length < 1000) return out;
+    }
+  }
+
+  async function cargarCatalogos() {
+    const [empleados, labores, horasDia, turnos, festivos] = await Promise.all([
+      todo("employees_detalle", "cedula,nombre,area,sede,turno", "&activo=eq.true&order=nombre.asc,cedula.asc"),
+      todo("labores_rendimiento", "id,nombre,area,sede,objetivo_hora,calidad", "&activo=eq.true&order=nombre.asc,id.asc"),
+      todo("horas_esperadas_dia", "dia_semana,horas", "&order=dia_semana.asc"),
+      todo("turnos_area", "area,turno,horas,activo", "&order=area.asc,turno.asc"),
+      todo("festivos_colombia", "fecha", `&fecha=gte.${new Date().getFullYear() - 1}-01-01&order=fecha.asc`),
+    ]);
+    cat = { empleados, labores, horasDia, turnos, festivos: festivos.map((f) => f.fecha), cargado: new Date().toISOString() };
+    LS.set(CLAVE_CAT, cat);
+  }
+
+  try { await cargarCatalogos(); } catch (e) {
+    if (!cat) { $("lista-op").innerHTML = `<div class="vacio">No se pudieron cargar los operarios${esErrorRed(e) ? " (sin señal). Abre la página una vez con internet." : ": " + esc(e.message)}</div>`; }
+  }
+  if (!cat) return;
+
+  // Horas Reales = horas esperadas de Control GH (ya con la media hora de alimentacion descontada).
+  // Mismo criterio que la funcion horas_rendimiento() de la base: turno fijo > festivo (horas del domingo) > dia normal.
+  function horasDe(emp, fecha) {
+    if (emp && emp.turno != null) {
+      const t = cat.turnos.find((x) => x.area === emp.area && Number(x.turno) === Number(emp.turno) && x.activo);
+      if (t) return Number(t.horas);
+    }
+    const [y, m, d] = fecha.split("-").map(Number);
+    const isodow = ((new Date(y, m - 1, d).getDay() + 6) % 7);          // 0 = lunes ... 6 = domingo
+    const dia = cat.festivos.includes(fecha) ? 6 : isodow;
+    const h = cat.horasDia.find((x) => Number(x.dia_semana) === dia);
+    return h ? Number(h.horas) : 0;
+  }
+  const esFestivo = (fecha) => { const [y, m, d] = fecha.split("-").map(Number); return new Date(y, m - 1, d).getDay() === 0 || cat.festivos.includes(fecha); };
+  const empPorCedula = new Map(cat.empleados.map((e) => [Number(e.cedula), e]));
+  const laborPorId = new Map(cat.labores.map((l) => [l.id, l]));
+
+  // ---------------------------------------------------------------- cola de registros sin enviar
+  const CLAVE_COLA = "rend_cola_" + uid;
+  const pendientes = () => LS.get(CLAVE_COLA, []);
+  const guardarCola = (c) => LS.set(CLAVE_COLA, c);
+
+  // ---------------------------------------------------------------- formulario
+  const areasPropias = veTodo ? [...new Set(cat.empleados.map((e) => e.area).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"))
+                              : (perfil.areas || []).slice().sort((a, b) => a.localeCompare(b, "es"));
+  const opcionesArea = areasPropias.map((a) => `<option value="${esc(a)}">${esc(a)}</option>`).join("");
+  $("f-area").innerHTML = opcionesArea || '<option value="">Sin áreas asignadas</option>';
+  $("v-area").innerHTML = '<option value="">Todas mis áreas</option>' + opcionesArea;
+  $("f-fecha").value = hoyISO(); $("f-fecha").max = hoyISO();
+  $("v-fecha").value = hoyISO(); $("v-fecha").max = hoyISO();
+  { const u = LS.get("rend_ultimo_" + uid, {}); if (u.area && areasPropias.includes(u.area)) $("f-area").value = u.area; }
+
+  if (!puedeRegistrar) {
+    document.querySelector("section.card").innerHTML = `<h2>Registrar</h2><div class="vacio">Tu rol (${esc(ROL_ETIQUETA[perfil.rol] || perfil.rol)}) solo consulta. Registran los jefes de área y supervisores.</div>`;
+  }
+
+  // valores escritos por operario, para no perderlos al buscar o cambiar de area
+  let marcados = new Map();   // cedula -> { real, horas }
+
+  function pintarLabores() {
+    if (!puedeRegistrar) return;
+    const area = $("f-area").value, u = LS.get("rend_ultimo_" + uid, {});
+    const propias = cat.labores.filter((l) => l.area === area), otras = cat.labores.filter((l) => l.area !== area);
+    const op = (l) => `<option value="${esc(l.id)}">${esc(l.nombre)}${l.objetivo_hora != null ? ` · meta ${fmtN(l.objetivo_hora, 2)}/h` : ""}${l.area !== area ? ` (${esc(l.area)})` : ""}</option>`;
+    $("f-labor").innerHTML = '<option value="">Elige la labor…</option>' +
+      (propias.length ? `<optgroup label="Labores de ${esc(area)}">${propias.map(op).join("")}</optgroup>` : "") +
+      `<optgroup label="Otras labores">${otras.map(op).join("")}</optgroup>`;
+    if (u.labores && u.labores[area] && laborPorId.has(u.labores[area])) $("f-labor").value = u.labores[area];
+    infoLabor();
+  }
+
+  function infoLabor() {
+    const l = laborPorId.get($("f-labor").value), f = $("f-fecha").value;
+    $("info-labor").innerHTML = (l ? (l.objetivo_hora != null ? `Meta: <b>${fmtN(l.objetivo_hora, 2)}</b> por hora. ` : "Esta labor no tiene meta por hora. ") : "") +
+      (f ? `Horas del día según Control GH: <b>${fmtN(horasDe(null, f), 2)}</b>${esFestivo(f) ? " (domingo o festivo)" : ""}.` : "");
+  }
+
+  function yaRegistrados() {
+    // cedulas que ya tienen esa labor ese dia (en el servidor o en la cola)
+    const f = $("f-fecha").value, l = $("f-labor").value, s = new Set();
+    pendientes().forEach((r) => { if (r.fecha === f && r.labor_id === l) s.add(Number(r.cedula)); });
+    (regCache[f] || []).forEach((r) => { if (r.labor_id === l) s.add(Number(r.cedula)); });
+    return s;
+  }
+
+  function pintarOperarios() {
+    if (!puedeRegistrar) return;
+    const area = $("f-area").value, q = $("f-buscar").value.trim().toLowerCase(), fecha = $("f-fecha").value;
+    const ya = yaRegistrados();
+    const lista = cat.empleados.filter((e) => e.area === area && (!q || String(e.cedula).includes(q) || e.nombre.toLowerCase().includes(q)));
+    $("lista-op").innerHTML = lista.length ? lista.map((e) => {
+      const m = marcados.get(Number(e.cedula)), h = m && m.horas !== "" && m.horas != null ? m.horas : horasDe(e, fecha);
+      return `<div class="op${m ? " sel" : ""}" data-c="${e.cedula}">
+        <input type="checkbox" ${m ? "checked" : ""} aria-label="Seleccionar ${esc(e.nombre)}">
+        <div class="nom">${esc(e.nombre)}${ya.has(Number(e.cedula)) ? '<span class="ya">ya tiene esta labor</span>' : ""}<small>${e.cedula}</small></div>
+        <input type="number" inputmode="decimal" min="0" step="any" class="in-real" placeholder="—" value="${m && m.real != null ? esc(m.real) : ""}" ${m ? "" : "disabled"} aria-label="Real de ${esc(e.nombre)}">
+        <input type="number" inputmode="decimal" min="0" max="24" step="0.25" class="in-horas" value="${esc(h)}" ${m ? "" : "disabled"} aria-label="Horas de ${esc(e.nombre)}">
+      </div>`;
+    }).join("") : `<div class="vacio">${q ? "Ningún operario coincide con la búsqueda." : "No hay operarios activos en esta área."}</div>`;
+    contar();
+  }
+
+  function contar() {
+    const n = [...marcados.keys()].filter((c) => (empPorCedula.get(c) || {}).area === $("f-area").value).length;
+    $("seleccionados").textContent = n ? `${n} seleccionado${n === 1 ? "" : "s"}` : "";
+  }
+
+  if (puedeRegistrar) {
+    $("lista-op").addEventListener("change", (ev) => {
+      const fila = ev.target.closest(".op"); if (!fila) return;
+      const c = Number(fila.dataset.c), emp = empPorCedula.get(c);
+      if (ev.target.type === "checkbox") {
+        if (ev.target.checked) marcados.set(c, { real: "", horas: horasDe(emp, $("f-fecha").value) }); else marcados.delete(c);
+        fila.classList.toggle("sel", ev.target.checked);
+        fila.querySelectorAll("input[type=number]").forEach((i) => { i.disabled = !ev.target.checked; });
+        if (ev.target.checked) fila.querySelector(".in-real").focus();
+        contar();
+      }
+    });
+    $("lista-op").addEventListener("input", (ev) => {
+      const fila = ev.target.closest(".op"); if (!fila) return;
+      const m = marcados.get(Number(fila.dataset.c)); if (!m) return;
+      if (ev.target.classList.contains("in-real")) m.real = ev.target.value;
+      if (ev.target.classList.contains("in-horas")) m.horas = ev.target.value;
+    });
+    // tocar el nombre marca o desmarca
+    $("lista-op").addEventListener("click", (ev) => {
+      if (ev.target.closest("input")) return;
+      const fila = ev.target.closest(".op"); if (!fila) return;
+      const cb = fila.querySelector("input[type=checkbox]"); cb.checked = !cb.checked; cb.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    $("btn-todos").addEventListener("click", () => {
+      const filas = [...$("lista-op").querySelectorAll(".op")];
+      const marcar = filas.some((f) => !f.querySelector("input[type=checkbox]").checked);
+      filas.forEach((f) => { const cb = f.querySelector("input[type=checkbox]"); if (cb.checked !== marcar) { cb.checked = marcar; cb.dispatchEvent(new Event("change", { bubbles: true })); } });
+      $("btn-todos").textContent = marcar ? "Desmarcar todos" : "Marcar todos";
+    });
+    let tb; $("f-buscar").addEventListener("input", () => { clearTimeout(tb); tb = setTimeout(pintarOperarios, 200); });
+    $("f-area").addEventListener("change", () => { pintarLabores(); pintarOperarios(); });
+    $("f-labor").addEventListener("change", () => { infoLabor(); pintarOperarios(); });
+    $("f-fecha").addEventListener("change", () => {
+      // al cambiar el dia se recalculan las horas de quienes no se han tocado a mano
+      marcados.forEach((m, c) => { m.horas = horasDe(empPorCedula.get(c), $("f-fecha").value); });
+      infoLabor(); pintarOperarios();
+    });
+    $("btn-limpiar").addEventListener("click", () => { marcados = new Map(); $("f-buscar").value = ""; $("msg").textContent = ""; $("btn-todos").textContent = "Marcar todos"; pintarOperarios(); });
+
+    $("btn-guardar").addEventListener("click", () => {
+      const msg = $("msg"); msg.className = "msg";
+      const fecha = $("f-fecha").value, area = $("f-area").value, labor = laborPorId.get($("f-labor").value);
+      if (!fecha) { msg.className = "msg err"; msg.textContent = "Elige la fecha."; return; }
+      if (fecha > hoyISO()) { msg.className = "msg err"; msg.textContent = "La fecha no puede ser futura."; return; }
+      if (!labor) { msg.className = "msg err"; msg.textContent = "Elige la labor."; return; }
+      const sel = [...marcados.entries()].filter(([c]) => (empPorCedula.get(c) || {}).area === area);
+      if (!sel.length) { msg.className = "msg err"; msg.textContent = "Marca al menos un operario."; return; }
+      const malos = sel.filter(([, m]) => m.horas === "" || isNaN(m.horas) || Number(m.horas) < 0 || Number(m.horas) > 24 || (m.real !== "" && (isNaN(m.real) || Number(m.real) < 0)));
+      if (malos.length) { msg.className = "msg err"; msg.textContent = `Revisa las horas (0 a 24) o el real de ${malos.length} operario${malos.length === 1 ? "" : "s"}.`; return; }
+      const ya = yaRegistrados(), repetidos = sel.filter(([c]) => ya.has(c)).length;
+      if (repetidos && !confirm(`${repetidos} de los marcados ya tienen la labor ${labor.nombre} ese día. ¿Guardar otro registro de todas formas?`)) return;
+
+      const ahora = new Date().toISOString();
+      const nuevos = sel.map(([c, m]) => {
+        const e = empPorCedula.get(c);
+        return { client_id: uuid(), fecha, cedula: c, labor_id: labor.id, area: e.area, sede: e.sede || null,
+                 horas: Number(m.horas), cantidad_real: m.real === "" ? null : Number(m.real),
+                 _nombre: e.nombre, _labor: labor.nombre, _objetivo: labor.objetivo_hora, _creado: ahora, _error: null };
+      });
+      if (!guardarCola(pendientes().concat(nuevos))) { msg.className = "msg err"; msg.textContent = "No se pudo guardar en el celular (memoria llena)."; return; }
+      const u = LS.get("rend_ultimo_" + uid, {}); u.area = area; u.labores = u.labores || {}; u.labores[area] = labor.id; LS.set("rend_ultimo_" + uid, u);
+      marcados = new Map(); $("f-buscar").value = ""; $("btn-todos").textContent = "Marcar todos";
+      msg.className = "msg ok"; msg.textContent = `${nuevos.length} registro${nuevos.length === 1 ? "" : "s"} guardado${nuevos.length === 1 ? "" : "s"}${enLinea() ? ", enviando…" : " en el celular. Se envían cuando haya señal."}`;
+      $("v-fecha").value = fecha;
+      pintarOperarios(); pintarRegistros(); sincronizar();
+    });
+  }
+
+  // ---------------------------------------------------------------- envio al servidor
+  let enviando = false;
+  async function sincronizar() {
+    pintarEstado();
+    if (enviando || !enLinea()) return;
+    const cola = pendientes().filter((r) => !r._error);
+    if (!cola.length) { if (enLinea()) cargarRegistros(); return; }
+    enviando = true; pintarEstado();
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { $("estado-red").textContent = "Tu sesión venció: vuelve a entrar para enviar los registros pendientes."; return; }
+      for (const r of cola) {
+        const fila = { client_id: r.client_id, fecha: r.fecha, cedula: r.cedula, labor_id: r.labor_id, area: r.area, sede: r.sede, horas: r.horas, cantidad_real: r.cantidad_real };
+        const { error } = await sb.from("rendimiento").upsert(fila, { onConflict: "client_id", ignoreDuplicates: true });
+        if (error && esErrorRed(error)) break;                     // se perdio la senal: se reintenta despues
+        const c = pendientes(), i = c.findIndex((x) => x.client_id === r.client_id);
+        if (i < 0) continue;
+        if (error) c[i]._error = error.message || String(error); else c.splice(i, 1);
+        guardarCola(c);
+      }
+    } catch (e) { /* sin senal: queda en la cola */ }
+    finally { enviando = false; pintarEstado(); await cargarRegistros(); }
+  }
+
+  function pintarEstado() {
+    const c = pendientes(), err = c.filter((r) => r._error).length, pend = c.length - err;
+    $("dot").classList.toggle("off", !enLinea());
+    $("estado-red").textContent = enviando ? "Enviando registros…" : (enLinea() ? "En línea" : "Sin señal: los registros se guardan en este celular");
+    $("pendientes").textContent = (pend ? `${pend} sin enviar` : "") + (err ? `${pend ? " · " : ""}${err} con error` : "");
+    $("btn-enviar").hidden = !(pend && enLinea() && !enviando);
+  }
+  $("btn-enviar").addEventListener("click", sincronizar);
+  window.addEventListener("online", sincronizar);
+  window.addEventListener("offline", pintarEstado);
+  setInterval(() => { if (pendientes().some((r) => !r._error)) sincronizar(); }, 60000);
+
+  // ---------------------------------------------------------------- registros del dia
+  const regCache = LS.get("rend_reg_" + uid, {});    // fecha -> registros del servidor (ultima copia)
+  async function cargarRegistros() {
+    const f = $("v-fecha").value; if (!f) return;
+    if (!enLinea()) { pintarRegistros(); return; }
+    try {
+      // la vista ya filtra por las areas de quien consulta
+      regCache[f] = await todo("rendimiento_detalle", "id,fecha,cedula,nombre_operario,labor_id,labor,area,horas,objetivo_hora,presupuestado,cantidad_real,cumplimiento,registrado_por,origen",
+        `&fecha=eq.${f}&order=area.asc,labor.asc,nombre_operario.asc`);
+      const fechas = Object.keys(regCache).sort().reverse();
+      fechas.slice(7).forEach((k) => delete regCache[k]);          // se guardan solo los ultimos 7 dias consultados
+      LS.set("rend_reg_" + uid, regCache);
+    } catch (e) { /* se muestra la ultima copia */ }
+    pintarRegistros(); if (puedeRegistrar) pintarOperarios();
+  }
+
+  const claseP = (p) => p == null ? "" : (p >= 1 ? "alto" : (p >= 0.8 ? "medio" : "bajo"));
+  function pintarRegistros() {
+    const f = $("v-fecha").value, area = $("v-area").value;
+    const serv = (regCache[f] || []).map((r) => ({ ...r, _tipo: "serv" }));
+    const cola = pendientes().filter((r) => r.fecha === f).map((r) => {
+      const pres = r._objetivo != null ? r._objetivo * r.horas : null;
+      return { ...r, nombre_operario: r._nombre, labor: r._labor, objetivo_hora: r._objetivo, presupuestado: pres,
+               cumplimiento: pres && r.cantidad_real != null ? r.cantidad_real / pres : null, _tipo: r._error ? "error" : "pend" };
+    });
+    const lista = cola.concat(serv).filter((r) => !area || r.area === area);
+    const real = lista.reduce((s, r) => s + (Number(r.cantidad_real) || 0), 0), pres = lista.reduce((s, r) => s + (Number(r.presupuestado) || 0), 0);
+    const personas = new Set(lista.map((r) => r.cedula)).size;
+    $("totales").innerHTML = lista.length ? `<div class="tot"><b>${lista.length}</b>registros</div><div class="tot"><b>${personas}</b>personas</div>` +
+      `<div class="tot"><b>${fmtN(real)}</b>real</div><div class="tot"><b>${fmtN(pres)}</b>presupuestado</div>` +
+      (pres ? `<div class="tot"><b class="pct ${claseP(real / pres)}">${fmtN(real / pres * 100)}%</b>cumplimiento</div>` : "") : "";
+    if (!lista.length) { $("registros").innerHTML = `<div class="vacio">${enLinea() || regCache[f] ? "No hay registros este día." : "Sin señal: no hay copia guardada de este día."}</div>`; return; }
+    const grupos = new Map();
+    lista.forEach((r) => { const k = `${r.area} · ${r.labor || "Sin labor"}`; if (!grupos.has(k)) grupos.set(k, []); grupos.get(k).push(r); });
+    $("registros").innerHTML = [...grupos.entries()].map(([k, rs]) => {
+      const gr = rs.reduce((s, r) => s + (Number(r.cantidad_real) || 0), 0), gp = rs.reduce((s, r) => s + (Number(r.presupuestado) || 0), 0);
+      return `<div class="grupo"><div class="grupo-tit">${esc(k)}<span>${rs.length} · ${gp ? `<b class="pct ${claseP(gr / gp)}">${fmtN(gr / gp * 100)}%</b>` : ""}</span></div>` +
+        rs.map((r) => {
+          const p = r.cumplimiento != null ? Number(r.cumplimiento) : null;
+          const editable = r._tipo === "serv" && puedeRegistrar && enLinea();
+          return `<div class="reg${r._tipo === "pend" ? " pend" : ""}${r._tipo === "error" ? " error" : ""}" data-id="${esc(r.id || "")}" data-cid="${esc(r.client_id || "")}">
+            <div class="quien">${esc(r.nombre_operario || r.cedula)}${r._tipo === "pend" ? '<span class="etq">sin enviar</span>' : ""}${r._tipo === "error" ? '<span class="etq err">no se pudo guardar</span>' : ""}${r.origen === "appsheet" ? '<span class="etq">AppSheet</span>' : ""}</div>
+            <div class="acc">${editable ? '<button type="button" class="btn peq" data-acc="editar">Editar</button>' : ""}${r._tipo !== "serv" ? '<button type="button" class="btn peq peligro" data-acc="quitar">Quitar</button>' : ""}</div>
+            <div class="det"><span>Real <b>${fmtN(r.cantidad_real, 2)}</b></span><span>Horas <b>${fmtN(r.horas, 2)}</b></span><span>Presup. <b>${fmtN(r.presupuestado)}</b></span>
+              <span>Cumpl. <b class="pct ${claseP(p)}">${p == null ? "—" : fmtN(p * 100) + "%"}</b></span>${r.registrado_por ? `<span>Por ${esc(r.registrado_por)}</span>` : ""}</div>
+            ${r._error ? `<div class="det" style="color:var(--critical)">${esc(r._error)}</div>` : ""}
+          </div>`;
+        }).join("") + "</div>";
+    }).join("");
+  }
+
+  $("registros").addEventListener("click", async (ev) => {
+    const b = ev.target.closest("button[data-acc]"); if (!b) return;
+    const caja = b.closest(".reg"), id = caja.dataset.id, cid = caja.dataset.cid;
+    if (b.dataset.acc === "quitar") {
+      if (!confirm("¿Quitar este registro? Todavía no se ha enviado, así que se borra solo de este celular.")) return;
+      guardarCola(pendientes().filter((r) => r.client_id !== cid)); pintarEstado(); pintarRegistros(); pintarOperarios(); return;
+    }
+    if (b.dataset.acc === "editar") {
+      const r = (regCache[$("v-fecha").value] || []).find((x) => x.id === id); if (!r || caja.querySelector(".editar")) return;
+      caja.insertAdjacentHTML("beforeend", `<div class="editar">
+        <div class="field"><label>Real</label><input type="number" inputmode="decimal" min="0" step="any" class="e-real" value="${r.cantidad_real ?? ""}"></div>
+        <div class="field"><label>Horas</label><input type="number" inputmode="decimal" min="0" max="24" step="0.25" class="e-horas" value="${r.horas ?? ""}"></div>
+        <button type="button" class="btn peq primario" data-acc="guardar">Guardar</button>
+        <button type="button" class="btn peq peligro" data-acc="borrar">Borrar registro</button>
+        <button type="button" class="btn peq" data-acc="cancelar">Cancelar</button></div>`);
+      return;
+    }
+    if (b.dataset.acc === "cancelar") { caja.querySelector(".editar").remove(); return; }
+    if (b.dataset.acc === "guardar") {
+      const real = caja.querySelector(".e-real").value, horas = caja.querySelector(".e-horas").value;
+      if (horas === "" || Number(horas) < 0 || Number(horas) > 24 || (real !== "" && Number(real) < 0)) { alert("Revisa los valores: horas de 0 a 24 y real no negativo."); return; }
+      b.disabled = true;
+      const { error } = await sb.from("rendimiento").update({ cantidad_real: real === "" ? null : Number(real), horas: Number(horas) }).eq("id", id);
+      if (error) { alert("No se pudo guardar: " + error.message); b.disabled = false; return; }
+      cargarRegistros(); return;
+    }
+    if (b.dataset.acc === "borrar") {
+      if (!confirm("¿Borrar este registro de rendimiento? No se puede deshacer.")) return;
+      const { error } = await sb.from("rendimiento").delete().eq("id", id);
+      if (error) { alert("No se pudo borrar: " + error.message); return; }
+      cargarRegistros();
+    }
+  });
+  $("v-fecha").addEventListener("change", cargarRegistros);
+  $("v-area").addEventListener("change", pintarRegistros);
+
+  // ---------------------------------------------------------------- arranque
+  pintarLabores(); pintarOperarios(); pintarEstado(); pintarRegistros();
+  sincronizar();
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw-rendimiento.js").catch(() => {});
+})();
+</script>
+</body>
+</html>
