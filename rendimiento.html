@@ -124,6 +124,8 @@
   .op .nom .ya { display: inline-block; margin-left: 4px; font-family: "Archivo", sans-serif; font-size: 10.5px; font-weight: 700; color: var(--warn); background: var(--warn-soft); border-radius: 10px; padding: 1px 7px; }
   .op input[type=number] { font: inherit; font-size: 15px; padding: 7px 6px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--surface); color: var(--ink); width: 100%; text-align: right; font-variant-numeric: tabular-nums; }
   .op input[type=number]:disabled { opacity: 0.4; }
+  .op .calc { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 2px 14px; font-size: 12.5px; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
+  .op .calc b { color: var(--ink); }
   .op-col { display: grid; grid-template-columns: 28px 1fr 96px 72px; gap: 8px; padding: 0 10px 4px; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
   .op-col span:nth-child(3), .op-col span:nth-child(4) { text-align: right; }
   .acciones { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 12px; align-items: center; }
@@ -458,9 +460,32 @@
   }
 
   function infoLabor() {
-    const l = laborPorId.get($("f-labor").value), f = $("f-fecha").value;
+    const l = laborPorId.get($("f-labor").value), f = $("f-fecha").value, h = f ? horasDe(null, f) : null;
     $("info-labor").innerHTML = (l ? (l.objetivo_hora != null ? `Meta: <b>${fmtN(l.objetivo_hora, 2)}</b> por hora. ` : "Esta labor no tiene meta por hora. ") : "") +
-      (f ? `Horas del día según Control GH: <b>${fmtN(horasDe(null, f), 2)}</b>${esFestivo(f) ? " (domingo o festivo)" : ""}.` : "");
+      (f ? `Horas del día según Control GH: <b>${fmtN(h, 2)}</b>${esFestivo(f) ? " (domingo o festivo)" : ""}. ` : "") +
+      (l && l.objetivo_hora != null && f ? `Presupuestado por persona: <b>${fmtN(Number(l.objetivo_hora) * h, 2)}</b>.` : "");
+  }
+
+  // Igual que el formulario de AppSheet: Presupuestado = meta por hora x horas; Real por hora = real / horas;
+  // % Cumplimiento = real / presupuestado. Son los mismos calculos que guarda la tabla rendimiento.
+  function calcHTML(m) {
+    const l = laborPorId.get($("f-labor").value);
+    if (!l) return "Elige la labor para ver el presupuestado.";
+    const horas = m.horas === "" || m.horas == null ? NaN : Number(m.horas);
+    const real = m.real === "" || m.real == null ? NaN : Number(m.real);
+    const obj = l.objetivo_hora != null ? Number(l.objetivo_hora) : null;
+    const pres = obj != null && !isNaN(horas) ? obj * horas : null;
+    const rph = !isNaN(real) && horas > 0 ? real / horas : null;
+    const pct = !isNaN(real) && pres > 0 ? real / pres : null;
+    return `<span>Presupuestado <b>${pres == null ? (obj == null ? "sin meta" : "—") : fmtN(pres, 2)}</b></span>` +
+      `<span>Real por hora <b>${rph == null ? "—" : fmtN(rph, 2)}</b></span>` +
+      `<span>% Cumplimiento <b class="pct ${claseP(pct)}">${pct == null ? "—" : fmtN(pct * 100) + "%"}</b></span>`;
+  }
+  function pintarCalc(fila) {
+    const m = marcados.get(Number(fila.dataset.c)); let c = fila.querySelector(".calc");
+    if (!m) { if (c) c.remove(); return; }
+    if (!c) { c = document.createElement("div"); c.className = "calc"; fila.appendChild(c); }
+    c.innerHTML = calcHTML(m);
   }
 
   function yaRegistrados() {
@@ -483,6 +508,7 @@
         <div class="nom">${esc(e.nombre)}${ya.has(Number(e.cedula)) ? '<span class="ya">ya tiene esta labor</span>' : ""}<small>${e.cedula}</small></div>
         <input type="number" inputmode="decimal" min="0" step="any" class="in-real" placeholder="—" value="${m && m.real != null ? esc(m.real) : ""}" ${m ? "" : "disabled"} aria-label="Real de ${esc(e.nombre)}">
         <input type="number" inputmode="decimal" min="0" max="24" step="0.25" class="in-horas" value="${esc(h)}" ${m ? "" : "disabled"} aria-label="Horas de ${esc(e.nombre)}">
+        ${m ? `<div class="calc">${calcHTML(m)}</div>` : ""}
       </div>`;
     }).join("") : `<div class="vacio">${q ? "Ningún operario coincide con la búsqueda." : "No hay operarios activos en esta área."}</div>`;
     contar();
@@ -502,6 +528,7 @@
         fila.classList.toggle("sel", ev.target.checked);
         fila.querySelectorAll("input[type=number]").forEach((i) => { i.disabled = !ev.target.checked; });
         if (ev.target.checked) fila.querySelector(".in-real").focus();
+        pintarCalc(fila);
         contar();
       }
     });
@@ -510,6 +537,7 @@
       const m = marcados.get(Number(fila.dataset.c)); if (!m) return;
       if (ev.target.classList.contains("in-real")) m.real = ev.target.value;
       if (ev.target.classList.contains("in-horas")) m.horas = ev.target.value;
+      pintarCalc(fila);
     });
     // tocar el nombre marca o desmarca
     $("lista-op").addEventListener("click", (ev) => {
