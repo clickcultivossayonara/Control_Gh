@@ -460,12 +460,13 @@
   function pintarLabores() {
     if (!puedeRegistrar) return;
     const area = $("f-area").value, u = LS.get("rend_ultimo_" + uid, {});
-    const propias = cat.labores.filter((l) => l.area === area), otras = cat.labores.filter((l) => l.area !== area);
-    const op = (l) => `<option value="${esc(l.id)}">${esc(l.nombre)}${l.objetivo_hora != null ? ` · meta ${fmtN(l.objetivo_hora, 2)}/h` : ""}${l.area !== area ? ` (${esc(l.area)})` : ""}</option>`;
-    $("f-labor").innerHTML = '<option value="">Elige la labor…</option>' +
-      (propias.length ? `<optgroup label="Labores de ${esc(area)}">${propias.map(op).join("")}</optgroup>` : "") +
-      `<optgroup label="Otras labores">${otras.map(op).join("")}</optgroup>`;
-    if (u.labores && u.labores[area] && laborPorId.has(u.labores[area])) $("f-labor").value = u.labores[area];
+    // solo las labores del area elegida
+    const propias = cat.labores.filter((l) => l.area === area);
+    const op = (l) => `<option value="${esc(l.id)}">${esc(l.nombre)}${l.objetivo_hora != null ? ` · meta ${fmtN(l.objetivo_hora, 2)}/h` : ""}</option>`;
+    $("f-labor").innerHTML = propias.length ? '<option value="">Elige la labor…</option>' + propias.map(op).join("")
+                                            : '<option value="">Esta área no tiene labores creadas</option>';
+    $("f-labor").disabled = !propias.length;
+    if (u.labores && propias.some((l) => l.id === u.labores[area])) $("f-labor").value = u.labores[area];
     infoLabor();
   }
 
