@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Buzón — Cultivos Sayonara</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Archivo:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<style>
+  :root {
+    --paper: #f6f5f0; --surface: #ffffff; --ink: #1d2420; --ink-soft: #57625b; --ink-faint: #8a9089;
+    --line: #dbdfd4; --line-strong: #c4cabb; --accent: #2e6b4e; --accent-ink: #ffffff;
+    --accent-soft: #e3eee6; --accent-soft-line: #c3ddca; --warn: #b3742f; --warn-soft: #f6e9d7;
+    --critical: #a23d3d; --critical-soft: #f6e0e0;
+    --shadow: 0 1px 2px rgba(29, 36, 32, 0.06), 0 4px 16px rgba(29, 36, 32, 0.05);
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+      --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+      --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+      --critical: #e08080; --critical-soft: #3a2020;
+      --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14180f; --surface: #1b211a; --ink: #eaf0e6; --ink-soft: #a8b3a3; --ink-faint: #6c766a;
+    --line: #2c332a; --line-strong: #3b453a; --accent: #6fbf8f; --accent-ink: #0d1a10;
+    --accent-soft: #223229; --accent-soft-line: #35503d; --warn: #e0a75c; --warn-soft: #3a2f1a;
+    --critical: #e08080; --critical-soft: #3a2020;
+    --shadow: 0 1px 2px rgba(0,0,0,0.3), 0 4px 20px rgba(0,0,0,0.35);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--paper); color: var(--ink); font-family: "Archivo", "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; min-height: 100vh; display: flex; align-items: stretch; }
+
+  /* ---------------- menu lateral ---------------- */
+  .sidebar {
+    width: 264px; flex-shrink: 0; background: var(--surface); border-right: 1px solid var(--line);
+    display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    transition: width 0.16s ease;
+  }
+  .sidebar.colapsado { width: 64px; }
+  .sidebar-top { display: flex; align-items: center; gap: 10px; padding: 16px 14px; border-bottom: 1px solid var(--line); min-height: 28px; }
+  .sidebar.colapsado .sidebar-top { justify-content: center; padding: 16px 10px; }
+  .sidebar-logo { height: 26px; width: auto; flex-shrink: 0; border-radius: 4px; }
+  .sidebar-brand { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 14.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-toggle {
+    margin-left: auto; background: none; border: none; cursor: pointer; color: var(--ink-soft); padding: 6px;
+    display: flex; align-items: center; justify-content: center; border-radius: 6px; flex-shrink: 0;
+  }
+  .sidebar.colapsado .sidebar-toggle { margin-left: 0; }
+  .sidebar-toggle:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-toggle svg { width: 18px; height: 18px; }
+
+  .sidebar-nav { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 2px; }
+  .sidebar-link {
+    display: flex; align-items: center; gap: 12px; padding: 9px 10px; border-radius: 8px; text-decoration: none;
+    color: var(--ink-soft); font-size: 13.5px; font-weight: 500; white-space: nowrap; overflow: hidden;
+  }
+  .sidebar-link svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .sidebar-link span { overflow: hidden; text-overflow: ellipsis; }
+  .sidebar-link:hover { background: var(--accent-soft); color: var(--accent); }
+  .sidebar-link.activo { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+  .sidebar.colapsado .sidebar-link { justify-content: center; padding: 9px; }
+  .sidebar.colapsado .sidebar-link span { display: none; }
+
+  .sidebar-footer { border-top: 1px solid var(--line); padding: 10px 10px; }
+  .sidebar.colapsado .sidebar-footer { padding: 10px 6px; }
+  .sidebar-footer .sesion-box {
+    display: flex !important; flex-direction: column !important; align-items: flex-start !important;
+    gap: 8px !important; justify-content: flex-start !important; margin-top: 0 !important;
+  }
+  .sidebar.colapsado .sidebar-footer .sesion-usuario { display: none; }
+  .sidebar-footer .sesion-usuario { white-space: normal; line-height: 1.4; }
+  .sidebar.colapsado .sidebar-footer .sesion-salir { width: 100%; padding: 8px 0; }
+
+  .sidebar-backdrop { display: none; position: fixed; inset: 0; background: rgba(20, 24, 15, 0.45); z-index: 40; }
+  .sidebar-backdrop.visible { display: block; }
+  .menu-toggle-movil {
+    display: none; position: fixed; top: 14px; left: 14px; z-index: 30;
+    background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; cursor: pointer;
+    color: var(--ink-soft); padding: 8px; align-items: center; justify-content: center; box-shadow: var(--shadow);
+  }
+  .menu-toggle-movil:hover { border-color: var(--accent); color: var(--accent); }
+  .menu-toggle-movil svg { width: 20px; height: 20px; }
+
+  .page-content { flex: 1; min-width: 0; display: flex; justify-content: center; }
+  .wrap { width: 100%; max-width: 1240px; margin: 0 auto; padding: 22px 24px 48px; display: flex; flex-direction: column; gap: 16px; }
+  .page-header { display: flex; flex-direction: column; align-items: center; gap: 6px; text-align: center; border-bottom: 2px solid var(--ink); padding-bottom: 14px; }
+  .page-header .page-logo { height: 36px; width: auto; }
+  .page-header .page-brand { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--ink-faint); }
+  .page-header h1 { font-family: "Fraunces", Georgia, serif; font-weight: 700; font-size: clamp(24px, 3.4vw, 32px); margin: 0; letter-spacing: 0.01em; text-transform: uppercase; }
+
+  /* ---------------- responsive: tablet y celular ---------------- */
+  @media (max-width: 880px) {
+    body { display: block; }
+    .sidebar {
+      position: fixed; left: 0; top: 0; width: 270px !important; height: 100vh;
+      transform: translateX(-100%); transition: transform 0.2s ease; z-index: 50;
+    }
+    .sidebar.abierto-movil { transform: translateX(0); }
+    .sidebar.colapsado .sidebar-link span,
+    .sidebar.colapsado .sidebar-brand,
+    .sidebar.colapsado .sesion-usuario { display: initial; }
+    .sidebar.colapsado .sidebar-top { justify-content: flex-start; padding: 16px 14px; }
+    .sidebar.colapsado .sidebar-link { justify-content: flex-start; padding: 9px 10px; }
+    .sidebar-toggle { display: none; }
+    .menu-toggle-movil { display: flex; }
+    .page-content { display: block; }
+    .wrap { max-width: none; padding-top: 64px; }
+  }
+  @media (max-width: 520px) {
+    .page-header h1 { font-size: 21px; }
+    .filters { flex-direction: column; align-items: stretch; }
+    .filters .field, .filters .multiselect, .ms-trigger, .field input { width: 100%; min-width: 0; }
+    .result-count { margin-left: 0; }
+  }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px 20px; }
+  .card-hint { font-size: 12.5px; color: var(--ink-faint); margin: 0 0 14px; }
+
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); font-weight: 600; }
+  .field input[type=text], .field input[type=date] {
+    font: inherit; font-size: 14px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink);
+  }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+  .multiselect { position: relative; }
+  .ms-trigger {
+    font: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--line-strong); border-radius: 7px;
+    background: var(--paper); color: var(--ink); cursor: pointer; min-width: 150px; text-align: left;
+  }
+  .ms-panel { display: none; position: absolute; top: calc(100% + 4px); left: 0; z-index: 20; background: var(--surface);
+    border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: var(--shadow); max-height: 260px; overflow-y: auto;
+    min-width: 240px; padding: 6px; }
+  .multiselect.open .ms-panel { display: block; }
+  .ms-search {
+    display: block; width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 7px 8px;
+    margin-bottom: 4px; border: 1px solid var(--line-strong); border-radius: 6px; background: var(--paper); color: var(--ink);
+  }
+  .ms-search:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .ms-option { display: flex; align-items: center; gap: 8px; padding: 5px 7px; border-radius: 5px; cursor: pointer; font-size: 13.5px; white-space: nowrap; }
+  .ms-option:hover { background: var(--accent-soft); }
+  .ms-option input { accent-color: var(--accent); }
+
+  .clear-btn, .btn-export {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 7px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .clear-btn:hover, .btn-export:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-export:disabled { opacity: 0.5; cursor: wait; }
+
+  .rachas-alerta {
+    border: 1px solid var(--critical-soft); border-left: 4px solid var(--critical); border-radius: var(--radius);
+    background: var(--surface); padding: 12px 16px; display: flex; flex-direction: column; gap: 10px;
+  }
+  .rachas-alerta[hidden] { display: none; }
+  .rachas-alerta.ok { border-left-color: var(--accent); border-color: var(--accent-soft); }
+  .rachas-header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; cursor: pointer; user-select: none; }
+  .rachas-icono { font-size: 15px; line-height: 1; }
+  .rachas-titulo { font-weight: 700; font-size: 14px; flex: 1; min-width: 200px; color: var(--critical); }
+  .rachas-alerta.ok .rachas-titulo { color: var(--accent); }
+  .rachas-toggle { font-size: 12px; color: var(--ink-faint); white-space: nowrap; }
+  .rachas-hint { margin: 0; font-size: 12.5px; color: var(--ink-soft); line-height: 1.4; }
+  .rachas-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .rachas-chip {
+    font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 20px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .rachas-chip.activo { background: var(--critical); border-color: var(--critical); color: #fff; }
+  .rachas-tabla { max-height: 320px; overflow: auto; }
+  .rachas-tabla table { min-width: 980px; }
+  .rachas-tabla .estado-curso { color: var(--critical); font-weight: 700; }
+  .rachas-tabla .estado-fin { color: var(--ink-faint); }
+  .rachas-tabla .dias { font-weight: 700; }
+
+  .result-count { font-size: 12.5px; color: var(--ink-faint); margin-left: auto; align-self: center; white-space: nowrap; }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); box-shadow: var(--shadow); }
+  table { border-collapse: collapse; width: 100%; min-width: 1100px; table-layout: fixed; font-size: 13px; }
+  thead th {
+    position: sticky; top: 0; background: var(--ink); color: var(--paper); text-align: left; padding: 9px 8px;
+    font-weight: 600; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.03em; white-space: nowrap;
+    cursor: pointer; user-select: none; border-bottom: 1px solid var(--ink);
+  }
+  thead th:hover { background: var(--accent); }
+  thead th .arrow { opacity: 0.5; font-size: 10px; margin-left: 4px; }
+  thead th.sorted .arrow { opacity: 1; }
+  tbody td { padding: 6px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  tbody tr:nth-child(even) td { background: rgba(0,0,0,0.012); }
+  tbody tr:hover td { background: var(--accent-soft); }
+
+
+  .load-more-row td { text-align: center; padding: 14px; background: var(--paper) !important; }
+  .load-more-btn {
+    font: inherit; font-size: 13px; font-weight: 600; padding: 8px 20px; border-radius: 7px;
+    border: 1px solid var(--accent-soft-line); background: var(--accent-soft); color: var(--accent); cursor: pointer;
+  }
+  .load-more-btn:hover { border-color: var(--accent); }
+
+  .num { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
+  .cedula { font-family: "IBM Plex Mono", ui-monospace, monospace; color: var(--ink-soft); }
+  .nombre { font-weight: 500; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px 3px 7px; border-radius: 20px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .chip::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .chip.pendiente { background: var(--warn-soft); color: var(--warn); }
+  .chip.injustificada { background: var(--critical-soft); color: var(--critical); }
+  .btn-small {
+    font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px;
+    border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer;
+  }
+  .btn-small:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-small:disabled { opacity: 0.5; cursor: wait; }
+  .empty-state, .error-state { padding: 40px 20px; text-align: center; color: var(--ink-faint); font-size: 14px; }
+
+  .aviso-super { background: var(--accent-soft); border: 1px solid var(--accent-soft-line); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; line-height: 1.45; color: var(--ink); }
+  .tabs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tab-btn { font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .tab-btn.activo { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  section[hidden] { display: none; }
+  .filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 5px; min-width: 150px; }
+  .field.grow { flex: 1; min-width: 220px; }
+  .field label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--ink-faint); font-weight: 600; }
+  .field input, .field textarea, .field select { font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--ink); }
+  .field input:focus, .field textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .btn-primary { font: inherit; font-size: 13.5px; font-weight: 600; padding: 9px 18px; border-radius: 7px; border: none; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+  .btn-primary:hover { opacity: 0.92; }
+  .btn-primary:disabled { opacity: 0.5; cursor: wait; }
+  .btn-peligro { background: var(--critical); }
+  .form-msg { font-size: 13px; font-weight: 500; min-height: 18px; margin: 0; }
+  .form-msg.error { color: var(--critical); }
+  .form-msg.ok { color: var(--accent); }
+  .tabla-aj { min-width: 1080px; table-layout: auto; }
+  .tabla-aj td { white-space: nowrap; }
+  .tabla-aj td.motivo { white-space: normal; min-width: 220px; max-width: 320px; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 10.5px; font-weight: 700; letter-spacing: 0.04em; }
+  .badge.ajustado { background: var(--warn-soft); color: var(--warn); }
+  .badge.t-AJUSTE { background: var(--warn-soft); color: var(--warn); }
+  .badge.t-CREACION { background: var(--accent-soft); color: var(--accent); }
+  .badge.t-REVERSION { background: var(--critical-soft); color: var(--critical); }
+  .badge.revertido { background: var(--line); color: var(--ink-faint); }
+  .dif-neg { color: var(--critical); font-weight: 500; }
+  .dif-pos { color: var(--accent); font-weight: 500; }
+  .modal-ov { position: fixed; inset: 0; background: rgba(20, 24, 15, 0.5); display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 60; }
+  .modal-ov[hidden] { display: none; }
+  .modal-caja { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; padding: 22px; display: flex; flex-direction: column; gap: 12px; }
+  .modal-caja h3 { margin: 0; font-size: 17px; }
+  .modal-caja .sub { margin: 0; font-size: 13px; color: var(--ink-soft); line-height: 1.4; }
+  .preview { background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; font-size: 13px; line-height: 1.5; }
+  .acciones-modal { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .toast { position: fixed; bottom: 22px; right: 22px; background: var(--ink); color: var(--paper); padding: 10px 16px; border-radius: 8px; font-size: 13px; z-index: 70; box-shadow: var(--shadow); }
+  .toast[hidden] { display: none; }
+
+  .chips-cruce { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+  .chip-cruce { font: inherit; font-size: 13px; font-weight: 600; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .chip-cruce.activo { background: var(--critical); color: #fff; border-color: var(--critical); }
+  .chip-cruce.activo.suave { background: var(--accent); border-color: var(--accent); }
+  .equipos-estado { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .equipo { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; font-size: 13px; background: var(--surface); }
+  .equipo strong { display: block; font-size: 14px; margin-bottom: 2px; }
+  .equipo .sub { color: var(--ink-faint); font-size: 12px; }
+  .equipo.alerta { border-color: var(--warn); background: var(--warn-soft); }
+  .banner-cruce { border-radius: 10px; padding: 12px 14px; font-size: 14px; font-weight: 600; margin: 0; }
+  .banner-cruce.mal { background: var(--critical-soft); color: var(--critical); border: 1px solid var(--critical); }
+  .banner-cruce.bien { background: var(--accent-soft); color: var(--accent); border: 1px solid var(--accent-soft-line); }
+  .tabla-cruce { min-width: 880px; }
+  .tabla-cruce td { white-space: normal; }
+
+  .resumen-bono { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin: 0 0 14px; }
+  .cifra-bono { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+  .cifra-bono span { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--ink-faint); font-weight: 600; }
+  .cifra-bono b { font-size: 19px; }
+  /* Columnas que se ajustan al contenido y texto que se parte en varias lineas: nada queda recortado con "..." (nombre, tipo, labor, observaciones).
+     Se pisa el table-layout: fixed y el nowrap/ellipsis generales de la hoja, y el overflow-wrap: anywhere de responsive.css (que encogeria cada columna a 1 letra). */
+  .tabla-bono { min-width: 900px; table-layout: auto; }
+  .tabla-bono tbody td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.35; vertical-align: middle; }
+  .tabla-bono td.nombre { min-width: 190px; }
+  .tabla-bono td.labor { min-width: 130px; }
+  .tabla-bono td.tipo { min-width: 125px; }
+  .tabla-bono td.obs { min-width: 170px; }
+  .tabla-bono td.fecha, .tabla-bono td.cedula, .tabla-bono td.valor, .tabla-bono td.recibe { white-space: nowrap; }
+  .tabla-bono td.acc button { margin: 2px 4px 2px 0; }               /* los dos botones pasan a dos lineas si falta ancho, en vez de salirse de la tabla */
+  .tabla-bono td.fecha .chip-est { display: block; width: fit-content; margin: 4px 0 0; }
+  .tabla-bono td.valor, .tabla-bono th.valor { text-align: right; }
+  .tabla-bono tfoot td { font-weight: 700; border-top: 2px solid var(--line-strong); background: var(--accent-soft); }
+  .copia-barra { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; margin: 10px 0 4px; }
+  .copia-barra .field { min-width: 180px; }
+  .chip-est { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; margin-left: 6px; }
+  .chip-est.nuevo { background: var(--accent-soft, #e3eee6); color: var(--accent, #2f6b45); }
+  .chip-est.cambio { background: var(--warn-soft, #f6e9d7); color: var(--warn, #9a6a1a); }
+  .chip-est.aviso { background: var(--critical-soft, #f6e0e0); color: var(--critical, #a33); }
+  .form-msg.aviso { color: var(--warn, #9a6a1a); font-weight: 600; }
+  .tabla-copia td.recibe, .tabla-copia th.recibe { text-align: center; width: 70px; }
+  .tabla-copia input[type=checkbox] { width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent, #2f6b45); }
+  .tabla-copia tr.descartada td { opacity: 0.55; }
+  .tabla-copia .inp-copia { width: 130px; text-align: right; }
+  .tabla-copia .inp-obs { width: 100%; min-width: 140px; }
+  .tabla-copia td small { display: block; color: var(--ink-faint); font-size: 11.5px; }
+  .titulo-seccion { font-family: "Fraunces", Georgia, serif; font-weight: 600; font-size: 17px; margin: 0 0 4px; }
+  .form-bono { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+  .form-bono .ancho2 { grid-column: span 2; }
+  .form-bono .ancho4 { grid-column: span 4; }
+  @media (max-width: 900px) { .form-bono { grid-template-columns: repeat(2, minmax(0, 1fr)); } .form-bono .ancho4 { grid-column: span 2; } }
+  @media (max-width: 520px) { .form-bono { grid-template-columns: minmax(0, 1fr); } .form-bono .ancho2, .form-bono .ancho4 { grid-column: span 1; } }
+  .sugerencias { position: relative; }
+  .sug-lista { position: absolute; left: 0; right: 0; top: 100%; z-index: 30; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px;
+    box-shadow: var(--shadow); max-height: 260px; overflow-y: auto; margin-top: 2px; }
+  .sug-lista[hidden] { display: none; }
+  .sug-item { padding: 8px 12px; font-size: 13px; cursor: pointer; display: flex; justify-content: space-between; gap: 10px; }
+  .sug-item:hover, .sug-item.sel { background: var(--accent-soft); }
+  .sug-item small { color: var(--ink-faint); }
+  .field input[readonly] { background: var(--accent-soft); color: var(--ink-soft); }
+  .btn-peq { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--critical); background: transparent; color: var(--critical); cursor: pointer; }
+  .btn-peq:hover { background: var(--critical-soft); }
+  .valor-cero { color: var(--ink-faint); }
+  .inp-valor { font: inherit; font-size: 13.5px; width: 130px; max-width: 100%; padding: 6px 8px; border: 1px solid var(--accent); border-radius: 6px; text-align: right; background: var(--surface); color: var(--ink); }
+  .btn-ok { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: none; background: var(--accent); color: var(--accent-ink); cursor: pointer; }
+  .btn-neutro { font: inherit; font-size: 12px; font-weight: 600; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink-soft); cursor: pointer; }
+  .btn-neutro:hover { border-color: var(--accent); color: var(--accent); }
+</style>
+<link rel="stylesheet" href="responsive.css">
+<script src="responsive.js" defer></script>
+<link rel="stylesheet" href="tema-claro.css">
+
+<style>
+  /* ---------------- Buzon ---------------- */
+  .chip-b { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+  .est-Nuevo { background: var(--accent-soft); color: var(--accent); }
+  .est-En-revision { background: var(--warn-soft); color: var(--warn); }
+  .est-En-proceso { background: rgba(58, 123, 191, 0.14); color: #3a7bbf; }
+  .est-Resuelto { background: var(--accent); color: var(--accent-ink); }
+  .est-Cerrado { background: var(--line); color: var(--ink-faint); }
+  .pri-Normal { background: var(--line); color: var(--ink-soft); }
+  .pri-Alta { background: var(--warn-soft); color: var(--warn); }
+  .pri-Urgente { background: var(--critical-soft); color: var(--critical); }
+  textarea { font: inherit; font-size: 13.5px; padding: 8px 10px; border: 1px solid var(--line-strong); border-radius: 7px; background: var(--surface); color: var(--ink); width: 100%; resize: vertical; }
+  textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .cifra-bono.clic { cursor: pointer; }
+  .cifra-bono.clic:hover, .cifra-bono.sel { border-color: var(--accent); background: var(--accent-soft); }
+  table.tabla-buzon { table-layout: auto; min-width: 880px; }
+  table.tabla-buzon tbody td { white-space: normal; overflow: visible; text-overflow: clip; overflow-wrap: break-word; line-height: 1.35; vertical-align: middle; }
+  table.tabla-buzon td.asunto { min-width: 220px; font-weight: 500; }
+  table.tabla-buzon td.nw { white-space: nowrap; }
+  .modal-ov .modal-caja.ancha { max-width: 760px; }
+  .req-meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; font-size: 12.5px; color: var(--ink-soft); }
+  .req-desc { white-space: pre-wrap; background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; font-size: 13.5px; line-height: 1.5; }
+  .linea { display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto; padding: 2px; }
+  .msg { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px; background: var(--surface); font-size: 13.5px; line-height: 1.45; }
+  .msg .quien { font-size: 11.5px; font-weight: 700; color: var(--ink-soft); display: flex; justify-content: space-between; gap: 10px; margin-bottom: 3px; }
+  .msg .texto { white-space: pre-wrap; overflow-wrap: break-word; }
+  .msg.es-nomina { border-color: var(--accent-soft-line); background: var(--accent-soft); }
+  .msg.nota { border-style: dashed; border-color: var(--warn); background: var(--warn-soft); }
+  .msg.estado { border: 0; background: transparent; padding: 2px 4px; text-align: center; font-size: 12px; color: var(--ink-faint); }
+  .seg-panel { border: 1px solid var(--line); border-radius: 10px; padding: 12px; background: var(--paper); display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .seg-panel .ancho2 { grid-column: span 2; }
+  @media (max-width: 600px) { .seg-panel { grid-template-columns: minmax(0, 1fr); } .seg-panel .ancho2 { grid-column: span 1; } }
+  .chk { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+  .btn-cerrar-linea { margin-left: auto; }
+  .aviso-buzon { background: var(--accent-soft); border: 1px solid var(--accent-soft-line); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; line-height: 1.45; }
+</style>
+</head>
+<body>
+
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+<button type="button" class="menu-toggle-movil" id="menu-toggle-movil" aria-label="Abrir menú">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+</button>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-top">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="sidebar-logo">
+    <span class="sidebar-brand">Cultivos Sayonara</span>
+    <button type="button" class="sidebar-toggle" id="sidebar-toggle" aria-label="Colapsar menú">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M3 12h18M3 18h18"></path></svg>
+    </button>
+  </div>
+
+  <div class="sidebar-nav" id="sidebar-nav">
+    <a class="sidebar-link" href="index.html" data-pagina="inicio">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"></path><path d="M5 9.5V21h14V9.5"></path><path d="M9 21v-6h6v6"></path></svg>
+      <span>Inicio</span>
+    </a>
+    <a class="sidebar-link" href="empleados.html" data-pagina="empleados">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"></path><circle cx="10" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+      <span>Empleados</span>
+    </a>
+    <a class="sidebar-link" href="registro-biometrico.html" data-pagina="registro_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 6v6l4 2"></path></svg>
+      <span>Registro Biométrico</span>
+    </a>
+    <a class="sidebar-link" href="permisos.html" data-pagina="permisos">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"></path></svg>
+      <span>Permisos</span>
+    </a>
+    <a class="sidebar-link" href="novedades.html" data-pagina="novedades">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"></rect><path d="M16 2v4M8 2v4M3 10h18"></path><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"></path></svg>
+      <span>Novedades</span>
+    </a>
+    <a class="sidebar-link" href="ausentismo.html" data-pagina="ausentismo">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M9.17 9.17a3 3 0 1 1 4.24 4.24M12 8v1M15 15l6 6"></path></svg>
+      <span>Ausentismo</span>
+    </a>
+    <a class="sidebar-link" href="nomina.html" data-pagina="nomina">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><line x1="2" y1="10" x2="22" y2="10"></line><line x1="6" y1="15" x2="10" y2="15"></line></svg>
+      <span>Nómina</span>
+    </a>
+    <a class="sidebar-link" href="configuraciones.html" data-pagina="configuraciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      <span>Configuraciones</span>
+    </a>
+    <a class="sidebar-link" href="usuarios.html" data-pagina="usuarios">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21a8 8 0 0 0-16 0"></path><circle cx="12" cy="8" r="5"></circle></svg>
+      <span>Usuarios</span>
+    </a>
+    <a class="sidebar-link" href="ajuste-marcaciones.html" data-pagina="ajuste_marcaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"></path></svg>
+      <span>Ajuste de marcaciones</span>
+    </a>
+    <a class="sidebar-link" href="cruce-biometrico.html" data-pagina="cruce_biometrico">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"></circle><path d="M1 21a8 8 0 0 1 16 0"></path><path d="M17 11l2 2 4-4"></path></svg>
+      <span>Cruce con el biométrico</span>
+    </a>
+    <a class="sidebar-link" href="bonificaciones.html" data-pagina="bonificaciones">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M14.8 9.2a3 3 0 0 0-2.8-1.7c-1.7 0-3 .9-3 2.1 0 3 5.9 1.4 5.9 4.5 0 1.2-1.3 2.1-2.9 2.1a3 3 0 0 1-2.9-1.7M12 6v1.5M12 16.5V18"></path></svg>
+      <span>Bonificaciones</span>
+    </a>
+    <a class="sidebar-link" href="colillas.html" data-pagina="colillas">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"></path><path d="M9 8h6M9 12h6"></path></svg>
+      <span>Colillas de pago</span>
+    </a>
+    <a class="sidebar-link" href="rendimiento.html" data-pagina="rendimiento">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-6"></path></svg>
+      <span>Rendimiento</span>
+    </a>
+    <a class="sidebar-link activo" href="buzon.html" data-pagina="buzon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+      <span>Buzón</span>
+    </a>
+  </div>
+
+  <div class="sidebar-footer">
+    <div class="sesion-box" id="sesion-box"></div>
+  </div>
+</nav>
+
+<div class="page-content">
+<div class="wrap">
+  <div class="page-header">
+    <img src="logo-sayonara.png" alt="Cultivos Sayonara" class="page-logo">
+    <span class="page-brand">Cultivos Sayonara</span>
+    <h1>Buzón de requerimientos</h1>
+  </div>
+
+  <div class="aviso-buzon" id="aviso-buzon"></div>
+
+  <section class="card">
+    <p class="titulo-seccion">Nuevo requerimiento</p>
+    <form id="form-req" autocomplete="off">
+      <div class="form-bono">
+        <div class="field ancho2">
+          <label for="n-tipo">Tipo <span class="req">*</span></label>
+          <select id="n-tipo" required></select>
+        </div>
+        <div class="field ancho2">
+          <label for="n-pri">Prioridad</label>
+          <select id="n-pri">
+            <option value="Normal">Normal</option>
+            <option value="Alta">Alta</option>
+            <option value="Urgente">Urgente</option>
+          </select>
+        </div>
+        <div class="field ancho4">
+          <label for="n-asunto">Asunto <span class="req">*</span></label>
+          <input type="text" id="n-asunto" minlength="5" maxlength="150" placeholder="Resume en una línea lo que necesitas" required>
+        </div>
+        <div class="field ancho4">
+          <label for="n-desc">Descripción <span class="req">*</span></label>
+          <textarea id="n-desc" rows="4" minlength="10" maxlength="4000" placeholder="Cuéntanos con detalle: qué necesitas, para qué fechas o personas, y cualquier cédula, fecha o código que ayude." required></textarea>
+        </div>
+      </div>
+      <div class="form-actions" style="margin-top:14px">
+        <button type="submit" class="btn-primary" id="n-enviar">Enviar requerimiento</button>
+        <span class="form-msg" id="n-msg"></span>
+      </div>
+    </form>
+  </section>
+
+  <section class="card">
+    <div class="tabs" id="tabs-buzon" hidden style="margin-bottom:12px">
+      <button type="button" class="tab-btn activo" id="tab-todos">Seguimiento (todos)</button>
+      <button type="button" class="tab-btn" id="tab-mias">Mis requerimientos</button>
+    </div>
+    <p class="titulo-seccion" id="titulo-lista">Mis requerimientos</p>
+    <div class="resumen-bono" id="resumen-buzon" hidden></div>
+    <div class="filters">
+      <div class="field">
+        <label for="f-estado">Estado</label>
+        <select id="f-estado"></select>
+      </div>
+      <div class="field" id="campo-tipo">
+        <label for="f-tipo">Tipo</label>
+        <select id="f-tipo"></select>
+      </div>
+      <div class="field" id="campo-pri">
+        <label for="f-pri">Prioridad</label>
+        <select id="f-pri">
+          <option value="">Todas</option>
+          <option value="Urgente">Urgente</option>
+          <option value="Alta">Alta</option>
+          <option value="Normal">Normal</option>
+        </select>
+      </div>
+      <div class="field grow">
+        <label for="f-texto" id="lbl-texto">Buscar en el asunto</label>
+        <input type="text" id="f-texto" placeholder="Palabra del asunto…">
+      </div>
+      <button type="button" class="clear-btn" id="f-limpiar">Limpiar filtros</button>
+      <span class="result-count" id="f-count"></span>
+    </div>
+    <p class="form-msg" id="l-msg" style="margin-top:8px"></p>
+    <div class="table-scroll" style="margin-top:10px">
+      <table class="tabla-buzon" id="tabla-buzon" data-principales="N°,Asunto,Estado,Acciones">
+        <thead><tr id="b-thead"></tr></thead>
+        <tbody id="b-tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer style="font-size:12px;color:var(--ink-faint);text-align:center">Datos en vivo desde Supabase &middot; Cultivos Sayonara</footer>
+</div>
+</div>
+
+<div class="modal-ov" id="m-ov" hidden>
+  <div class="modal-caja ancha" role="dialog" aria-modal="true" aria-labelledby="m-titulo">
+    <div style="display:flex;gap:10px;align-items:flex-start;justify-content:space-between">
+      <h3 id="m-titulo" style="margin:0"></h3>
+      <button type="button" class="btn-neutro" id="m-x" aria-label="Cerrar">Cerrar</button>
+    </div>
+    <div class="req-meta" id="m-meta"></div>
+    <div class="req-desc" id="m-desc"></div>
+    <p class="titulo-seccion" style="margin:6px 0 0;font-size:15px">Conversación</p>
+    <div class="linea" id="m-linea"></div>
+
+    <div id="m-seg" class="seg-panel" hidden>
+      <div class="field">
+        <label for="s-estado">Estado</label>
+        <select id="s-estado"></select>
+      </div>
+      <div class="field">
+        <label for="s-asig">Asignado a</label>
+        <input type="text" id="s-asig" maxlength="80" placeholder="Nombre de quien le hace seguimiento">
+      </div>
+      <div class="field ancho2">
+        <label for="s-msg">Respuesta o nota</label>
+        <textarea id="s-msg" rows="3" maxlength="4000" placeholder="Escribe la respuesta para el solicitante…"></textarea>
+      </div>
+      <label class="chk ancho2"><input type="checkbox" id="s-nota"> Nota interna (la ven solo Nómina y administración; el solicitante no)</label>
+      <div class="ancho2" style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn-primary" id="s-guardar">Guardar y enviar</button>
+        <span class="form-msg" id="s-msgform"></span>
+      </div>
+    </div>
+
+    <div id="m-dueno" hidden style="display:flex;flex-direction:column;gap:8px">
+      <label for="r-msg" style="font-size:12px;font-weight:600;color:var(--ink-faint);text-transform:uppercase;letter-spacing:.06em">Tu respuesta</label>
+      <textarea id="r-msg" rows="3" maxlength="4000" placeholder="Escribe aquí si quieres agregar algo…"></textarea>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <button type="button" class="btn-primary" id="r-enviar">Enviar respuesta</button>
+        <button type="button" class="clear-btn btn-cerrar-linea" id="r-cerrar">Cerrar requerimiento</button>
+        <span class="form-msg" id="r-msgform"></span>
+      </div>
+    </div>
+    <p class="form-msg" id="m-aviso-cerrado" hidden>Este requerimiento está cerrado. Si lo necesitas de nuevo, envía uno nuevo.</p>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="auth.js"></script>
+<script>
+AUTH_READY.then(async function () {
+  if (!requierePagina("buzon")) return;
+  pintarSesion("sesion-box");
+  filtrarSidebar();
+
+  const sidebar = document.getElementById("sidebar");
+  const btnColapsar = document.getElementById("sidebar-toggle");
+  function aplicarColapso(colapsado) {
+    sidebar.classList.toggle("colapsado", colapsado);
+    try { localStorage.setItem("sidebar-colapsado", colapsado ? "1" : "0"); } catch {}
+  }
+  let colapsadoGuardado = null;
+  try { colapsadoGuardado = localStorage.getItem("sidebar-colapsado"); } catch {}
+  aplicarColapso(colapsadoGuardado === "1");
+  btnColapsar.addEventListener("click", () => aplicarColapso(!sidebar.classList.contains("colapsado")));
+  const backdrop = document.getElementById("sidebar-backdrop");
+  const btnMenuMovil = document.getElementById("menu-toggle-movil");
+  function abrirMenuMovil(abrir) {
+    sidebar.classList.toggle("abierto-movil", abrir);
+    backdrop.classList.toggle("visible", abrir);
+  }
+  btnMenuMovil.addEventListener("click", () => abrirMenuMovil(!sidebar.classList.contains("abierto-movil")));
+  backdrop.addEventListener("click", () => abrirMenuMovil(false));
+
+  const SUPABASE_URL = "https://kgtwqywbowhllxqdjegi.supabase.co";
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const TIPOS = ["Novedades de nómina", "Ajuste de marcaciones", "Horas extra", "Pagos / colillas", "Permisos", "Empleados / datos", "Sistema (error o mejora)", "Otro"];
+  const ESTADOS = ["Nuevo", "En revisión", "En proceso", "Resuelto", "Cerrado"];
+  const ABIERTOS = ["Nuevo", "En revisión", "En proceso"];
+  const ES_SEG = ["super_admin", "admin", "nomina", "rrhh"].includes(window.SESION.rol);   // la base lo vuelve a validar
+  const claseEst = (e) => "est-" + String(e).replace(/ó/g, "o").replace(/\s+/g, "-");
+  const codigo = (id) => "REQ-" + String(id).padStart(5, "0");
+  const fmt = (iso) => { if (!iso) return "—"; const d = String(iso).replace(" ", "T"); const [f, h] = d.split("T"); const [y, m, dd] = f.split("-"); return `${dd}/${m}/${y}` + (h ? " " + h.slice(0, 5) : ""); };
+  let tToast = null;
+  function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(tToast); tToast = setTimeout(() => { el.hidden = true; }, 3500); }
+
+  async function get(path) {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { headers: authHeaders() });
+    const datos = await resp.json();
+    if (!resp.ok) throw new Error(datos.message || `HTTP ${resp.status}`);
+    return datos;
+  }
+  async function rpc(nombre, cuerpo) {
+    const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${nombre}`, { method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
+    const texto = await resp.text(); let datos = null; try { datos = texto ? JSON.parse(texto) : null; } catch {}
+    if (!resp.ok) {
+      const m = (datos && datos.message) || texto || `HTTP ${resp.status}`;
+      throw new Error(/function .* does not exist|PGRST202|schema cache/i.test(m) ? "El buzón aún no está instalado en la base de datos (falta ejecutar schema_buzon.sql)." : m);
+    }
+    return datos;
+  }
+
+  // ---------- encabezados segun el rol ----------
+  $("aviso-buzon").innerHTML = ES_SEG
+    ? "<strong>Seguimiento de Nómina.</strong> Aquí llegan los requerimientos de todos los usuarios. Ábrelos para responder, cambiar el estado, asignarlos o dejar notas internas. Quien envió el requerimiento ve tus respuestas y el estado, pero no tus notas internas."
+    : "<strong>¿Necesitas algo?</strong> Envía tu requerimiento aquí (novedades, ajustes de marcación, horas extra, pagos, permisos o errores del sistema). Nómina le hace seguimiento y te responde en esta misma página; verás el estado de cada uno en <em>Mis requerimientos</em>.";
+  $("n-tipo").innerHTML = TIPOS.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  $("f-tipo").innerHTML = `<option value="">Todos</option>` + TIPOS.map((t) => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+  $("f-estado").innerHTML = `<option value="">Todos</option><option value="__abiertos">Abiertos</option>` + ESTADOS.map((e) => `<option value="${esc(e)}">${esc(e)}</option>`).join("");
+  $("s-estado").innerHTML = ESTADOS.map((e) => `<option value="${esc(e)}">${esc(e)}</option>`).join("");
+
+  let vista = ES_SEG ? "todos" : "mias";
+  let filas = [];
+  if (ES_SEG) $("tabs-buzon").hidden = false;
+  function aplicarVista() {
+    const seg = ES_SEG && vista === "todos";
+    $("tab-todos").classList.toggle("activo", vista === "todos");
+    $("tab-mias").classList.toggle("activo", vista === "mias");
+    $("titulo-lista").textContent = seg ? "Todos los requerimientos" : "Mis requerimientos";
+    $("resumen-buzon").hidden = !seg;
+    $("campo-tipo").hidden = !seg; $("campo-pri").hidden = !seg;
+    $("lbl-texto").textContent = seg ? "Asunto o solicitante" : "Buscar en el asunto";
+    $("b-thead").innerHTML = (seg
+      ? ["N°", "Fecha", "Tipo", "Asunto", "Solicitante", "Prioridad", "Estado", "Asignado a", "Última actividad", "Acciones"]
+      : ["N°", "Fecha", "Tipo", "Asunto", "Prioridad", "Estado", "Última actividad", "Acciones"]).map((t) => `<th>${t}</th>`).join("");
+    cargar();
+  }
+  $("tab-todos").addEventListener("click", () => { vista = "todos"; aplicarVista(); });
+  $("tab-mias").addEventListener("click", () => { vista = "mias"; aplicarVista(); });
+
+  // ---------- lista ----------
+  async function cargar() {
+    $("l-msg").textContent = "";
+    const seg = ES_SEG && vista === "todos";
+    let q = "buzon_requerimientos?select=*&order=updated_at.desc&limit=1000";
+    if (!seg) q += `&creado_por=eq.${window.SESION.id}`;
+    try { filas = await get(q); }
+    catch (err) {
+      filas = [];
+      const m = String(err.message || err);
+      $("l-msg").className = "form-msg error";
+      $("l-msg").textContent = /buzon_|PGRST205|relation/i.test(m) ? "El buzón aún no está instalado en la base de datos (falta ejecutar schema_buzon.sql)." : m;
+    }
+    pintar();
+  }
+  function filtradas() {
+    const est = $("f-estado").value, tipo = $("f-tipo").value, pri = $("f-pri").value, txt = $("f-texto").value.trim().toLowerCase();
+    const seg = ES_SEG && vista === "todos";
+    return filas.filter((f) =>
+      (!est || (est === "__abiertos" ? ABIERTOS.includes(f.estado) : f.estado === est)) &&
+      (!seg || !tipo || f.tipo === tipo) && (!seg || !pri || f.prioridad === pri) &&
+      (!txt || String(f.asunto).toLowerCase().includes(txt) || (seg && (String(f.solicitante_nombre || "").toLowerCase().includes(txt) || String(f.solicitante_email || "").toLowerCase().includes(txt)))));
+  }
+  function pintarResumen() {
+    const cuenta = (e) => filas.filter((f) => f.estado === e).length;
+    const abiertos = filas.filter((f) => ABIERTOS.includes(f.estado)).length;
+    const tarjetas = [["__abiertos", "Abiertos", abiertos], ...ESTADOS.map((e) => [e, e, cuenta(e)])];
+    $("resumen-buzon").innerHTML = tarjetas.map(([v, t, n]) => `<div class="cifra-bono clic${$("f-estado").value === v ? " sel" : ""}" data-estado="${esc(v)}"><span>${esc(t)}</span><b>${n.toLocaleString("es-CO")}</b></div>`).join("");
+  }
+  function pintar() {
+    const seg = ES_SEG && vista === "todos";
+    if (seg) pintarResumen();
+    const l = filtradas();
+    $("f-count").textContent = l.length.toLocaleString("es-CO") + " requerimiento" + (l.length === 1 ? "" : "s");
+    const cols = seg ? 10 : 8;
+    $("b-tbody").innerHTML = l.length === 0
+      ? `<tr><td colspan="${cols}"><div class="empty-state">${filas.length === 0 ? (seg ? "Todavía no hay requerimientos." : "Aún no has enviado requerimientos. Usa el formulario de arriba.") : "Sin requerimientos para estos filtros."}</div></td></tr>`
+      : l.map((f) => `<tr data-id="${f.id}">
+          <td class="nw num">${codigo(f.id)}</td>
+          <td class="nw">${fmt(f.created_at).slice(0, 10)}</td>
+          <td>${esc(f.tipo)}</td>
+          <td class="asunto">${esc(f.asunto)}</td>
+          ${seg ? `<td><div style="min-width:0;overflow-wrap:anywhere">${esc(f.solicitante_nombre || "")}<br><small style="color:var(--ink-faint)">${esc(f.solicitante_email || "")}</small></div></td>` : ""}
+          <td class="nw"><span class="chip-b pri-${esc(f.prioridad)}">${esc(f.prioridad)}</span></td>
+          <td class="nw"><span class="chip-b ${claseEst(f.estado)}">${esc(f.estado)}</span></td>
+          ${seg ? `<td>${esc(f.asignado_a || "—")}</td>` : ""}
+          <td>${fmt(f.updated_at)}</td>
+          <td class="nw"><button type="button" class="btn-neutro b-abrir" data-id="${f.id}">Abrir</button></td>
+        </tr>`).join("");
+  }
+  ["f-estado", "f-tipo", "f-pri"].forEach((id) => $(id).addEventListener("change", pintar));
+  let tTxt = null;
+  $("f-texto").addEventListener("input", () => { clearTimeout(tTxt); tTxt = setTimeout(pintar, 200); });
+  $("f-limpiar").addEventListener("click", () => { $("f-estado").value = ""; $("f-tipo").value = ""; $("f-pri").value = ""; $("f-texto").value = ""; pintar(); });
+  $("resumen-buzon").addEventListener("click", (e) => { const c = e.target.closest(".cifra-bono[data-estado]"); if (!c) return; $("f-estado").value = $("f-estado").value === c.dataset.estado ? "" : c.dataset.estado; pintar(); });
+  $("b-tbody").addEventListener("click", (e) => { const b = e.target.closest(".b-abrir"); if (b) abrir(Number(b.dataset.id)); });
+
+  // ---------- nuevo requerimiento ----------
+  $("form-req").addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const msg = $("n-msg");
+    $("n-enviar").disabled = true; msg.textContent = "Enviando…"; msg.className = "form-msg";
+    try {
+      const id = await rpc("buzon_crear", { p_tipo: $("n-tipo").value, p_asunto: $("n-asunto").value, p_descripcion: $("n-desc").value, p_prioridad: $("n-pri").value });
+      msg.textContent = `Enviado: ${codigo(id)}. Nómina le hará seguimiento; verás aquí el estado y las respuestas.`;
+      msg.className = "form-msg ok";
+      $("n-asunto").value = ""; $("n-desc").value = ""; $("n-pri").value = "Normal";
+      await cargar();
+    } catch (err) {
+      msg.textContent = "No se pudo enviar: " + (err.message || err); msg.className = "form-msg error";
+    } finally { $("n-enviar").disabled = false; }
+  });
+
+  // ---------- detalle ----------
+  let actual = null;
+  const ov = $("m-ov");
+  async function abrir(id) {
+    const f = filas.find((x) => x.id === id);
+    if (!f) return;
+    actual = f;
+    $("m-titulo").textContent = `${codigo(f.id)} · ${f.asunto}`;
+    $("m-meta").innerHTML = `<span class="chip-b ${claseEst(f.estado)}">${esc(f.estado)}</span><span class="chip-b pri-${esc(f.prioridad)}">${esc(f.prioridad)}</span><span>${esc(f.tipo)}</span><span>Enviado ${fmt(f.created_at)}</span>` +
+      (ES_SEG || f.creado_por !== window.SESION.id ? `<span>Solicitante: <b>${esc(f.solicitante_nombre || "")}</b> (${esc(f.solicitante_email || "")})</span>` : "") + (f.asignado_a ? `<span>Asignado a: <b>${esc(f.asignado_a)}</b></span>` : "");
+    $("m-desc").textContent = f.descripcion;
+    $("m-linea").innerHTML = `<div class="empty-state" style="padding:14px">Cargando conversación…</div>`;
+    const cerrado = f.estado === "Cerrado";
+    $("m-seg").hidden = !ES_SEG;
+    $("m-dueno").hidden = ES_SEG || cerrado || f.creado_por !== window.SESION.id;
+    $("m-dueno").style.display = $("m-dueno").hidden ? "none" : "flex";
+    $("m-aviso-cerrado").hidden = ES_SEG || !cerrado;
+    $("s-estado").value = f.estado; $("s-asig").value = f.asignado_a || ""; $("s-msg").value = ""; $("s-nota").checked = false; $("s-msgform").textContent = "";
+    $("r-msg").value = ""; $("r-msgform").textContent = "";
+    ov.hidden = false;
+    await cargarMensajes();
+  }
+  async function cargarMensajes() {
+    try {
+      const ms = await get(`buzon_mensajes?select=*&requerimiento_id=eq.${actual.id}&order=created_at.asc,id.asc&limit=500`);
+      $("m-linea").innerHTML = ms.length === 0 ? `<div class="empty-state" style="padding:14px">Todavía no hay mensajes. Nómina responderá aquí.</div>` : ms.map((m) => {
+        if (m.tipo === "estado") return `<div class="msg estado">${esc(m.mensaje)} · ${esc(m.autor_nombre || "")} · ${fmt(m.created_at)}</div>`;
+        const nom = ["super_admin", "admin", "nomina", "rrhh"].includes(m.autor_rol);
+        return `<div class="msg ${m.tipo === "nota_interna" ? "nota" : (nom ? "es-nomina" : "")}"><div class="quien"><span>${esc(m.autor_nombre || "")}${nom ? " · Nómina" : ""}${m.tipo === "nota_interna" ? " · NOTA INTERNA" : ""}</span><span>${fmt(m.created_at)}</span></div><div class="texto">${esc(m.mensaje)}</div></div>`;
+      }).join("");
+      $("m-linea").scrollTop = $("m-linea").scrollHeight;
+    } catch (err) { $("m-linea").innerHTML = `<div class="error-state" style="padding:14px">No se pudo cargar: ${esc(err.message || err)}</div>`; }
+  }
+  async function refrescar() {
+    await cargar();
+    const f = filas.find((x) => x.id === actual.id);
+    if (f) await abrir(f.id);
+  }
+  $("m-x").addEventListener("click", () => { ov.hidden = true; });
+  ov.addEventListener("click", (e) => { if (e.target === ov) ov.hidden = true; });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") ov.hidden = true; });
+
+  // Nomina / Admin: estado + asignacion + respuesta o nota
+  $("s-guardar").addEventListener("click", async () => {
+    const f = actual; if (!f) return;
+    const msg = $("s-msgform"), estado = $("s-estado").value, asig = $("s-asig").value.trim(), texto = $("s-msg").value.trim(), nota = $("s-nota").checked;
+    if (nota && !texto) { msg.textContent = "Escribe la nota interna."; msg.className = "form-msg error"; return; }
+    const cambiaEstado = estado !== f.estado, cambiaAsig = asig !== (f.asignado_a || "");
+    if (!cambiaEstado && !cambiaAsig && !texto) { msg.textContent = "No hay cambios para guardar."; msg.className = "form-msg error"; return; }
+    $("s-guardar").disabled = true; msg.textContent = "Guardando…"; msg.className = "form-msg";
+    try {
+      if (cambiaEstado || cambiaAsig) await rpc("buzon_cambiar_estado", { p_id: f.id, p_estado: estado, p_asignado: asig, p_mensaje: nota ? null : (texto || null) });
+      else if (texto && !nota) await rpc("buzon_responder", { p_id: f.id, p_mensaje: texto, p_nota_interna: false });
+      if (nota) await rpc("buzon_responder", { p_id: f.id, p_mensaje: texto, p_nota_interna: true });
+      toast(`${codigo(f.id)} actualizado`);
+      await refrescar();
+    } catch (err) { msg.textContent = "No se pudo guardar: " + (err.message || err); msg.className = "form-msg error"; }
+    finally { $("s-guardar").disabled = false; }
+  });
+  // Solicitante: responder o cerrar
+  $("r-enviar").addEventListener("click", async () => {
+    const f = actual, msg = $("r-msgform"), texto = $("r-msg").value.trim();
+    if (!texto) { msg.textContent = "Escribe tu respuesta."; msg.className = "form-msg error"; return; }
+    $("r-enviar").disabled = true; msg.textContent = "Enviando…"; msg.className = "form-msg";
+    try { await rpc("buzon_responder", { p_id: f.id, p_mensaje: texto, p_nota_interna: false }); toast("Respuesta enviada"); await refrescar(); }
+    catch (err) { msg.textContent = "No se pudo enviar: " + (err.message || err); msg.className = "form-msg error"; }
+    finally { $("r-enviar").disabled = false; }
+  });
+  $("r-cerrar").addEventListener("click", async () => {
+    const f = actual, msg = $("r-msgform");
+    if (!confirm("¿Cerrar este requerimiento? Si lo necesitas de nuevo, tendrás que enviar uno nuevo.")) return;
+    $("r-cerrar").disabled = true;
+    try { await rpc("buzon_cerrar", { p_id: f.id }); toast(`${codigo(f.id)} cerrado`); await refrescar(); }
+    catch (err) { msg.textContent = "No se pudo cerrar: " + (err.message || err); msg.className = "form-msg error"; }
+    finally { $("r-cerrar").disabled = false; }
+  });
+
+  aplicarVista();
+});
+</script>
+</body>
+</html>

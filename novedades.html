@@ -111,7 +111,8 @@
   .edit-box .field { margin-bottom: 12px; }
   .edit-box select, .edit-box input { width: 100%; }
   .edit-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
-  .btn-editar-nov, .btn-eliminar-nov { padding: 4px 10px; font-size: 12.5px; }
+  .btn-editar-nov, .btn-eliminar-nov, .btn-editar-extra { padding: 4px 10px; font-size: 12.5px; }
+  td.col-nw { white-space: nowrap; }
   .btn-eliminar-nov { color: var(--critical); border-color: var(--critical); margin-left: 6px; }
   .btn-peligro { background: var(--critical); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13.5px; }
   .btn-peligro:disabled { opacity: 0.6; cursor: default; }
@@ -474,6 +475,10 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M7 15l4-4 3 3 5-6"></path></svg>
       <span>Rendimiento</span>
     </a>
+    <a class="sidebar-link" href="buzon.html" data-pagina="buzon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-6l-2 3h-4l-2-3H2"></path><path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
+      <span>Buzón</span>
+    </a>
   </div>
   <div class="sidebar-footer">
     <div class="sesion-box" id="sesion-box"></div>
@@ -724,6 +729,7 @@
             <th data-key="codigo_novedad">Concepto <span class="arrow">↕</span></th>
             <th data-key="horas_asignadas">Horas Asignadas <span class="arrow">↕</span></th>
             <th data-key="semana">Semana <span class="arrow">↕</span></th>
+            <th>Acciones</th>
           </tr>
         </thead>
         <tbody id="le-tbody"></tbody>
@@ -780,6 +786,28 @@
     <div class="edit-actions">
       <button type="button" class="clear-btn" id="ed-cancelar">Cancelar</button>
       <button type="button" class="btn-primary" id="ed-guardar">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div class="popup-biometrico" id="modal-editar-extra" hidden role="dialog" aria-modal="true" aria-labelledby="ee-titulo">
+  <div class="edit-box">
+    <h3 id="ee-titulo">Editar presupuesto de horas extra</h3>
+    <p class="card-hint" id="ee-info" style="margin-bottom:14px"></p>
+    <div class="field">
+      <label for="ee-fecha">Fecha</label>
+      <input type="date" id="ee-fecha">
+    </div>
+    <div class="field">
+      <label for="ee-horas">Horas asignadas</label>
+      <input type="number" id="ee-horas" step="0.01" min="0">
+    </div>
+    <p class="card-hint" id="ee-uso"></p>
+    <p class="card-hint">Solo se cambian la fecha y las horas; el área y el concepto no (para eso crea una asignación nueva). Si ya hay horas cargadas en Novedades, el presupuesto de ese día no puede quedar por debajo de ellas. Cada cambio queda registrado con quién lo hizo.</p>
+    <p class="form-msg" id="ee-msg"></p>
+    <div class="edit-actions">
+      <button type="button" class="clear-btn" id="ee-cancelar">Cancelar</button>
+      <button type="button" class="btn-primary" id="ee-guardar">Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -2911,10 +2939,11 @@ AUTH_READY.then(async function () {
   const leCount = document.getElementById("le-count");
 
   let leSortKey = "fecha", leSortDir = -1;
+  let leFilas = {};   // id -> asignacion de la lista (para el modal de edicion)
 
   async function cargarListaExtras() {
     const params = new URLSearchParams();
-    params.set("select", "fecha,area,codigo_novedad,horas_asignadas,semana");
+    params.set("select", "id,fecha,area,codigo_novedad,horas_asignadas,semana");
     params.set("order", `${leSortKey}.${leSortDir === 1 ? "asc" : "desc"}.nullslast`);
     params.set("limit", "300");
     const buscar = leBuscar.value.trim();
@@ -2926,8 +2955,10 @@ AUTH_READY.then(async function () {
       const rango = resp.headers.get("content-range");
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
+      leFilas = {};
+      filas.forEach((f) => { leFilas[f.id] = f; });
       if (filas.length === 0) {
-        leTbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Sin asignaciones para estos filtros.</div></td></tr>`;
+        leTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Sin asignaciones para estos filtros.</div></td></tr>`;
       } else {
         leTbody.innerHTML = filas.map(f => `<tr>
           <td class="num">${f.fecha || "—"}</td>
@@ -2935,12 +2966,13 @@ AUTH_READY.then(async function () {
           <td>${codigosPorValor[f.codigo_novedad]?.codigo_descripcion || f.codigo_novedad || "—"}</td>
           <td class="num">${f.horas_asignadas ?? "—"}</td>
           <td class="num">${f.semana ?? "—"}</td>
+          <td class="col-nw"><button type="button" class="clear-btn btn-editar-extra" data-id="${f.id}">Editar</button></td>
         </tr>`).join("");
       }
       leCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      leTbody.innerHTML = `<tr><td colspan="5"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      leTbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       leCount.textContent = "";
     }
 
@@ -2965,6 +2997,76 @@ AUTH_READY.then(async function () {
   document.getElementById("le-limpiar").addEventListener("click", () => {
     leBuscar.value = "";
     cargarListaExtras();
+  });
+
+  // ---------- Editar una asignacion de Presupuesto Horas Extra (fecha y horas; la base valida el rol y que no quede por debajo de lo ya cargado) ----------
+  const eeModal = document.getElementById("modal-editar-extra");
+  const eeFecha = document.getElementById("ee-fecha");
+  const eeHoras = document.getElementById("ee-horas");
+  const eeMsg = document.getElementById("ee-msg");
+  const eeGuardar = document.getElementById("ee-guardar");
+  let eeActual = null;
+  const eeMostrar = (texto, tipo) => { eeMsg.textContent = texto; eeMsg.className = "form-msg" + (tipo ? " " + tipo : ""); };
+
+  async function abrirEdicionExtra(id) {
+    const f = leFilas[id];
+    if (!f) return;
+    eeActual = f;
+    const concepto = codigosPorValor[f.codigo_novedad]?.codigo_descripcion || f.codigo_novedad || "";
+    document.getElementById("ee-info").textContent = `${f.area} · ${concepto}`;
+    eeFecha.value = f.fecha ? String(f.fecha).slice(0, 10) : "";
+    eeHoras.value = f.horas_asignadas ?? "";
+    document.getElementById("ee-uso").textContent = "Consultando lo ya cargado en Novedades…";
+    eeMostrar("", "");
+    eeGuardar.disabled = false;
+    eeModal.hidden = false;
+    // lo ya cargado en Novedades para ese dia, area y concepto (para que se vea el minimo antes de guardar)
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/horas_extra_resumen`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ p_fecha: String(f.fecha).slice(0, 10), p_area: f.area, p_codigo: f.codigo_novedad }),
+      });
+      const j = await r.json();
+      const d = Array.isArray(j) && j[0] ? j[0] : null;
+      document.getElementById("ee-uso").textContent = d
+        ? `En ese día y área hay ${fmtH(d.asignadas)} asignadas en total y ${fmtH(d.usadas)} ya cargadas en Novedades (disponibles: ${fmtH(d.disponibles)}).`
+        : "Sin información de uso para ese día.";
+    } catch { document.getElementById("ee-uso").textContent = ""; }
+  }
+
+  async function guardarEdicionExtra() {
+    const f = eeActual;
+    if (!f) return;
+    const fecha = eeFecha.value;
+    const horas = eeHoras.value === "" ? NaN : Number(eeHoras.value);
+    if (!fecha) return eeMostrar("La fecha es obligatoria.", "error");
+    if (!Number.isFinite(horas) || horas < 0) return eeMostrar("Las horas asignadas deben ser 0 o más.", "error");
+    if (fecha === String(f.fecha).slice(0, 10) && horas === Number(f.horas_asignadas)) return eeMostrar("No hay cambios para guardar.", "error");
+    eeGuardar.disabled = true;
+    eeMostrar("Guardando…", "");
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/editar_presupuesto_extra`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ p_id: f.id, p_fecha: fecha, p_horas: horas }),
+      });
+      const res = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(res.message || `HTTP ${resp.status}`);
+      eeModal.hidden = true;
+      msgExtra.textContent = `Asignación de ${f.area} actualizada: ${String(f.fecha).slice(0, 10)} · ${fmtH(f.horas_asignadas)} → ${fecha} · ${fmtH(horas)}.`;
+      msgExtra.className = "form-msg ok";
+      cargarListaExtras();
+    } catch (err) {
+      eeMostrar("No se pudo guardar: " + (err.message || err), "error");
+    } finally {
+      eeGuardar.disabled = false;
+    }
+  }
+  eeGuardar.addEventListener("click", guardarEdicionExtra);
+  document.getElementById("ee-cancelar").addEventListener("click", () => { eeModal.hidden = true; });
+  eeModal.addEventListener("click", (e) => { if (e.target === eeModal) eeModal.hidden = true; });
+  leTbody.addEventListener("click", (e) => {
+    const b = e.target.closest(".btn-editar-extra");
+    if (b) abrirEdicionExtra(b.dataset.id);
   });
   cargarListaExtras();
 });
