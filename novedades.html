@@ -629,6 +629,7 @@
             <th data-key="area">Área <span class="arrow">↕</span></th>
             <th data-key="codigo_descripcion">Código - Descripción <span class="arrow">↕</span></th>
             <th data-key="hora">Horas <span class="arrow">↕</span></th>
+            <th id="ln-th-registro" hidden>Registrado por</th>
             <th class="col-acciones">Acciones</th>
           </tr>
         </thead>
@@ -2617,8 +2618,31 @@ AUTH_READY.then(async function () {
       const rango = resp.headers.get("content-range");
       const total = rango && rango.includes("/") ? Number(rango.split("/")[1]) : filas.length;
 
+      // Solo Super Admin: columna "Registrado por" (la base responde unicamente al Super Admin real; si falla, queda vacia sin afectar la lista)
+      const verRegistro = window.SESION.rol === "super_admin";
+      document.getElementById("ln-th-registro").hidden = !verRegistro;
+      const colspanLn = verRegistro ? 10 : 9;
+      let quienRegistro = {};
+      if (verRegistro && filas.length) {
+        try {
+          const rq = await fetch(`${SUPABASE_URL}/rest/v1/rpc/novedades_quien_registro`, {
+            method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
+            body: JSON.stringify({ p_ids: filas.map(f => f.id_nomina) }),
+          });
+          const rr = await rq.json();
+          if (rq.ok && Array.isArray(rr)) rr.forEach(r => { quienRegistro[r.id_nomina] = r; });
+        } catch {}
+      }
+      const celdaRegistro = (f) => {
+        if (!verRegistro) return "";
+        const q = quienRegistro[f.id_nomina];
+        if (q) return `<td class="nombre" title="${escaparAtributo(q.usuario_email)}">${q.usuario_nombre || q.usuario_email || "—"}</td>`;
+        const txt = f.origen && f.origen !== "app" ? "Importación / sistema" : "Sin dato (anterior al registro)";
+        return `<td style="color:var(--ink-faint)">${txt}</td>`;
+      };
+
       if (filas.length === 0) {
-        lnTbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
+        lnTbody.innerHTML = `<tr><td colspan="${colspanLn}"><div class="empty-state">Sin novedades para estos filtros.</div></td></tr>`;
       } else {
         lnFilas = {};
         filas.forEach(f => { lnFilas[f.id_nomina] = f; });
@@ -2631,13 +2655,14 @@ AUTH_READY.then(async function () {
           <td title="${escaparAtributo(f.area)}">${f.area || "—"}</td>
           <td title="${escaparAtributo(f.codigo_descripcion)}">${f.codigo_descripcion || "—"}</td>
           <td class="num">${f.hora ?? "—"}</td>
+          ${celdaRegistro(f)}
           <td class="col-acciones">${novedadEditable(f) ? `<button type="button" class="clear-btn btn-editar-nov" data-id="${f.id_nomina}">Editar</button>` : ""}${novedadEliminable(f) ? `<button type="button" class="clear-btn btn-eliminar-nov" data-id="${f.id_nomina}">Eliminar</button>` : ""}</td>
         </tr>`).join("");
       }
       lnCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
         (filas.length < total ? ` · mostrando ${filas.length.toLocaleString("es-CO")}` : "");
     } catch (err) {
-      lnTbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
+      lnTbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">Error al cargar: ${err.message || err}</div></td></tr>`;
       lnCount.textContent = "";
     }
 
