@@ -681,6 +681,7 @@ AUTH_READY.then(async function () {
       $("l-msg").textContent = /buzon_|PGRST205|relation/i.test(m) ? "El buzón aún no está instalado en la base de datos (falta ejecutar schema_buzon.sql)." : m;
     }
     pintar();
+    if (window.actualizarGlobitoBuzon) actualizarGlobitoBuzon();      // el globito del menu se actualiza al cargar o cambiar algo
   }
   function filtradas() {
     const est = $("f-estado").value, tipo = $("f-tipo").value, pri = $("f-pri").value, txt = $("f-texto").value.trim().toLowerCase();

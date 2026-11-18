@@ -133,9 +133,33 @@ function pintarSesion(elId) {
   document.getElementById("btn-cerrar-sesion").addEventListener("click", cerrarSesion);
 }
 
+// Globito con la cantidad de requerimientos "Nuevo" junto al enlace Buzon del menu. Solo para quienes hacen el seguimiento
+// (Super Admin, Administrador, Nomina, RRHH) y tienen habilitada la pagina; la base solo les deja ver todos los requerimientos a ellos.
+// Si la consulta falla (por ejemplo, el buzon no esta instalado), no se muestra nada y no afecta la pagina.
+async function actualizarGlobitoBuzon() {
+  try {
+    const s = window.SESION;
+    if (!s || !["super_admin", "admin", "nomina", "rrhh"].includes(s.rol) || !s.permisos.buzon) return;
+    const { count, error } = await _sb.from("buzon_requerimientos").select("id", { count: "exact", head: true }).eq("estado", "Nuevo");
+    if (error || count == null) return;
+    document.querySelectorAll('.sidebar-link[data-pagina="buzon"]').forEach((enlace) => {
+      let g = enlace.querySelector(".globito-buzon");
+      if (!count) { if (g) g.remove(); enlace.removeAttribute("title"); return; }
+      if (!g) { g = document.createElement("span"); g.className = "globito-buzon"; enlace.appendChild(g); }
+      g.textContent = count > 99 ? "99+" : String(count);
+      enlace.title = count + (count === 1 ? " requerimiento nuevo" : " requerimientos nuevos") + " sin atender";
+    });
+  } catch (e) { /* sin globito */ }
+}
+AUTH_READY.then(() => {
+  const iniciar = () => { actualizarGlobitoBuzon(); setInterval(() => { if (!document.hidden) actualizarGlobitoBuzon(); }, 120000); };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
+}).catch(() => {});
+
 (function inyectarEstiloSesion() {
   const style = document.createElement("style");
   style.textContent = `
+    .globito-buzon { margin-left:auto; min-width:20px; height:20px; padding:0 6px; border-radius:10px; background:#c62828; color:#fff; font-size:11.5px; font-weight:700; line-height:20px; text-align:center; flex:none; }
     .sesion-box { display:flex; align-items:center; gap:12px; justify-content:center; font-size:12.5px; color:var(--ink-faint); margin-top:8px; }
     .sesion-usuario { font-weight:600; color:var(--ink-soft); }
     .sesion-salir { font:inherit; font-size:12px; font-weight:600; padding:5px 12px; border-radius:20px; border:1px solid var(--line-strong); background:var(--surface); color:var(--ink-soft); cursor:pointer; }
