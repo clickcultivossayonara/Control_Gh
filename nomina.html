@@ -424,6 +424,12 @@
         <label>Concepto (solo Horas)</label>
         <div class="multiselect" id="ms-cg-concepto"></div>
       </div>
+      <div class="field checkbox-field">
+        <label for="cg-continuan" class="checkbox-label" title="Ausentismo: incluye las incapacidades, licencias o vacaciones que empezaron ANTES del rango y siguen dentro de él (prórrogas). De esas se reportan solo los días que caen dentro del rango. Márquelo solo si esa ausencia no se reportó ya completa en un cargador anterior.">
+          <input type="checkbox" id="cg-continuan">
+          <span>Incluir ausencias que vienen de antes (prórrogas)</span>
+        </label>
+      </div>
       <button type="button" class="excel-btn" id="btn-cg-descargar" disabled>Descargar Excel</button>
     </div>
     <div class="cargador-botones">
@@ -1115,6 +1121,11 @@ AUTH_READY.then(async function () {
     }));
 
     mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${nomina}_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13], ["Fecha Novedad", "Fecha Inicio", "Fecha Final"], "Hoja1");
+    const nCont = filtrados.filter(ep => ep.continua).length;
+    if (nCont) {
+      msgCargadores.textContent = `Incluye ${nCont} ausencia${nCont === 1 ? "" : "s"} que venía${nCont === 1 ? "" : "n"} de antes del rango (prórrogas): solo se reportan sus días dentro del rango.`;
+      msgCargadores.className = "form-msg";
+    }
   }
 
   cgCodigo.addEventListener("change", renderizarPreviewAusentismo);
@@ -1122,6 +1133,7 @@ AUTH_READY.then(async function () {
   // previsualizar para traer los datos de ese nuevo rango.
   cgDesde.addEventListener("change", () => { cacheAusentismo = null; cacheHoras = null; });
   cgHasta.addEventListener("change", () => { cacheAusentismo = null; cacheHoras = null; });
+  document.getElementById("cg-continuan").addEventListener("change", () => { cacheAusentismo = null; msgCargadores.textContent = "Cambió la casilla de prórrogas: vuelve a pulsar «Cargador Ausentismo»."; msgCargadores.className = "form-msg"; });
   // El tipo de nomina (QUIN / QADM) filtra lo ya calculado, sin volver a pedir datos.
   cgNomina.addEventListener("change", () => {
     if (cacheHoras) { poblarConceptosHoras(); renderizarPreviewHoras(); }
@@ -1183,9 +1195,22 @@ AUTH_READY.then(async function () {
 
     // El rango se aplica sobre la fecha de INICIO del episodio (no la final); el episodio se reporta completo.
     const enRango = episodios.filter(ep => ep.inicio >= cgDesde.value && ep.inicio <= cgHasta.value);
+    // Opcional (casilla "Incluir ausencias que vienen de antes"): prorrogas, es decir ausencias que empezaron ANTES del rango y siguen
+    // dentro de el. Sin esto nunca aparecen en el cargador del periodo donde continuan (solo cuenta la fecha de inicio). De esas se
+    // reportan unicamente los dias que caen dentro del rango (inicio = Desde, final = el menor entre su fin real y Hasta).
+    let nContinuan = 0;
+    if (document.getElementById("cg-continuan").checked) {
+      episodios.filter(ep => ep.inicio < cgDesde.value && ep.fin >= cgDesde.value).forEach(ep => {
+        const ini = cgDesde.value, fin = ep.fin < cgHasta.value ? ep.fin : cgHasta.value;
+        const esHabil = mapa[ep.codigo]?.conteo_dias === "habil";
+        const dias = esHabil ? Math.max(1, contarDiasHabiles(ini, fin)) : Math.round((new Date(fin) - new Date(ini)) / 86400000) + 1;
+        enRango.push({ cedula: ep.cedula, codigo: ep.codigo, inicio: ini, fin, dias, continua: true });
+        nContinuan++;
+      });
+    }
     if (enRango.length === 0) throw new Error("No hay ausencias que empiecen en ese rango.");
 
-    cacheAusentismo = { enRango, mapa, mapaTipoAusencia, adminActual: await obtenerMapaAdministrativo() };
+    cacheAusentismo = { enRango, mapa, mapaTipoAusencia, adminActual: await obtenerMapaAdministrativo(), nContinuan };
     renderizarPreviewAusentismo();
   }));
 
