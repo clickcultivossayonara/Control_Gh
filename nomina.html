@@ -397,7 +397,7 @@
 
   <section class="card" id="card-cargadores" hidden>
     <h2>Cargadores para Softland</h2>
-    <p class="card-hint">Genera los archivos de carga a nómina a partir de las novedades ya registradas. El rango de fechas aplica sobre la fecha en que EMPIEZA cada novedad — una ausencia de varios días se reporta completa (con su fecha final real) en el cargador del periodo donde empieza.</p>
+    <p class="card-hint">Genera los archivos de carga a nómina a partir de las novedades ya registradas. En el cargador de Ausentismo cada ausencia (incapacidad, licencia, vacaciones…) se reporta con SOLO los días que caen dentro del rango elegido: si empezó antes del Desde o termina después del Hasta, se recorta a ese rango (así una ausencia larga se reporta por tramos, uno por periodo, sin repetir días).</p>
     <div class="filters">
       <div class="field">
         <label for="cg-nomina">Tipo de nómina</label>
@@ -423,12 +423,6 @@
       <div class="field">
         <label>Concepto (solo Horas)</label>
         <div class="multiselect" id="ms-cg-concepto"></div>
-      </div>
-      <div class="field checkbox-field">
-        <label for="cg-continuan" class="checkbox-label" title="Ausentismo: incluye las incapacidades, licencias o vacaciones que empezaron ANTES del rango y siguen dentro de él (prórrogas). De esas se reportan solo los días que caen dentro del rango. Márquelo solo si esa ausencia no se reportó ya completa en un cargador anterior.">
-          <input type="checkbox" id="cg-continuan">
-          <span>Incluir ausencias que vienen de antes (prórrogas)</span>
-        </label>
       </div>
       <button type="button" class="excel-btn" id="btn-cg-descargar" disabled>Descargar Excel</button>
     </div>
@@ -1121,9 +1115,9 @@ AUTH_READY.then(async function () {
     }));
 
     mostrarPreviewCargador(filasExcel, "Cargador Ausentismo", `cargador_ausentismo_${nomina}_${codigoFiltro || "todos"}_${fechaISO(new Date())}.xlsx`, [12, 13, 13, 13, 11, 11, 11, 13], ["Fecha Novedad", "Fecha Inicio", "Fecha Final"], "Hoja1");
-    const nCont = filtrados.filter(ep => ep.continua).length;
-    if (nCont) {
-      msgCargadores.textContent = `Incluye ${nCont} ausencia${nCont === 1 ? "" : "s"} que venía${nCont === 1 ? "" : "n"} de antes del rango (prórrogas): solo se reportan sus días dentro del rango.`;
+    const nRec = filtrados.filter(ep => ep.recortada).length;
+    if (nRec) {
+      msgCargadores.textContent = `${nRec} ausencia${nRec === 1 ? "" : "s"} se reporta${nRec === 1 ? "" : "n"} por tramo: solo los días que caen dentro del rango (empezaron antes del Desde o terminan después del Hasta).`;
       msgCargadores.className = "form-msg";
     }
   }
@@ -1133,7 +1127,6 @@ AUTH_READY.then(async function () {
   // previsualizar para traer los datos de ese nuevo rango.
   cgDesde.addEventListener("change", () => { cacheAusentismo = null; cacheHoras = null; });
   cgHasta.addEventListener("change", () => { cacheAusentismo = null; cacheHoras = null; });
-  document.getElementById("cg-continuan").addEventListener("change", () => { cacheAusentismo = null; msgCargadores.textContent = "Cambió la casilla de prórrogas: vuelve a pulsar «Cargador Ausentismo»."; msgCargadores.className = "form-msg"; });
   // El tipo de nomina (QUIN / QADM) filtra lo ya calculado, sin volver a pedir datos.
   cgNomina.addEventListener("change", () => {
     if (cacheHoras) { poblarConceptosHoras(); renderizarPreviewHoras(); }
@@ -1176,41 +1169,38 @@ AUTH_READY.then(async function () {
       const [cedula, codigo] = clave.split("|");
       const esHabil = mapa[codigo]?.conteo_dias === "habil";
       const fechas = [...new Set(fechasStr)].sort();
-      let inicio = null, anterior = null;
+      let inicio = null, anterior = null, dias_ep = [];
       const cerrar = (fin) => {
-        const dias = esHabil
-          ? Math.max(1, contarDiasHabiles(inicio, fin))
-          : Math.round((new Date(fin) - new Date(inicio)) / 86400000) + 1;
-        episodios.push({ cedula: Number(cedula), codigo, inicio, fin, dias });
+        episodios.push({ cedula: Number(cedula), codigo, inicio, fin, fechas: dias_ep, esHabil });
       };
       fechas.forEach(f => {
-        if (inicio === null) { inicio = f; anterior = f; return; }
+        if (inicio === null) { inicio = f; anterior = f; dias_ep = [f]; return; }
         const gap = Math.round((new Date(f) - new Date(anterior)) / 86400000);
         const puentea = esHabil && gap > 1 && soloDiasNoHabilesEntre(anterior, f);
-        if (gap > 1 && !puentea) { cerrar(anterior); inicio = f; }
+        if (gap > 1 && !puentea) { cerrar(anterior); inicio = f; dias_ep = []; }
+        dias_ep.push(f);
         anterior = f;
       });
       if (inicio !== null) cerrar(anterior);
     });
 
-    // El rango se aplica sobre la fecha de INICIO del episodio (no la final); el episodio se reporta completo.
-    const enRango = episodios.filter(ep => ep.inicio >= cgDesde.value && ep.inicio <= cgHasta.value);
-    // Opcional (casilla "Incluir ausencias que vienen de antes"): prorrogas, es decir ausencias que empezaron ANTES del rango y siguen
-    // dentro de el. Sin esto nunca aparecen en el cargador del periodo donde continuan (solo cuenta la fecha de inicio). De esas se
-    // reportan unicamente los dias que caen dentro del rango (inicio = Desde, final = el menor entre su fin real y Hasta).
-    let nContinuan = 0;
-    if (document.getElementById("cg-continuan").checked) {
-      episodios.filter(ep => ep.inicio < cgDesde.value && ep.fin >= cgDesde.value).forEach(ep => {
-        const ini = cgDesde.value, fin = ep.fin < cgHasta.value ? ep.fin : cgHasta.value;
-        const esHabil = mapa[ep.codigo]?.conteo_dias === "habil";
-        const dias = esHabil ? Math.max(1, contarDiasHabiles(ini, fin)) : Math.round((new Date(fin) - new Date(ini)) / 86400000) + 1;
-        enRango.push({ cedula: ep.cedula, codigo: ep.codigo, inicio: ini, fin, dias, continua: true });
-        nContinuan++;
-      });
-    }
-    if (enRango.length === 0) throw new Error("No hay ausencias que empiecen en ese rango.");
+    // Cada ausencia se reporta con SOLO los dias que caen dentro del rango (si empezo antes del Desde o termina despues del Hasta se recorta):
+    // asi una ausencia larga (incapacidad con prorrogas, licencia de maternidad...) sale por tramos, uno por periodo, sin repetir ni omitir dias.
+    const enRango = [];
+    let nRecortadas = 0;
+    episodios.forEach(ep => {
+      const sub = ep.fechas.filter(d => d >= cgDesde.value && d <= cgHasta.value);
+      if (!sub.length) return;
+      const ini = sub[0], fin = sub[sub.length - 1];
+      const dias = ep.esHabil ? contarDiasHabiles(ini, fin) : Math.round((new Date(fin) - new Date(ini)) / 86400000) + 1;
+      if (ep.esHabil && dias < 1) return;                                       // tramo sin dias habiles (solo domingos/festivos): no se reporta
+      const recortada = ep.inicio < cgDesde.value || ep.fin > cgHasta.value;
+      if (recortada) nRecortadas++;
+      enRango.push({ cedula: ep.cedula, codigo: ep.codigo, inicio: ini, fin, dias, recortada });
+    });
+    if (enRango.length === 0) throw new Error("No hay ausencias con días en ese rango.");
 
-    cacheAusentismo = { enRango, mapa, mapaTipoAusencia, adminActual: await obtenerMapaAdministrativo(), nContinuan };
+    cacheAusentismo = { enRango, mapa, mapaTipoAusencia, adminActual: await obtenerMapaAdministrativo(), nRecortadas };
     renderizarPreviewAusentismo();
   }));
 
