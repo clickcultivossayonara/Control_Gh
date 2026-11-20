@@ -1409,8 +1409,13 @@ AUTH_READY.then(async function () {
   }
 
   inFecha.value = fechaHoy();
-  AREAS_CONOCIDAS.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
-  document.getElementById("e-area").innerHTML = selArea.innerHTML;
+  // Rol Nomina: solo puede CARGAR novedades del area Caldera (las demas no aparecen en el formulario; la base de datos tambien lo exige).
+  // El presupuesto de horas extra (e-area) y los filtros de consulta siguen con todas las areas.
+  const AREAS_CARGA = window.SESION.rol === "nomina"
+    ? AREAS_CONOCIDAS.filter(a => a === "CALDERA")
+    : AREAS_CONOCIDAS;
+  AREAS_CARGA.forEach(a => selArea.insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
+  AREAS_CONOCIDAS.forEach(a => document.getElementById("e-area").insertAdjacentHTML("beforeend", `<option value="${a}">${a}</option>`));
 
   let HABILITADAS = {};        // habilitaciones puntuales: "cedula|fecha" -> [codigos] (ver cargarHabilitaciones)
   let codigosPorValor = {};
@@ -1420,7 +1425,7 @@ AUTH_READY.then(async function () {
   actualizarLimitesHoraExtra();
 
   const comboArea = crearCombobox("n-area-combo", "n-area-buscar", "n-area-panel", selArea,
-    () => AREAS_CONOCIDAS.map(a => [a, a]));
+    () => AREAS_CARGA.map(a => [a, a]));
   const comboCodigo = crearCombobox("n-codigo-combo", "n-codigo-buscar", "n-codigo-panel", selCodigo,
     () => Object.values(codigosPorValor).map(c => [c.codigo, c.codigo_descripcion]));
 
