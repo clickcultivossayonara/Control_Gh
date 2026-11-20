@@ -111,7 +111,8 @@
   .edit-box .field { margin-bottom: 12px; }
   .edit-box select, .edit-box input { width: 100%; }
   .edit-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
-  .btn-editar-nov, .btn-eliminar-nov, .btn-editar-extra { padding: 4px 10px; font-size: 12.5px; }
+  .btn-editar-nov, .btn-eliminar-nov, .btn-editar-extra, .btn-eliminar-extra { padding: 4px 10px; font-size: 12.5px; }
+  .btn-eliminar-extra { color: var(--critical); border-color: var(--critical); margin-left: 6px; }
   td.col-nw { white-space: nowrap; }
   .btn-eliminar-nov { color: var(--critical); border-color: var(--critical); margin-left: 6px; }
   .btn-peligro { background: var(--critical); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13.5px; }
@@ -796,6 +797,10 @@
     <h3 id="ee-titulo">Editar presupuesto de horas extra</h3>
     <p class="card-hint" id="ee-info" style="margin-bottom:14px"></p>
     <div class="field">
+      <label for="ee-area">Área</label>
+      <select id="ee-area"></select>
+    </div>
+    <div class="field">
       <label for="ee-fecha">Fecha</label>
       <input type="date" id="ee-fecha">
     </div>
@@ -804,11 +809,25 @@
       <input type="number" id="ee-horas" step="0.01" min="0">
     </div>
     <p class="card-hint" id="ee-uso"></p>
-    <p class="card-hint">Solo se cambian la fecha y las horas; el área y el concepto no (para eso crea una asignación nueva). Si ya hay horas cargadas en Novedades, el presupuesto de ese día no puede quedar por debajo de ellas. Cada cambio queda registrado con quién lo hizo.</p>
+    <p class="card-hint">Se pueden cambiar el área, la fecha y las horas; el concepto no (para eso crea una asignación nueva). Si ya hay horas cargadas en Novedades en el día y área de origen, el presupuesto que queda ahí no puede ser menor a ellas. Cada cambio queda registrado con quién lo hizo.</p>
     <p class="form-msg" id="ee-msg"></p>
     <div class="edit-actions">
       <button type="button" class="clear-btn" id="ee-cancelar">Cancelar</button>
       <button type="button" class="btn-primary" id="ee-guardar">Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
+<div class="popup-biometrico" id="modal-eliminar-extra" hidden role="alertdialog" aria-modal="true" aria-labelledby="ex-titulo">
+  <div class="edit-box">
+    <h3 id="ex-titulo">Eliminar asignación de horas extra</h3>
+    <p class="card-hint" id="ex-info" style="margin-bottom:10px"></p>
+    <p class="card-hint" id="ex-uso"></p>
+    <p class="card-hint">Esta acción quita la asignación del Presupuesto Horas Extra. No se puede eliminar si lo que ya se cargó en Novedades ese día y área quedaría sin presupuesto. Queda registrada en el historial (quién, cuándo y los datos eliminados).</p>
+    <p class="form-msg" id="ex-msg"></p>
+    <div class="edit-actions">
+      <button type="button" class="clear-btn" id="ex-cancelar">Cancelar</button>
+      <button type="button" class="btn-peligro" id="ex-confirmar">Sí, eliminar</button>
     </div>
   </div>
 </div>
@@ -2991,7 +3010,7 @@ AUTH_READY.then(async function () {
           <td>${codigosPorValor[f.codigo_novedad]?.codigo_descripcion || f.codigo_novedad || "—"}</td>
           <td class="num">${f.horas_asignadas ?? "—"}</td>
           <td class="num">${f.semana ?? "—"}</td>
-          <td class="col-nw"><button type="button" class="clear-btn btn-editar-extra" data-id="${f.id}">Editar</button></td>
+          <td class="col-nw"><button type="button" class="clear-btn btn-editar-extra" data-id="${f.id}">Editar</button><button type="button" class="clear-btn btn-eliminar-extra" data-id="${f.id}">Eliminar</button></td>
         </tr>`).join("");
       }
       leCount.textContent = total.toLocaleString("es-CO") + " resultado" + (total === 1 ? "" : "s") +
@@ -3026,6 +3045,7 @@ AUTH_READY.then(async function () {
 
   // ---------- Editar una asignacion de Presupuesto Horas Extra (fecha y horas; la base valida el rol y que no quede por debajo de lo ya cargado) ----------
   const eeModal = document.getElementById("modal-editar-extra");
+  const eeArea = document.getElementById("ee-area");
   const eeFecha = document.getElementById("ee-fecha");
   const eeHoras = document.getElementById("ee-horas");
   const eeMsg = document.getElementById("ee-msg");
@@ -3038,7 +3058,10 @@ AUTH_READY.then(async function () {
     if (!f) return;
     eeActual = f;
     const concepto = codigosPorValor[f.codigo_novedad]?.codigo_descripcion || f.codigo_novedad || "";
-    document.getElementById("ee-info").textContent = `${f.area} · ${concepto}`;
+    document.getElementById("ee-info").textContent = `Concepto: ${concepto}`;
+    const opcionesArea = [...new Set([...(TODAS_LAS_AREAS || []), f.area].filter(Boolean))];
+    eeArea.innerHTML = opcionesArea.map(a => `<option value="${escaparAtributo(a)}">${escaparAtributo(a)}</option>`).join("");
+    eeArea.value = f.area || "";
     eeFecha.value = f.fecha ? String(f.fecha).slice(0, 10) : "";
     eeHoras.value = f.horas_asignadas ?? "";
     document.getElementById("ee-uso").textContent = "Consultando lo ya cargado en Novedades…";
@@ -3064,20 +3087,22 @@ AUTH_READY.then(async function () {
     if (!f) return;
     const fecha = eeFecha.value;
     const horas = eeHoras.value === "" ? NaN : Number(eeHoras.value);
+    const area = eeArea.value;
+    if (!area) return eeMostrar("El área es obligatoria.", "error");
     if (!fecha) return eeMostrar("La fecha es obligatoria.", "error");
     if (!Number.isFinite(horas) || horas < 0) return eeMostrar("Las horas asignadas deben ser 0 o más.", "error");
-    if (fecha === String(f.fecha).slice(0, 10) && horas === Number(f.horas_asignadas)) return eeMostrar("No hay cambios para guardar.", "error");
+    if (area === f.area && fecha === String(f.fecha).slice(0, 10) && horas === Number(f.horas_asignadas)) return eeMostrar("No hay cambios para guardar.", "error");
     eeGuardar.disabled = true;
     eeMostrar("Guardando…", "");
     try {
       const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/editar_presupuesto_extra`, {
         method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
-        body: JSON.stringify({ p_id: f.id, p_fecha: fecha, p_horas: horas }),
+        body: JSON.stringify({ p_id: f.id, p_fecha: fecha, p_horas: horas, p_area: area }),
       });
       const res = await resp.json().catch(() => ({}));
       if (!resp.ok) throw new Error(res.message || `HTTP ${resp.status}`);
       eeModal.hidden = true;
-      msgExtra.textContent = `Asignación de ${f.area} actualizada: ${String(f.fecha).slice(0, 10)} · ${fmtH(f.horas_asignadas)} → ${fecha} · ${fmtH(horas)}.`;
+      msgExtra.textContent = `Asignación actualizada: ${f.area} · ${String(f.fecha).slice(0, 10)} · ${fmtH(f.horas_asignadas)} → ${area} · ${fecha} · ${fmtH(horas)}.`;
       msgExtra.className = "form-msg ok";
       cargarListaExtras();
     } catch (err) {
@@ -3089,9 +3114,66 @@ AUTH_READY.then(async function () {
   eeGuardar.addEventListener("click", guardarEdicionExtra);
   document.getElementById("ee-cancelar").addEventListener("click", () => { eeModal.hidden = true; });
   eeModal.addEventListener("click", (e) => { if (e.target === eeModal) eeModal.hidden = true; });
+  // ---------- Eliminar una asignacion de Presupuesto Horas Extra (la base valida el rol y que lo ya cargado siga cubierto) ----------
+  const exModal = document.getElementById("modal-eliminar-extra");
+  const exMsg = document.getElementById("ex-msg");
+  const exConfirmar = document.getElementById("ex-confirmar");
+  let exActual = null;
+  const exMostrar = (texto, tipo) => { exMsg.textContent = texto; exMsg.className = "form-msg" + (tipo ? " " + tipo : ""); };
+
+  async function abrirEliminarExtra(id) {
+    const f = leFilas[id];
+    if (!f) return;
+    exActual = f;
+    const concepto = codigosPorValor[f.codigo_novedad]?.codigo_descripcion || f.codigo_novedad || "";
+    document.getElementById("ex-info").textContent = `${f.area} · ${concepto} · ${String(f.fecha).slice(0, 10)} · ${fmtH(f.horas_asignadas)} asignadas`;
+    document.getElementById("ex-uso").textContent = "Consultando lo ya cargado en Novedades…";
+    exMostrar("", "");
+    exConfirmar.disabled = false;
+    exModal.hidden = false;
+    try {
+      const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/horas_extra_resumen`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ p_fecha: String(f.fecha).slice(0, 10), p_area: f.area, p_codigo: f.codigo_novedad }),
+      });
+      const j = await r.json();
+      const d = Array.isArray(j) && j[0] ? j[0] : null;
+      document.getElementById("ex-uso").textContent = d
+        ? `En ese día y área hay ${fmtH(d.asignadas)} asignadas en total y ${fmtH(d.usadas)} ya cargadas en Novedades.`
+        : "";
+    } catch { document.getElementById("ex-uso").textContent = ""; }
+  }
+
+  async function confirmarEliminarExtra() {
+    const f = exActual;
+    if (!f) return;
+    exConfirmar.disabled = true;
+    exMostrar("Eliminando…", "");
+    try {
+      const resp = await fetch(`${SUPABASE_URL}/rest/v1/rpc/eliminar_presupuesto_extra`, {
+        method: "POST", headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({ p_id: f.id }),
+      });
+      const res = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(res.message || `HTTP ${resp.status}`);
+      exModal.hidden = true;
+      msgExtra.textContent = `Asignación eliminada: ${f.area} · ${String(f.fecha).slice(0, 10)} · ${fmtH(f.horas_asignadas)}. Queda en el historial.`;
+      msgExtra.className = "form-msg ok";
+      cargarListaExtras();
+    } catch (err) {
+      exMostrar("No se pudo eliminar: " + (err.message || err), "error");
+      exConfirmar.disabled = false;
+    }
+  }
+  exConfirmar.addEventListener("click", confirmarEliminarExtra);
+  document.getElementById("ex-cancelar").addEventListener("click", () => { exModal.hidden = true; });
+  exModal.addEventListener("click", (e) => { if (e.target === exModal) exModal.hidden = true; });
+
   leTbody.addEventListener("click", (e) => {
     const b = e.target.closest(".btn-editar-extra");
     if (b) abrirEdicionExtra(b.dataset.id);
+    const d = e.target.closest(".btn-eliminar-extra");
+    if (d) abrirEliminarExtra(d.dataset.id);
   });
   cargarListaExtras();
 });
